@@ -1,0 +1,6 @@
+
+
+    1. C:\Users\pagade\.platformio\packages\framework-arduino-samd\cores\arduino\USB\USBAPI.h
+        Add the following lines in public declaration of Stream class:
+            virtual void begin(int) {};
+            virtual void end() {};

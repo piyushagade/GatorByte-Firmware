@@ -1,0 +1,11 @@
+[env:espwroom32]
+platform = espressif32
+board = node32s
+framework = arduino
+monitor_speed = 115200
+
+[env:nb1500]
+platform = atmelsam
+board = mkrnb1500
+framework = arduino
+monitor_speed = 9600

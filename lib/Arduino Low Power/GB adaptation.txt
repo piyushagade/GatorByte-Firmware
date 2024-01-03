@@ -1,0 +1,2 @@
+> Added following line for ESP32 compatibility
+    typedef void(*voidFuncPtr)(void);

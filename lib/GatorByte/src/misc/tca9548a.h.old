@@ -1,0 +1,140 @@
+#ifndef GB_TCA9548A_h
+#define GB_TCA9548A_h
+
+/* Import the core GB library */
+#ifndef GB_h
+    #include "../GB.h"
+#endif
+
+class GB_TCA9548A : public GB_DEVICE {
+    public:
+
+        struct PINS {
+            int reset;
+        } pins;
+        
+        GB_TCA9548A(GB &gb);
+
+        DEVICE device = {
+            "tca",
+            "TCA9548A"
+        };
+
+        void selectexclusive(int channel);
+        void resetmux();
+
+        GB_TCA9548A& initialize();
+        GB_TCA9548A& configure();
+        GB_TCA9548A& configure(PINS pins);
+
+    private:
+        GB *_gb;
+        int _tca_address = 0x70;
+        int _selected_channel = -1;
+        int _switch_count = 0;
+};
+
+// Constructor
+GB_TCA9548A::GB_TCA9548A(GB &gb) { 
+    _gb = &gb;
+    _gb->includelibrary(this->device.id, this->device.name);
+    _gb->devices.tca = this;
+}
+
+/*
+    ! Device configuration
+    Configures the device. Optionally, provide the reset pin.
+*/
+GB_TCA9548A& GB_TCA9548A::configure() { return *this; }
+GB_TCA9548A& GB_TCA9548A::configure(PINS pins) { 
+    this->pins = pins;
+
+    // Set pin mode
+    pinMode(this->pins.reset, OUTPUT);
+    digitalWrite(this->pins.reset, HIGH);
+
+    return *this;
+}
+
+/*
+    ! Initialize device
+    Initialize the device. Begins the 'Wire.h' library.
+*/
+GB_TCA9548A& GB_TCA9548A::initialize() { 
+    _gb->init();
+
+    _gb->log("Initializing TCA9548A", false);
+    
+    // Add the device to included devices list
+    _gb->includedevice(this->device.id, this->device.name);
+
+    Wire.begin();
+    Wire.beginTransmission(this->_tca_address);
+    bool success = Wire.endTransmission() == 0;
+    this->device.detected = success;
+
+    _gb->log(success ? " -> Done" : " -> Failed");
+
+
+    // Initialize variables
+    this->_selected_channel = -1;
+    this->_switch_count = 0;
+    
+    return *this;
+}
+
+/*
+    ! Channel select
+    Selects a channel in the multiplexer. Provide a channel number between 0 and 7.
+*/
+void GB_TCA9548A::selectexclusive(int channel) {
+
+    // _gb->log("Selecting channel: " + String(channel) + " (" + String(this->_switch_count) + ")");
+
+    // Return if invalid channel number was provided
+    if (channel < 0 || channel > 7) return; 
+
+    // Return if the requested channel is already selected
+    if (channel == this->_selected_channel) return;
+
+    // Increment switch counter
+    this->_switch_count++;
+
+    // Select single channel
+    bool success = false; int counter = 3;
+    while (!success && counter-- > 0) {
+        Wire.beginTransmission(this->_tca_address);
+        Wire.write(1 << channel);
+        success = Wire.endTransmission();
+
+        // // Try resetting the TCA9548A
+        // if (!success) this->resetmux();
+    }
+
+    if (success) this->_selected_channel = channel;
+    delay(25);
+
+    return; 
+}
+
+/*
+    ! Reset multiplexer
+    Resets the multiplexer.
+*/
+void GB_TCA9548A::resetmux() { 
+
+    // Set pin low (active low)
+    digitalWrite(this->pins.reset, LOW);
+    delay(25);
+    
+    // Set pin high (active low)
+    digitalWrite(this->pins.reset, HIGH);
+    delay(25);
+
+    this->_selected_channel = -1;
+    this->_switch_count = 0;
+
+    return; 
+}
+
+#endif

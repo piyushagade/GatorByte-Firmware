@@ -1,0 +1,9 @@
+.pio/
+.vscode/
+build/
+test/
+zephyr/
+CMakeLists.txt
+data.txt
+tasks.todo
+**/sm.log

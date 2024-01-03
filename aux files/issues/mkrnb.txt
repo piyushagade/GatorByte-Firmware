@@ -1,0 +1,25 @@
+
+                    * Issue: The code gets stuck at _nbAccess.begin()
+                    * Status: Unresolved. I have downloaded a fork MKRNB library from https://github.com/janakelarsson/MKRNB
+                    * Reason: MODEM firmware is faulty. Firmware version 5.12 fixes this issue. Contact uBlox support for upgrading instructions.
+                    * Solution: Upgrade MODEM firmware to version 5.12. 
+                    
+                    * More resources:
+                        1. https://forum.arduino.cc/t/mkr-1500-nb-hangs-on-nbaccess-begin/636736
+                        2. https://github.com/arduino-libraries/MKRNB/issues/47
+                        3. https://forum.arduino.cc/t/mkr-nb-1500-error-no-modem-answer/847711
+                        4. https://forum.arduino.cc/t/firmware-upgrade-for-ublox-sara-r410m-02b-on-the-mkr-nb-1500-2/699292/
+                        5. https://forum.arduino.cc/t/modem-firmware-upgrade-easy-programming-device-project/905390
+                        6. https://dev.telstra.com/forums/mkr-nb1500-modem-lockups-firmware-update-ublox-sara-r410m-covered-telstra-warranty
+                        7. https://forum.arduino.cc/t/firmware-upgrade-for-ublox-sara-r410m-02b-on-the-mkr-nb-1500/603919/16 - Extra putty; upgrade to 5.08
+                        8. https://www.youtube.com/watch?v=33LCz9fjyes - Video explaining same procedure as 7.
+                        9. https://www.u-blox.com/en/ubx-viewer/view/SARA-R410M-02B-03_PCN_UBX-20058104?url=https%3A%2F%2Fwww.u-blox.com%2Fsites%2Fdefault%2Ffiles%2FSARA-R410M-02B-03_PCN_UBX-20058104.pdf
+
+                        Update: 
+                        10. https://forum.arduino.cc/t/firmware-upgrade-for-ublox-sara-r410m-02b-on-the-mkr-nb-1500-3/983847
+
+
+                    * Other resources:
+                        1. https://www.emnify.com/global-iot-sim
+                        2. https://how2electronics.com/using-sim7600-4g-gsm-with-arduino-at-commands-call-sms/
+                        3. https://www.makerfabs.com/
