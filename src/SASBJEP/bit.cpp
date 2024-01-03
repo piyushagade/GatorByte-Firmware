@@ -520,8 +520,6 @@
 
     void preloop () {
 
-        main();
-        
         /*
             This is a hack to eliminate the delay introduced by the DS3231 RTC.
         */
