@@ -56,81 +56,48 @@
     GB_PIPER pingpiper(gb);
     GB_PIPER statepiper(gb);
     
-    int WLEV = 0;
-    int TIME = 0;
-    int RAININT = 0;
+    /*
+        Control variables
+    */
     bool REBOOT_FLAG = false;
     bool RESET_VARIABLES_FLAG = false;
 
-    /*
-        Time trackers
-    */
     int CV_UPLOAD_INTERVAL = 30 * 60 * 1000;
     int STATE_UPLOAD_INTERVAL = 60 * 60 * 1000;
-    int QUEUE_UPLOAD_INTERVAL = 30 * 60 * 1000;
-    int QUEUE_LAST_UPLOAD_AT = 0;
     int WLEV_SAMPLING_INTERVAL = 10 * 60 * 1000;
-    int WLEV_LAST_SAMPLE_AT = 0;
 
-    /*
-        Timestamps
-    */
-    int FIRST_TIP_AT_TIMESTAMP = 0;
-    int LAST_TIP_AT_TIMESTAMP = 0;
-    int TREATMENT_STARTED_AT_TIMESTAMP = 0;
-
-    /*
-        Counts
-    */
-    int CUMULATIVE_TIP_COUNT = 0;
-    int RAIN_INCHES = 0;
-    
-    /*
-        Thresholds
-    */
-    int END_TIP_CONT_THRESHOLD = 3;
-    int MIN_TIP_CONT_THRESHOLD = 10;
-    
     /*
         Timeouts
     */
-    int INTER_TIP_TIMEOUT = 6 * 60 * 60;
-    int HOMOGENIZATION_DELAY = 6 * 60 * 60 * 1000;
-    int INTER_SAMPLE_DURATION = 3 * 60 * 60 * 1000;
     int ANTIFREEZE_REBOOT_DELAY = 5 * 86400 * 1000;
-    // int ANTIFREEZE_REBOOT_DELAY = 2 * 60 * 1000;
     
     /*
         Intervals
     */
     int BREATH_INTERVAL = 60 * 1000;
-    int REMOTE_RESET_CHECK_INTERVAL = 1 * 60 * 1000;
-    int ANTIFREEZE_CHECK_INTERVAL = 15 * 60 * 1000;
-    int SERVER_PING_INTERVAL = 30 * 60 * 1000;
 
-    /*
-        Miscellaneous
-    */
-    int MEMLOC_RAINID = 32;
-    int MEMLOC_LASTSTATE = 33;
-    int MEMLOC_CUMMTIPCOUNT = 34;
-    int MEMLOC_TRTSTRTTMSTP = 35;
-    int MEMLOC_LASTTIPTMSTP = 36;
-    int MEMLOC_RAININTENSITY = 37;
-    int MEMLOC_LASTSAMPLETMSTP = 38;
-
-    int MEMLOC_BOOT_COUNTER = 41;
-
-    void types(GB_DESKTOP* a) { Serial.println("GB_DESKTOP object"); }
-
+    int WLEV = 0;
 
     void send_state () {
+
+        sntl.shield(120, [] {
+            gb.log("Uploading state");
+            
+            //! Connect to network
+            mcu.connect("cellular");
+            
+            sntl.kick();
+
+            //! Connect to MQTT servver
+            mqtt.connect("pi", "abe-gb-mqtt");
+            
+        });
 
         sntl.shield(60, [] {
             JSONary state; 
             state
                 .set("SNTL", sntl.ping() ? "PONG" : "ERROR")
-                .set("WLEV", WLEV) ;
+                .set("WLEV", uss.read()) ;
 
             mqtt.publish("state/report", state.get());
         });
@@ -138,11 +105,23 @@
 
     void send_control_variables () {
         
+        sntl.shield(120, [] {
+            gb.log("Uploading state");
+            
+            //! Connect to network
+            mcu.connect("cellular");
+            
+            sntl.kick();
+
+            //! Connect to MQTT servver
+            mqtt.connect("pi", "abe-gb-mqtt");
+            
+        });
+
         sntl.shield(60, [] {
             mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
         });
     }
-
 
     /* 
         ! Set control variables
@@ -151,15 +130,9 @@
 
     void set_control_variables(JSONary data) {
 
-        QUEUE_UPLOAD_INTERVAL = data.parseInt("CV_UPLOAD_INTERVAL");
         WLEV_SAMPLING_INTERVAL = data.parseInt("WLEV_SAMPLING_INTERVAL");
-        END_TIP_CONT_THRESHOLD = data.parseInt("END_TIP_CONT_THRESHOLD");
-        MIN_TIP_CONT_THRESHOLD = data.parseInt("MIN_TIP_CONT_THRESHOLD");
         REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
         RESET_VARIABLES_FLAG = data.parseBoolean("RESET_VARIABLES_FLAG");
-        INTER_TIP_TIMEOUT = data.parseInt("INTER_TIP_TIMEOUT");
-        HOMOGENIZATION_DELAY = data.parseInt("HOMOGENIZATION_DELAY");
-        INTER_SAMPLE_DURATION = data.parseInt("INTER_SAMPLE_DURATION");
         CV_UPLOAD_INTERVAL = data.parseInt("CV_UPLOAD_INTERVAL");
         ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
 
@@ -198,7 +171,6 @@
         sd.updatecontrol(str, set_control_variables);
         
         mqtt.publish("log/message", "Control variables updated.");
-        // send_control_variables();
 
         if (RESET_VARIABLES_FLAG) {
             resetvariables();
@@ -264,14 +236,9 @@
         int sentinenceduration = (gb.globals.SLEEP_DURATION / 1000) + 300;
         sntl.interval("sentinence", sentinenceduration).enable();
         sntl.enablebeacon(1);
-
         buzzer.play("----");
 
-        // mqtt.disconnect();
         mcu.disconnect("cellular");
-
-        // Disable timer
-        // mcu.stopbreathtimer();
     }
 
     /* 
@@ -290,18 +257,6 @@
 
         gb.log("The device is now awake.");
         gdc.send("highlight-yellow", "Device awake");
-
-        // sntl.shield(90, [] {
-                
-        //     //! Connect to network
-        //     mcu.connect("cellular");
-            
-        //     sntl.kick();
-
-        //     //! Connect to MQTT servver
-        //     mqtt.connect("pi", "abe-gb-mqtt");
-            
-        // });
 
     }
 
@@ -381,76 +336,6 @@
         }
     }
 
-    void write_data_to_sd_and_upload () {
-
-        sntl.shield(15, [] {
-        
-            // Initialize CSVary object
-            CSVary csv;
-
-            int timestamp = rtc.timestamp().toInt(); 
-            String date = rtc.date("MM/DD/YY");
-            String time = rtc.time("hh:mm");
-
-            // Log to SD
-            csv
-                .clear()
-                .setheader("PROJECTID,DEVICESN,TIMESTAMP,DATE,TIME,TEMP,RH,FLTP,WLEV,BVOLT,BLEV")
-                .set(gb.globals.PROJECT_ID)
-                .set(gb.globals.DEVICE_SN)
-                .set(timestamp)
-                .set(date)
-                .set(time)
-                .set(aht.temperature())
-                .set(aht.humidity())
-                .set(gb.globals.FAULTS_PRIMARY)
-                .set(WLEV)
-                .set(mcu.fuel("voltage"))
-                .set(mcu.fuel("level"));
-
-            //! Write current data to SD card
-            sd.writeCSV(csv);
-            gb.log("Readings written to SD card");
-
-            gb.br().color("white").log("Current data point: ");
-            gb.log(csv.getheader());
-            gb.log(csv.getrows());
-
-            //! Upload current data to desktop client_test
-            gdc.send("data", csv.getheader() + BR + csv.getrows());
-            
-            /*
-                ! Prepare a queue file (with current iteration's data)
-                The queue file will be read and data uploaded once the network is established.
-                The file gets deleted if the upload is successful. 
-            */
-
-            String currentdataqueuefile = sd.getavailablequeuefilename();
-
-            gb.log("Wrote to queue file: " + currentdataqueuefile);
-            sd.writequeuefile(currentdataqueuefile, csv);
-            
-        });
-
-        // Upload to server
-        send_queue_files_to_server();
-        
-    }
-
-    // void diagnostics() {
-    //     float wlev;
-    //     wlev = eadc.getdepth(0);
-    //     gb.log("Water level: " + String(wlev));
-    //     bool raindetected = rain.listener();
-
-    //     gb.br().log("Water level: " + String(wlev));
-    //     if (raindetected) {
-    //         gb.log("Rain detected");
-
-    //         vst.trigger(400);
-    //     }
-    // }
-    
     /* 
         ! Peripherals configurations and initializations
         Here, objects for the peripherals/components used are initialized and configured. This is where
@@ -477,7 +362,7 @@
         //! Configure peripherals
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
         buzzer.configure({6}).initialize().play("...");
-        
+
         // Detect GDC
         gdc.detect(false);
 
@@ -513,11 +398,6 @@
 
     }
 
-    bool diagflag = false;
-    bool restoreflag = false;
-    bool blraintrigger = false;
-    uint8_t loopcounter = 0;
-
     void preloop () {
 
         /*
@@ -531,24 +411,9 @@
     }
 
     void loop () {
-
-        gb.loop();
         
-        // gb.br();
-        // sntl.shield(90, [] {
-        //     delay(1000);
-        //     sntl.fetchfaultcounters();
-        //     gb.log("Sentinel state: " + String(sntl.ping() ? "PONG" : "ERROR"));
-        //     delay(1000);
-            
-        //     sntl.tell(100);
-        // });
-        // return delay(1000);
-
-        // WLEV = uss.read();
-        // gb.log("Water level: " + String(WLEV));
-        // delay(50);
-        // return;
+        // GatorByte loop function
+        gb.loop();
 
         //! Five-day anti-freeze piper
         fivedayantifreezepiper.pipe(ANTIFREEZE_REBOOT_DELAY, false, [] (int counter) {
@@ -604,25 +469,12 @@
 
         //! Upload control variables state to the server
         controlvariablespiper.pipe(CV_UPLOAD_INTERVAL, true, [] (int counter) {
-            sntl.shield(120, [] {
-                gb.log("Sending control variables");
-                
-                //! Connect to network
-                mcu.connect("cellular");
-                
-                sntl.kick();
-
-                //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
-                
-            });
-
             send_control_variables();
         });
 
         //! Read water level data
         wlevpiper.pipe(WLEV_SAMPLING_INTERVAL, true, [] (int counter) {
-            
+
             sntl.shield(90, [] {
                 
                 //! Connect to network
@@ -737,30 +589,10 @@
         //! Upload state to the server
         statepiper.pipe(STATE_UPLOAD_INTERVAL, true, [] (int counter) {
 
-            sntl.shield(120, [] {
-                gb.log("Uploading state");
-                
-                //! Connect to network
-                mcu.connect("cellular");
-                
-                sntl.kick();
-
-                //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
-                
-            });
-
             send_state();
         });
 
         mcu.sleep(on_sleep, on_wakeup);
     }
-
-    int count = 0;
-    void breathe() {
-        gb.log("Breathing counter: " + String(count++));
-        gb.breathe();
-    }
-
 
 #endif

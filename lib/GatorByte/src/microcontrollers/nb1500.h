@@ -595,14 +595,10 @@ String GB_NB1500::getoperator() {
 }
 
 String GB_NB1500::gettime() {
-    this->watchdog("enable", 4000);
-    
     if (this->_modem_fw.indexOf("05.06") >= 0 || this->_modem_fw.indexOf("A.02.00") >= 0) return "Skipped. Outdated MODEM firmware.";
 
     // Read time
     String time = this->_sara_at_command("AT+CCLK?");
-
-    this->watchdog("disable");
     return time;
 }
 

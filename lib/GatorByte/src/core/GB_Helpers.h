@@ -131,24 +131,25 @@ GB& GB::log(String message, bool newline) {
         newline = false;
     }
 
-    // Replace -> Done
-    if (message.contains("Done")) {
-        message.replace("Done", "\033[1;37;42mDone");
-    }
-    else if (message.contains("Enabled")) {
-        message.replace("Enabled", "\033[1;37;42mEnabled");
-    }
-    else if (message.contains("Failed")) {
-        message.replace("Failed", "\033[1;37;41mFailed");
-    }
-    else if (message.contains("Not detected")) {
-        message.replace("Not detected", "\033[1;37;41mNot detected");
-    }
-    else if (message.contains("Skipped")) {
-        message.replace("Skipped", "\033[1;30;43mSkipped");
-    }
-    else if (message.contains(" NOT ")) {
-        message.replace(" NOT ", " \033[1;30;47mNOT ");
+    if (!this->globals.GDC_CONNECTED) {
+        if (message.contains("Done")) {
+            message.replace("Done", "\033[1;37;42mDone");
+        }
+        else if (message.contains("Enabled")) {
+            message.replace("Enabled", "\033[1;37;42mEnabled");
+        }
+        else if (message.contains("Failed")) {
+            message.replace("Failed", "\033[1;37;41mFailed");
+        }
+        else if (message.contains("Not detected")) {
+            message.replace("Not detected", "\033[1;37;41mNot detected");
+        }
+        else if (message.contains("Skipped")) {
+            message.replace("Skipped", "\033[1;30;43mSkipped");
+        }
+        else if (message.contains(" NOT ")) {
+            message.replace(" NOT ", " \033[1;30;47mNOT ");
+        }
     }
 
     if(newline) {
@@ -166,15 +167,19 @@ GB& GB::log(String message, bool newline) {
         }
 
         if (this->SERIALDEBUG) {
-            this->serial.debug->print((this->globals.SENTENCEENDED ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : (this->globals.NEWSENTENCE ? "   " : ""))  + this->globals.LOGCOLOR + message);
+            if (this->globals.GDC_CONNECTED) this->serial.debug->println(message);
+            else {
+                this->serial.debug->print((this->globals.SENTENCEENDED ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : (this->globals.NEWSENTENCE ? "   " : ""))  + this->globals.LOGCOLOR + message);
             
-            // Reset color
-            this->serial.debug->println("\033[0m");
-            this->globals.LOGCOLOR = "";
+                // Reset color
+                this->serial.debug->println("\033[0m");
+                this->globals.LOGCOLOR = "";
+                
+                this->globals.NEWSENTENCE = true;
+                this->globals.SENTENCEENDED = true;
+            }
         }
         
-        this->globals.NEWSENTENCE = true;
-        this->globals.SENTENCEENDED = true;
     }
     else {
         
@@ -183,7 +188,7 @@ GB& GB::log(String message, bool newline) {
         // Serial.write(27);                               // ESC
         // Serial.print("[H"); 
         
-        this->globals.NEWSENTENCE = this->globals.SENTENCEENDED ? true : false;
+        if (!this->globals.GDC_CONNECTED) this->globals.NEWSENTENCE = this->globals.SENTENCEENDED ? true : false;
         
         if (this->BLDEBUG && !this->globals.GDC_CONNECTED) {
             if (this->getdevice("bl").initialized() && this->hasdevice("bl")) {
@@ -192,14 +197,16 @@ GB& GB::log(String message, bool newline) {
         }
 
         if (this->SERIALDEBUG) {
+            if (this->globals.GDC_CONNECTED) this->serial.debug->print(message);
+            else {
 
-            this->serial.debug->print((this->globals.NEWSENTENCE ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : "")  + this->globals.LOGCOLOR + message);
-            
-            // Reset color
-            this->serial.debug->print("\033[0m");
+                this->serial.debug->print((this->globals.NEWSENTENCE ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : "")  + this->globals.LOGCOLOR + message);
+                
+                // Reset color
+                this->serial.debug->print("\033[0m");
+                this->globals.SENTENCEENDED = false;
+            }
         }
-
-        this->globals.SENTENCEENDED = false;
     }
 
     return *this;
