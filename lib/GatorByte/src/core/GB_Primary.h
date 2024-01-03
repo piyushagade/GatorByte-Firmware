@@ -185,6 +185,7 @@ class GB {
 
         GB& bs();
         GB& br();
+        GB& br(int);
         GB& del();
         GB& clr();
         GB& space(int count);

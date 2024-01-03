@@ -1,6 +1,6 @@
 #include "../platform.h"
 
-#if GB_PLATFORM_IS_LRY_DRIFTER
+#if true || GB_PLATFORM_IS_LRY_DRIFTER
     
     bool nwflag = true;
     bool gpsdummyflag = false;
@@ -47,6 +47,25 @@
     GB_DESKTOP gdc(gb);
     GB_SNTL sntl(gb);
 
+    /*
+        Control variables
+    */
+    bool REBOOT_FLAG = false;
+    bool RESET_VARIABLES_FLAG = false;
+
+    int STATE_UPLOAD_INTERVAL = 60 * 60 * 1000;
+    int SAMPLING_INTERVAL = 10 * 60 * 1000;
+
+    /*
+        Timeouts
+    */
+    int ANTIFREEZE_REBOOT_DELAY = 5 * 86400 * 1000;
+    
+    /*
+        Intervals
+    */
+    int BREATH_INTERVAL = 60 * 1000;
+
     /* 
         ! Procedure to handle incoming MQTT messages
         It is mandatory to define this function if GB_MQTT library is instantiated above
@@ -54,16 +73,24 @@
 
     void mqtt_message_handler(String topic, String message) {
 
-        gb.log("\n\nIncoming topic: " + topic + "\n\n");
+        gb.br(2).log("Incoming topic: " + topic);
+        gb.log("Incoming message: " + message);
+        gb.br(2);
 
-        if (topic == "gb-lab/test") {
-            mqtt.publish("gatorbyte::gb-lab::response", "message");
+        // If broker sends an acknowledgement
+        if (topic == "gatorbyte/ack" && message == "success") {
+            mqtt.ACK_RECEIVED = true;
+            return;
         }
+
+        // Parse message
+        parse_mqtt_message(message);
     }
 
+    
     /* 
-        ! Actions to perform on MQTT connect/reconnect
-        It is mandatory to define this function if GB_MQTT library is instantiated above
+        ! Subscribe to topics
+        This callback is executed the GB connects to the MQTT broker
     */
 
     void mqtt_on_connect() {
@@ -78,15 +105,13 @@
     */
 
     void on_sleep() {
-        gb.log("\nPerforming user-defined pre-sleep tasks");
+        gb.br().log("Performing user-defined pre-sleep tasks");
 
-        // mqtt.disconnect();
+        int sentinenceduration = (gb.globals.SLEEP_DURATION / 1000) + 300;
+        sntl.interval("sentinence", sentinenceduration).enable().enablebeacon(1);
+        buzzer.play("----");
+
         mcu.disconnect("cellular");
-
-        // Disable timer
-        mcu.stopbreathtimer();
-
-        delay(1000);
     }
 
     /* 
@@ -97,116 +122,51 @@
     void on_wakeup() {
         
         rgb.on("magenta");
-        delay(5000);
+        buzzer.play("....");
+        delay(2000);
+
+        sntl.disable().enablebeacon(0);
 
         gb.log("The device is now awake.");
         gdc.send("highlight-yellow", "Device awake");
     }
 
-    /*
-        ! Set date and time for files in the SD card
-    */
-    void setsddatetime(uint16_t* date, uint16_t* time) {
+    
+    void set_control_variables(JSONary data) {
 
-        // Get datetime object
-        DateTime now = rtc.now();
+        SAMPLING_INTERVAL = data.parseInt("SAMPLING_INTERVAL");
+        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
+        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
 
-        // return date using FAT_DATE macro to format fields
-        *date = FAT_DATE(now.year(), now.month(), now.day());
+        gb.log("Updating runtime variables -> Done");
 
-        // return time using FAT_TIME macro to format fields
-        *time = FAT_TIME(now.hour(), now.minute(), now.second());
-    }
-
-    /*
-        ! Send data to server
-        Send the queue data first.
-        Then send the current data to the server.
-    */
-    void send_queue_files_to_server() {
-
-        if (sd.getqueuecount() > 0) {
-
-            gb.br().log("Found " + String(sd.getqueuecount()) + " queue files");
-
-            sntl.shield(45, [] {
-                
-                //! Connect to network
-                mcu.connect("cellular");
-                
-                sntl.kick();
-
-                //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
-            });
-
-            // mqtt.publish("log/message", "Iteration: " + String(gb.ITERATION));
-            // mqtt.publish("log/message", "Cell signal: " + String(mcu.RSSI) + " dB");
-            // mqtt.publish("log/message", "SD write complete");
-
-            //! Publish first ten queued-data with MQTT
-            sntl.shield(10, [] {
-                if (CONNECTED_TO_MQTT_BROKER) {
-                    int counter = 10;
-                    while (!sd.isqueueempty() && counter-- > 0) {
-
-                        String queuefilename = sd.getfirstqueuefilename();
-
-                        // Attempt publishing queue-data
-                        if (mqtt.publish("data/set", sd.readfile(queuefilename))) {
-
-                            // Remove queue file
-                            sd.removequeuefile(queuefilename);
-                        }
-
-                        sntl.kick();
-                    }
-                }
-            });
-
-        }
-        else {
-            gb.log("No files files to upload.");
-        }
+        // Send the fresh list of control variables
+        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
     }
     
-    void nwdiagnostics () {
-        
-        sntl.shield(45, [] {
-            //! Connect to network
-            mcu.connect("cellular");
+    void devicereboot () {
 
-            sntl.kick();
+        gb.color("red").log("Rebooting device -> Done");
 
-            //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
-        });
+        // Reset flag
+        REBOOT_FLAG = false;
+        sd.updatecontrolbool("REBOOT_FLAG", REBOOT_FLAG, set_control_variables);
 
-        rgb.rainbow(5000);
+        buzzer.play(".....");
+        sntl.reboot();
     }
 
-    /*
-        ! Diagnostics function
-    */
-    bool flag = false;
-    void diagnostics () {
-        flag = true;
+    void parse_mqtt_message(String str){
 
-        // Test RGB & buzzer
-        rgb.rainbow(5000).off(); buzzer.play(".-"); delay(2000);
+        // Update the variables in SD card and in runtime memory
+        sd.updatecontrol(str, set_control_variables);
+        
+        mqtt.publish("log/message", "Control variables updated.");
 
-        // Test SD
-        rgb.on(sd.rwtest() ? "green" : "red"); delay(1000); rgb.off();
-
-        // Test RTC
-        rgb.on(rtc.test() ? "green" : "red"); delay(1000); rgb.off();
-
-        // Test sentinel
-        rgb.on(sntl.ping() ? "green" : "red"); delay(1000); rgb.off();
-
-        // Test GPS
-        gps.on(); delay(2000); gps.off(); delay(1000);
-
+        if (REBOOT_FLAG) {
+            devicereboot();
+            REBOOT_FLAG = 0;
+        }
     }
 
     /* 
@@ -221,25 +181,34 @@
         
         //! Mandatory GB setup function
         gb.setup();
+        
+        //! Initialize GatorByte and device configurator
+        gb.configure(false, "gb-sasbjep-test-station");
+        gb.globals.ENFORCE_CONFIG = true;
+        
+        //! Configure peripherals
+        ioe.configure({3, 4, 5}, 2).initialize();
 
         //! Configure microcontroller
         mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
         //! Configure peripherals
-        ioe.configure({3, 4, 5}, 2).initialize();
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
         buzzer.configure({6}).initialize().play("...");
         
         //! Initialize Sentinel
-        sntl.configure({false}, 9).initialize();
+        sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
 
-        sntl.shield(60, [] {
+        sntl.shield(120, []() {
 
             // Initialize SD first to read the config file
-            sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter").readconfig();
+            sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+
+            // Read SD config and control files
+            sd.readconfig().readcontrol(set_control_variables);
 
             // Configure MQTT broker and connect 
-            mqtt.configure("mqtt.ezbean-lab.com", 1883, gb.globals.DEVICE_SN, mqtt_message_handler, mqtt_on_connect);
+            mqtt.configure(mqtt_message_handler, mqtt_on_connect);
             
             // Initialize remaining peripherals
             bl.configure({true, SR3, SR11}).initialize();
@@ -250,46 +219,23 @@
             rtc.configure({true, SR0}).initialize();
         });
         
-        // Detect GDC
-        gdc.detect();
-
         gb.log("Setup complete");
     }
 
+    void preloop () {
+
+        /*
+            This is a hack to eliminate the delay introduced by the DS3231 RTC.
+        */
+        gb.globals.INIT_SECONDS = rtc.timestamp().toDouble();
+
+        gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
+        gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
+        gb.log("Sampling interval: " + String(SAMPLING_INTERVAL));
+    }
     void loop () {
 
-        String read;
-        int counter = 0;
-
-        // // BL test
-        // counter = 0;
-        // read = "EMPTY";
-        // bl.on();
-        // while(!Serial1.available() && counter++ < 5) delay(1000);
-        // if (Serial1.available()) read = Serial1.readString();
-        // Serial.println("BL: " + read);
-        // bl.off("comm");
-
-        // // GPS test
-        // counter = 0;
-        // read = "EMPTY";
-        // gps.initialize();
-
-        // if (Serial1.available()) read = Serial1.readString();
-        // Serial.println("GPS: " + read);
-        // gps.off("comm");
-
-        // delay(5000);
-
-        // return;
-
-        // return nwdiagnostics();
-
-        // if (!flag) return diagnostics();
-
-        // return send_queue_files_to_server();
-        
-        //! Call GatorByte's loop procedure
+        // GatorByte loop function
         gb.loop();
 
         sntl.shield(180, [] {
@@ -305,19 +251,25 @@
             // Initialize CSVary object
             CSVary csv;
             int timestamp = rtc.timestamp().toInt();
+            String date = rtc.date("MM/DD/YY");
+            String time = rtc.time("hh:mm");
 
             // Construct CSV object
             csv
                 .clear()
-                .setheader("SURVEYID,DEVICEID,TEMP,RH,FLTP,TIMESTAMP,LAT,LNG")
+                .setheader("PROJECTID,DEVICESN,TIMESTAMP,DATE,TIME,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
                 .set(gb.globals.PROJECT_ID)
                 .set(gb.globals.DEVICE_ID)
+                .set(timestamp)
+                .set(date)
+                .set(time)
                 .set(aht.temperature())
                 .set(aht.humidity())
                 .set(gb.globals.FAULTS_PRIMARY)
-                .set(timestamp)
                 .set(gps_lat)
-                .set(gps_lng);
+                .set(gps_lng)
+                .set(mcu.fuel("voltage"))
+                .set(mcu.fuel("level"));
 
             //! Write current data to SD card
             sd.writeCSV(csv);
@@ -327,7 +279,7 @@
             gb.log(csv.getheader());
             gb.log(csv.getrows());
 
-            //! Upload current data to desktop client_test
+            //! Upload current data to desktop client
             gdc.send("data", csv.getheader() + BR + csv.getrows());
             
             /*
@@ -337,20 +289,47 @@
             */
 
             String currentdataqueuefile = sd.getavailablequeuefilename();
+            gb.log("Wrote to queue file: " + currentdataqueuefile);
             sd.writeString(currentdataqueuefile, csv.get());
         });
 
-        // Send data to the server
-        if (nwflag) send_queue_files_to_server();
+        // Send outstanding data and current data
+        if (sd.getqueuecount() > 0) {
+            gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
+            
+            //! Publish first ten queued-data with MQTT
+            sntl.shield(120, [] {
 
-        // //! Sleep
-        // mcu.sleep(on_sleep, on_wakeup);
-        delay(nwflag ? 1000 : 10000);
-    }
+                if (CONNECTED_TO_MQTT_BROKER) {
+                    int counter = 10;
+                    
+                    while (!sd.isqueueempty() && counter-- > 0) {
 
-    void breathe() {
-        gb.log("Breathing");
-        gb.breathe();
+                        String queuefilename = sd.getfirstqueuefilename();
+
+                        gb.log("Sending queue file: " + queuefilename);
+
+                        // Attempt publishing queue-data
+                        if (mqtt.publish("data/set", sd.readqueuefile(queuefilename))) {
+
+                            // Remove queue file
+                            sd.removequeuefile(queuefilename);
+                        }
+
+                        else {
+                            gb.log("Queue file not deleted.");
+                        }
+                    }
+                }
+            });
+
+        }
+        else {
+            gb.br().log("Found " + String(sd.getqueuecount()) + " queue files on SD. Skipping upload.");
+        }
+
+        //! Sleep
+        mcu.sleep(on_sleep, on_wakeup);
     }
 
 #endif

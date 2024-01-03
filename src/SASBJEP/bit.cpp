@@ -76,6 +76,9 @@
     */
     int BREATH_INTERVAL = 60 * 1000;
 
+    /*
+        Globals
+    */
     int WLEV = 0;
 
     void send_state () {
@@ -165,7 +168,7 @@
         sntl.reboot();
     }
 
-    void parse(String str){
+    void parse_mqtt_message(String str){
 
         // Update the variables in SD card and in runtime memory
         sd.updatecontrol(str, set_control_variables);
@@ -189,9 +192,9 @@
 
     void mqtt_message_handler(String topic, String message) {
 
-        gb.br().br().log("Incoming topic: " + topic);
+        gb.br(2).log("Incoming topic: " + topic);
         gb.log("Incoming message: " + message);
-        gb.br().br();
+        gb.br(2);
 
         // If broker sends an acknowledgement
         if (topic == "gatorbyte/ack" && message == "success") {
@@ -199,7 +202,8 @@
             return;
         }
 
-        parse(message);
+        // Parse message
+        parse_mqtt_message(message);
 
         // String targetdevice = topic.substring(0, topic.indexOf("::"));
         // if (targetdevice != gb.DEVICE_SN) return;
@@ -234,8 +238,7 @@
         gb.br().log("Performing user-defined pre-sleep tasks");
 
         int sentinenceduration = (gb.globals.SLEEP_DURATION / 1000) + 300;
-        sntl.interval("sentinence", sentinenceduration).enable();
-        sntl.enablebeacon(1);
+        sntl.interval("sentinence", sentinenceduration).enable().enablebeacon(1);
         buzzer.play("----");
 
         mcu.disconnect("cellular");
@@ -252,27 +255,11 @@
         buzzer.play("....");
         delay(2000);
 
-        sntl.disable();
-        sntl.enablebeacon(0);
+        sntl.disable().enablebeacon(0);
 
         gb.log("The device is now awake.");
         gdc.send("highlight-yellow", "Device awake");
 
-    }
-
-    /*
-        ! Set date and time for files in the SD card
-    */
-    void setsddatetime(uint16_t* date, uint16_t* time) {
-
-        // Get datetime object
-        DateTime now = rtc.now();
-
-        // return date using FAT_DATE macro to format fields
-        *date = FAT_DATE(now.year(), now.month(), now.day());
-
-        // return time using FAT_TIME macro to format fields
-        *time = FAT_TIME(now.hour(), now.minute(), now.second());
     }
 
     // Start antifreeze sentinence monitor    
@@ -534,7 +521,7 @@
                 // MQTT update 
                 mqtt.update();
 
-                //! Upload current data to desktop client_test
+                //! Upload current data to desktop client
                 gdc.send("data", csv.getheader() + BR + csv.getrows());
                 
                 /*
@@ -544,7 +531,6 @@
                 */
 
                 String currentdataqueuefile = sd.getavailablequeuefilename();
-
                 gb.log("Wrote to queue file: " + currentdataqueuefile);
                 sd.writequeuefile(currentdataqueuefile, csv);
             });

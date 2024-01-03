@@ -262,7 +262,17 @@ GB& GB::bs(){
 }
 
 GB& GB::br(){
-    this->log("", true);
+    return br(1);
+}
+GB& GB::br(int count){
+    if (count == 1) {
+        this->log("", true);
+        return *this;
+    }
+    else {
+        this->log("", true);
+        this->br(count--);
+    }
     return *this;
 }
 GB& GB::space(int count){
