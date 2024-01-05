@@ -17,8 +17,8 @@ PlatformIO is an open-source ecosystem for Internet of Things (IoT) development.
 
 The PlatformIO VSCode extension is an extension for Microsoft Visual Studio Code The extension integrates PlatformIO into VSCode, providing a powerful environment for embedded systems development. With this extension, developers can easily manage and build projects for various microcontroller platforms, upload firmware, and monitor serial output, among other things.
 
-## Install PlatformIO Extension for VS Code 
----------------------------------------- 
+## Install PlatformIO Extension for VS Code
+
 1. **Open Visual Studio Code:** 
 Launch Visual Studio Code after the installation is complete. 
 2. **Open Extensions View:** 
@@ -30,11 +30,11 @@ Look for the PlatformIO IDE extension in the search results. Click the "Install"
 5. **Restart VS Code:** 
 After installation, click the "Reload" button or restart Visual Studio Code to activate the PlatformIO extension. 
 
-Configure PlatformIO for Arduino MKR NB 1500 
--------------------------------------------- 
-6. **Create a New Project:**
+## Configure PlatformIO for Arduino MKR NB 1500 
+
+1. **Create a New Project:**
 Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl+Shift+P` or `Cmd+Shift+P`). Type and select "PlatformIO: New Project" in the command palette. Choose a directory for your project and select the board "Arduino MKR NB 1500." 
-7. **Edit `platformio.ini` File:** 
+2. **Edit `platformio.ini` File:** 
 * Open the `platformio.ini` file in your project directory. 
 * Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
 * Copy code 
