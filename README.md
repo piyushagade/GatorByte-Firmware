@@ -35,10 +35,10 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 1. **Create a New Project:**
 Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl+Shift+P` or `Cmd+Shift+P`). Type and select "PlatformIO: New Project" in the command palette. Choose a directory for your project and select the board "Arduino MKR NB 1500." 
 2. **Edit `platformio.ini` File:** 
-* Open the `platformio.ini` file in your project directory. 
-* Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
-* Copy code 
-
+	* Open the `platformio.ini` file in your project directory. 
+	* Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
+	* Copy the following lines and paste into `platformio.ini` file
+	```
         [env:mkrnb1500] 
         platform = atmelsam 
         board = mkrnb1500
@@ -56,7 +56,62 @@ Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl
 	        cmaglie/FlashStorage@^1.0.0
 	        khoih-prog/FlashStorage_SAMD@^1.3.2
 	        marzogh/SPIMemory@^3.4.0
-   
-    
+	```
 
-3. **Install Dependencies:** * Save the `platformio.ini` file. * Open the PlatformIO sidebar (`Ctrl+Alt+P` or `Cmd+Alt+P`) and click on "Platforms." * Click "Update" to ensure the platform and board packages are up to date. * PlatformIO will automatically download and install the necessary dependencies. 4. **Upload Firmware:** * Write your Arduino sketch in the `src` directory. * Connect your Arduino MKR NB 1500 to your computer. * Click on the "PlatformIO" icon in the Activity Bar and select "Upload" to compile and upload the firmware to your Arduino.
+3. **Install Dependencies:** 
+	* Save the `platformio.ini` file. 
+	* Open the PlatformIO sidebar (`Ctrl+Alt+P` or `Cmd+Alt+P`) and click on "Platforms." 
+	* Click "Update" to ensure the platform and board packages are up to date. 
+	* PlatformIO will automatically download and install the necessary dependencies. 
+
+4. **Upload Firmware:** 
+	* Write your Arduino sketch in the `src` directory. 
+	* Connect your Arduino MKR NB 1500 to your computer. 
+	* Click on the "PlatformIO" icon in the Activity Bar and select "Upload" to compile and upload the firmware to your GatorByte.
+
+# Code structure and making changes to the code
+
+## Directory structure
+* The required libraries (including GatorByte library) are stored in `lib` folder.
+* The custom code for the GatorByte is stored in `src` folder. 
+	* The entry code file is `src/platform.h`.
+	* For each project, the `src` directory contains a corresponding subdirectory. 
+	For example, if you have two projects (Project A and Project B) that require different code/logic, the directory structure in `src` directory will be as follows:
+
+	```
+		src
+		|---- Project A
+			  |---- wauburg.cpp 
+			  |---- hogtown.cpp 
+
+		|---- Project B
+		      |---- alice.cpp
+
+		|---- platform.h
+	```
+	* The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``/Project A/wauburg.cpp`` for flashing. 
+
+	```
+	/*
+    	Project A
+	*/
+	#define GB_PLATFORM_IS_LAKE_WAUBURG true
+	#define GB_PLATFORM_IS_HOGTOWN_CREEK false
+
+	/*
+		Project B
+	*/
+	#define GB_PLATFORM_IS_LAKE_ALICE false
+	```
+
+	* For the code above to work, the code in each ``.cpp`` file needs to be enclose in ``#if`` and ``#endif`` block. For example, the ``wauburg.cpp`` code should look like the following.
+
+	```
+	#include "../platform.h"
+
+	#if GB_PLATFORM_IS_LAKE_WAUBURG
+		
+		[... Your code ...]
+
+	#endif
+	```  
