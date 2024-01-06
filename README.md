@@ -104,14 +104,25 @@ Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl
 	#define GB_PLATFORM_IS_LAKE_ALICE false
 	```
 
-	* For the code above to work, the code in each ``.cpp`` file needs to be enclose in ``#if`` and ``#endif`` block. For example, the ``wauburg.cpp`` code should look like the following.
+	* For the code above to work, the code in each ``.cpp`` file needs to include ``platform.h`` and needs to be enclosed in ``#if`` and ``#endif`` block. For example, the ``wauburg.cpp`` code should look like the following:
 
 	```
 	#include "../platform.h"
 
 	#if GB_PLATFORM_IS_LAKE_WAUBURG
 		
-		[... Your code ...]
+		[... Your code here ...]
+
+	#endif
+	```  
+	* The code for ``alice.cpp`` should look like as follows:
+
+	```
+	#include "../platform.h"
+
+	#if GB_PLATFORM_IS_LAKE_ALICE
+		
+		[... Your code here ...]
 
 	#endif
 	```  
