@@ -33,11 +33,14 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 ## Configure PlatformIO for Arduino MKR NB 1500 
 
 1. **Create a New Project:**
-Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl+Shift+P` or `Cmd+Shift+P`). Type and select "PlatformIO: New Project" in the command palette. Choose a directory for your project and select the board "Arduino MKR NB 1500." 
+   - Open VS Code and go to "View" > "Command Palette" (Ctrl+Shift+P or Cmd+Shift+P).
+   - Type and select "PlatformIO: New Project."
+   - Choose a directory and select the board "Arduino MKR NB 1500."
+
 2. **Edit `platformio.ini` File:** 
-	* Open the `platformio.ini` file in your project directory. 
-	* Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
-	* Copy the following lines and paste into `platformio.ini` file
+	- Open the `platformio.ini` file in your project directory. 
+	- Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
+	- Copy the following lines and paste into `platformio.ini` file.
 	```
         [env:mkrnb1500] 
         platform = atmelsam 
@@ -79,15 +82,20 @@ Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl
 	For example, if you have two projects (Project A and Project B) that require different code/logic, the directory structure in `src` directory will be as follows:
 
 	```
-		src
-		|---- Project A
-		      |---- wauburg.cpp 
-		      |---- hogtown.cpp 
-
-		|---- Project B
-		      |---- alice.cpp
-
-		|---- platform.h
+		root
+		├── lib
+		│   ├── (other libraries)
+		│   └── GatorByte
+		│       └── (GatorByte library files)
+		├── src
+		│   ├── Project A
+		│   │   ├── wauburg.cpp 
+		│   │   └── hogtown.cpp 
+		│   ├── Project B
+		│   │   └── alice.cpp
+		│   └── platform.h
+		└── platformio.ini
+		
 	```
 	* The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``src/Project A/wauburg.cpp`` for flashing. 
 
