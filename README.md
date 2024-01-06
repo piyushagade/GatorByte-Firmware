@@ -81,8 +81,8 @@ Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl
 	```
 		src
 		|---- Project A
-			  |---- wauburg.cpp 
-			  |---- hogtown.cpp 
+		      |---- wauburg.cpp 
+		      |---- hogtown.cpp 
 
 		|---- Project B
 		      |---- alice.cpp
