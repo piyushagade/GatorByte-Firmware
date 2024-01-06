@@ -89,7 +89,7 @@ Open Visual Studio Code. Click on the "View" menu, then "Command Palette" (`Ctrl
 
 		|---- platform.h
 	```
-	* The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``/Project A/wauburg.cpp`` for flashing. 
+	* The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``src/Project A/wauburg.cpp`` for flashing. 
 
 	```
 	/*
