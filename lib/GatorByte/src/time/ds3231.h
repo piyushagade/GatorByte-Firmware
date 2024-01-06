@@ -482,7 +482,7 @@ bool GB_DS3231::valid() {
     if (unixtime >= 2000000000) error = true;
     else if (unixtime <= 946684800) error = true;
     else if (month == 165) error = true;
-    else if (unixtime > 946684800) error = false;
+    else if (unixtime > 1700000000) error = false;
     else error = true;
 
     return !error;

@@ -119,7 +119,7 @@ GB_MQTT& GB_MQTT::disconnect() {
 }
 
 GB_MQTT& GB_MQTT::connect(String username, String password) {
-
+    
     if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("white");
 
     /*
@@ -136,19 +136,34 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
 
     if (this->_mqttclient.connected()) {
         _gb->log(" -> Already connected");
+        
+        // Blink green 2 times
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("green", 2, 300, 200);
+        _gb->getdevice("buzzer").play("..");
+
         return *this;
     }
 
     #ifdef ESP32
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !MODEM_INITIALIZED) {
             _gb->log(" -> Skipped. Not connected to the Internet.");
+            
+            // Blink red 2 times
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 2, 300, 200);
+            _gb->getdevice("buzzer").play("..-");
+            
             return *this;
         }
     #else
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !MODEM_INITIALIZED) {
-            if (!CONNECTED_TO_NETWORK) _gb->log(" -> Skipped. Not connected to the network.");
-            else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Not connected to the Internet.");
-            else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Unknown error.");
+            // if (!CONNECTED_TO_NETWORK) _gb->log(" -> Skipped. Not connected to the network.");
+            // else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Not connected to the Internet.");
+            // else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Unknown error.");
+            
+            // Blink red 2 times
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 2, 300, 200);
+            _gb->getdevice("buzzer").play("..-");
+            
             return *this;
         }
     #endif

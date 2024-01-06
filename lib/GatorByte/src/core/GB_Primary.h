@@ -283,6 +283,7 @@ GB& GB::includedevice(String device_id, String device_name) {
 
     device_id.toLowerCase();
     this->_all_included_gb_devices += (this->_all_included_gb_devices.length() > 0 ? "::" : "") + device_id;
+
     return *this;
 }
 
@@ -308,6 +309,11 @@ bool GB::hasdevice(String device_name) {
         // If the requested device is GDC, IOE, or TCA, just check if it is constructed and initialized
         if (device_name == "gdc" || device_name == "ioe" || device_name == "tca") {
             return this->_all_included_gb_libraries.indexOf(device_name + ":");
+        }
+        
+        // If the requested device is RGB, Buzzer just check if it is constructed and initialized
+        if (device_name == "rgb" || device_name == "buzzer") {
+            return this->_all_included_gb_libraries.indexOf(device_name + ":") && this->_all_included_gb_devices.indexOf(device_name + ":");
         }
         
         // Check if SD is constructed and initialized

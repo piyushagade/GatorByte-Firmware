@@ -93,29 +93,29 @@ class AHT10
 {
   public:
 
-   AHT10(uint8_t address = AHT10_ADDRESS_0X38, ASAIR_I2C_SENSOR = AHT10_SENSOR);
+    AHT10(uint8_t address = AHT10_ADDRESS_0X38, ASAIR_I2C_SENSOR = AHT10_SENSOR);
 
-   #if defined(ESP8266)
-   bool     begin(uint8_t sda = SDA, uint8_t scl = SCL);
-   #else
-   bool     begin();
-   #endif
-   uint8_t  readRawData();
-   float    readTemperature(bool readI2C = AHT10_FORCE_READ_DATA);
-   float    readHumidity(bool readI2C = AHT10_FORCE_READ_DATA);
-   bool     softReset();
-   bool     setNormalMode();
-   bool     setCycleMode();
+    #if defined(ESP8266)
+    bool     begin(uint8_t sda = SDA, uint8_t scl = SCL);
+    #else
+    bool     begin();
+    #endif
+    uint8_t  readRawData();
+    float    readTemperature(bool readI2C = AHT10_FORCE_READ_DATA);
+    float    readHumidity(bool readI2C = AHT10_FORCE_READ_DATA);
+    bool     softReset();
+    bool     setNormalMode();
+    bool     setCycleMode();
 
   private:
-   uint8_t          _address;
-   ASAIR_I2C_SENSOR _sensorName;
-   uint8_t          _rawDataBuffer[6] = {AHT10_ERROR, 0, 0, 0, 0, 0};
+    uint8_t          _address;
+    ASAIR_I2C_SENSOR _sensorName;
+    uint8_t          _rawDataBuffer[6] = {AHT10_ERROR, 0, 0, 0, 0, 0};
 
-   uint8_t  readStatusByte();
-   uint8_t  getCalibrationBit(bool readI2C = AHT10_FORCE_READ_DATA);
-   bool     enableFactoryCalCoeff();
-   uint8_t  getBusyBit(bool readI2C = AHT10_FORCE_READ_DATA);
+    uint8_t  readStatusByte();
+    uint8_t  getCalibrationBit(bool readI2C = AHT10_FORCE_READ_DATA);
+    bool     enableFactoryCalCoeff();
+    uint8_t  getBusyBit(bool readI2C = AHT10_FORCE_READ_DATA);
 };
 
 #endif

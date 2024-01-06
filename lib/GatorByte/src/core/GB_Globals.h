@@ -36,7 +36,8 @@ bool CONNECTED_TO_API_SERVER = 0;
 
 
 /* 
-    State counters reset on microcontroller reset
+    ! Error state counters
+    These reset on microcontroller reset
 */
 struct ERROR_STATES_COUNTER {
     int no_cell_signal = 0;

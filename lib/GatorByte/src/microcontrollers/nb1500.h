@@ -701,11 +701,10 @@ bool GB_NB1500::connect(bool diagnostics) {
         ! Check if already connected to the network and Internet
     */
     if (this->connected()) {
-        // _gb->br().log("Already connected to network and Internet");
         return true;
     }
     else {
-        _gb->log("Internet connection not detected. Attempting connection.");
+        _gb->color("yellow").log("Internet connection not detected. Attempting connection.");
     }
 
     // int counter;
@@ -770,7 +769,7 @@ bool GB_NB1500::connect(bool diagnostics) {
     /*
         ! Go through pre-connection checklist
     */
-    MODEM_INITIALIZED = this->checklist();
+    MODEM_INITIALIZED = this->checklist("iccid");
     
     /*
         ! Check network signal viability
@@ -783,7 +782,7 @@ bool GB_NB1500::connect(bool diagnostics) {
     */
     if (this->_cellular_connected &&_gprs.status() == GPRS_READY) { 
 
-        _gb->br().log("Cellular connection detected.");
+        _gb->br().color("green").log("Cellular connection detected.");
         
         // Check if signal is viable for good connection and connect
         if (SIGNAL_VIABLE) {
@@ -815,12 +814,19 @@ bool GB_NB1500::connect(bool diagnostics) {
                 if (!this->_cellular_connected) _gb->log(" .", false);
             }
         }
+
+        // If the signal is not viable
+        else {
+            _gb->arrow().color("red").log("Insufficient signal", false).color();
+            this->_cellular_connected = false;
+        }
+
         return this->_cellular_connected;
     }
 
     else {
 
-        _gb->br().log("Cellular connection NOT detected.");
+        _gb->br().color("yellow").log("Cellular connection not detected.");
 
         /*
             ! Attempt connecting to the network
@@ -860,7 +866,10 @@ bool GB_NB1500::connect(bool diagnostics) {
         }
 
         // If the signal is not viable
-        else this->_cellular_connected = false;
+        else {
+            _gb->arrow().color("red").log("Insufficient signal", false).color();
+            this->_cellular_connected = false;
+        }
         
         //! If a cellular connection was successfully established
         if (this->_cellular_connected) {
@@ -953,13 +962,13 @@ bool GB_NB1500::disconnect(String type) {
         //! Set variables
         this->_cellular_connected = false;
 
-        //! Disconnect from cellular network
-        _gb->log("Detaching GPRS", false);
-        if (MODEM_INITIALIZED) {
-            _gprs.detachGPRS();
-            _gb->log(" -> Done");
-        }
-        else _gb->log(" -> Skipping. MODEM not initialized");
+        // //! Disconnect from cellular network
+        // _gb->log("Detaching GPRS", false);
+        // if (MODEM_INITIALIZED && CONNECTED_TO_INTERNET) {
+        //     _gprs.detachGPRS();
+        //     _gb->log(" -> Done");
+        // }
+        // else _gb->log(" -> Skipping. MODEM not initialized");
 
         //! Shutdown MODEM
         _gb->log("Shutting down MODEM", false);
@@ -1246,7 +1255,7 @@ bool GB_NB1500::checksignalviability(bool diagnostics) {
     // If SIM not detected
     if (!SIM_DETECTED) {
         this->_cellular_connected = false;
-        _gb->log("SIM not detected.");
+        _gb->color("red").log("SIM not detected.");
         return false;
     }
 
@@ -1254,16 +1263,14 @@ bool GB_NB1500::checksignalviability(bool diagnostics) {
     int rssi = this->getrssi();
     
     if (rssi == 99 || rssi == 0) {
-        // _gb->getdevice("sd").debug("write", "LOWSIG");
-        _gb->log("Signal strength: No signal (" + String(rssi) + ")", false);
+        _gb->log("Signal strength: No signal (" + String(rssi) + ")");
         viable = false;
 
         // Error handler
-        if (++esc.no_cell_signal >= 2) _gb->getdevice("sntl").reboot();
+        if (++esc.no_cell_signal >= 3) _gb->getdevice("sntl").reboot();
     }
     else if (rssi <= this->CELL_SIGNAL_LOWER_BOUND) {
-        // _gb->getdevice("sd").debug("write", "LOWSIG");
-        _gb->log("Signal strength: Low signal strength detected (" + String(rssi) + ",", false);
+        _gb->log("Signal strength: Low signal strength detected (" + String(rssi) + ",");
         int counter = 5; while (counter-- >= 0) { rssi = this->getrssi(); delay(1000); }
         _gb->log(String(rssi) + ")", false);
         viable = false;
@@ -1273,8 +1280,7 @@ bool GB_NB1500::checksignalviability(bool diagnostics) {
     }
     
     if (this->CELL_SIGNAL_LOWER_BOUND < rssi && rssi < 32) {
-        // _gb->getdevice("sd").debug("remove", "LOWSIG");
-        _gb->log("Signal strength: " + String(rssi), false);
+        _gb->log("Signal strength: " + String(rssi));
         viable = true;
 
         esc.no_cell_signal = 0;
@@ -1301,14 +1307,25 @@ bool GB_NB1500::checklist(string categories) {
     }
     else {
         bool result = false;
+        _gb->arrow().color("red").log("Couldn't initialize MODEM.", false).color();
 
         // Reboot the system
         if (++esc.modem_init_failure >= this->CELL_FAILURE_COUNT_LIMIT) {
-            _gb->log(" -> Rebooting GatorByte");
+            _gb->arrow().log("Rebooting GatorByte"); delay(1000);
             _gb->getdevice("sntl").reboot();
         }
 
-        // Keep the following block for documentation
+        /* 
+            Keep the following block for documentation
+            There was an issue with MODEM firmware 5.06, where it would randomly freeze
+            and cause NB1500 to freeze as well. 
+            Numerous software-level solutions (see below) were tested, and none of them
+            worked. The only solution was to power cycle the microcontroller viz. remove
+            power source and reconnecting. Software reset (using watchdog or NVIC) did
+            not work.
+
+            Version 5.12 fixed the issue.
+        */
         int counter = 0;
         if (false)
             while (!(result = _nbModem.begin()) && counter++ < 2) {
@@ -1317,15 +1334,13 @@ bool GB_NB1500::checklist(string categories) {
                 // Reset watchdog timer
                 this->watchdog("reset");
 
-                /*
-                    ! Reset MODEM
-                    MODEM.begin(true);    //* Doesn't work
-                    this->_sara_at_command("AT+CFUN=0");    //* Doesn't work
-                    _nbAccess.shutdown();    //* Doesn't work
-                    _nbAccess.secureShutdown();    //* Doesn't work
-                    MODEM.reset();    //* Doesn't work
-                    MODEM.hardReset();    //* Doesn't work
-                */
+                // ! Reset MODEM
+                MODEM.begin(true);       //* Didn't work
+                this->_sara_at_command("AT+CFUN=0");    //* Didn't work
+                _nbAccess.shutdown();    //* Didn't work
+                _nbAccess.secureShutdown();    //* Didn't work
+                MODEM.reset();          //* Didn't work
+                MODEM.hardReset();      //* Didn't work
                 
                 // Wait before rechecking
                 delay(5000);

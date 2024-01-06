@@ -256,13 +256,13 @@ uint16_t GB_SNTL::reboot() {
         this->disable();
         delay(1000);
 
-        _gb->br().color("red").log("Sending reboot command to sentinel.", false);
+        _gb->br().color("red").log("Sending reboot command to sentinel.", false).color();
     
         // Send a reboot request
         int rebootcode = 0x06;
         uint16_t response = this->tell(rebootcode, 1);
         bool success = this->_parse_response(response);
-        _gb->log(success ? " -> Done (" + String(response) + ")" : " -> Failed (" + String(response) + ")");
+        _gb->arrow().log(success ? "Done (" + String(response) + ")" : "Failed (" + String(response) + ")");
 
         return success;
     }
@@ -329,7 +329,7 @@ GB_SNTL& GB_SNTL::enable(bool stubborn) {
         response = this->tell(0x1E, 5); 
         success = response == 0 || response == 6;
 
-        uint8_t counter = 5;
+        int counter = 5;
         while (!success && counter-- >= 0) {
             delay(2000);
             
@@ -369,11 +369,11 @@ GB_SNTL& GB_SNTL::disable(bool stubborn) {
         response = this->tell(0x1F, 5); 
         success = response == 0 || response == 7;
 
-        uint8_t counter = 5;
+        int counter = 5;
         while (!success && counter-- >= 0) {
             delay(2000);
             
-            if (this->debug) _gb->color("yellow").log(" . ", false).color();
+            if (this->debug) _gb->color("yellow").log(String(counter) + ". ", false).color();
             response = this->tell(0x1F, 5);
             success = response == 0 || response == 7;
         }

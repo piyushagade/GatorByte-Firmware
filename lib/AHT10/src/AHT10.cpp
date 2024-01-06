@@ -286,7 +286,7 @@ bool AHT10::setCycleMode(void)
   #endif
 
   if (Wire.endTransmission(true) != 0) return false;             //safety check, make sure transmission complete
-                                       return true;
+  return true;
 }
 
 
@@ -365,7 +365,7 @@ bool AHT10::enableFactoryCalCoeff()
 
   /*check calibration enable */
   if (getCalibrationBit() == 0x01) return true;
-                                   return false;
+  return false;
 }
 
 
@@ -385,5 +385,5 @@ uint8_t AHT10::getBusyBit(bool readI2C)
   if (readI2C == AHT10_FORCE_READ_DATA) _rawDataBuffer[0] = readStatusByte(); //force to read status byte
 
   if (_rawDataBuffer[0] != AHT10_ERROR) return bitRead(_rawDataBuffer[0], 7); //get 7-th bit
-                                        return AHT10_ERROR;
+  return AHT10_ERROR;
 }

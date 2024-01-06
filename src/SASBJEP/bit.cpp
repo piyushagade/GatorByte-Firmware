@@ -346,6 +346,7 @@
         //! Configure microcontroller
         mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
+        delay(2000);
         //! Configure peripherals
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
         buzzer.configure({6}).initialize().play("...");
@@ -355,6 +356,8 @@
 
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
+        
+        aht.configure({true, SR0}).initialize();
         
         sntl.shield(120, []() {
 
@@ -398,7 +401,7 @@
     }
 
     void loop () {
-        
+
         // GatorByte loop function
         gb.loop();
 
@@ -543,9 +546,10 @@
                 sntl.shield(120, [] {
 
                     if (CONNECTED_TO_MQTT_BROKER) {
-                        int counter = 10;
                         
-                        while (!sd.isqueueempty() && counter-- > 0) {
+                        int MAX_FILES_TO_UPLOAD = 30;
+                        
+                        while (!sd.isqueueempty() && MAX_FILES_TO_UPLOAD-- > 0) {
 
                             String queuefilename = sd.getfirstqueuefilename();
 

@@ -822,10 +822,13 @@ GB_SD& GB_SD::readconfig() {
         _gb->log(" -> Skipped");
         
         _gb->getdevice("sntl").disable();
-        _gb->br().color("red").log("Configuration couldn't be read. SD card not found. Suspending operation.");
-        while (!_gb->globals.GDC_CONNECTED) {
+        _gb->br().color("red").log("SD card not found. Configuration couldn't be read. Suspending operation.");
+
+        uint8_t now = millis();
+        while (!_sd.begin(this->pins.ss, this->_sck_speed)) {
             _gb->getdevice("gdc").detect(true);
-            delay(100);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "blue");
+            delay(1000);
         }
         return *this;
     }
@@ -847,9 +850,11 @@ GB_SD& GB_SD::readconfig() {
         _gb->getdevice("sntl").disable();
         _gb->br().color("red").log("Configuration absent on SD card. Suspending operation.");
         _gb->color("white").log("Please use the GatorByte Desktop Client to configure this device.");
+        uint8_t now = millis();
         while (!_gb->globals.GDC_CONNECTED) {
             _gb->getdevice("gdc").detect(true);
-            delay(100);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "green");
+            delay(500);
         }
     }
     
@@ -963,9 +968,11 @@ GB_SD& GB_SD::readconfig() {
             _gb->getdevice("sntl").disable();
             _gb->br().color("red").log("Configuration doesn't specify the device's SN. Suspending operation.");
             _gb->color("white").log("Please use the GatorByte Desktop Client to configure this device.");
+            uint8_t now = millis();
             while (!_gb->globals.GDC_CONNECTED) {
                 _gb->getdevice("gdc").detect(true);
-                delay(100);
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "yellow");
+                delay(500);
             }
         }
 

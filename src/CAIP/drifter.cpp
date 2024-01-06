@@ -1,6 +1,6 @@
 #include "../platform.h"
 
-#if true || GB_PLATFORM_IS_LRY_DRIFTER
+#if GB_PLATFORM_IS_LRY_DRIFTER
     
     bool nwflag = true;
     bool gpsdummyflag = false;
@@ -66,6 +66,44 @@
     */
     int BREATH_INTERVAL = 60 * 1000;
 
+
+    void set_control_variables(JSONary data) {
+
+        SAMPLING_INTERVAL = data.parseInt("SAMPLING_INTERVAL");
+        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
+        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
+
+        gb.log("Updating runtime variables -> Done");
+
+        // Send the fresh list of control variables
+        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+    }
+
+    void devicereboot () {
+
+        gb.color("red").log("Rebooting device -> Done");
+
+        // Reset flag
+        REBOOT_FLAG = false;
+        sd.updatecontrolbool("REBOOT_FLAG", REBOOT_FLAG, set_control_variables);
+
+        buzzer.play(".....");
+        sntl.reboot();
+    }
+
+    void parse_mqtt_message(String str){
+
+        // Update the variables in SD card and in runtime memory
+        sd.updatecontrol(str, set_control_variables);
+        
+        mqtt.publish("log/message", "Control variables updated.");
+
+        if (REBOOT_FLAG) {
+            devicereboot();
+            REBOOT_FLAG = 0;
+        }
+    }
+
     /* 
         ! Procedure to handle incoming MQTT messages
         It is mandatory to define this function if GB_MQTT library is instantiated above
@@ -130,45 +168,7 @@
         gb.log("The device is now awake.");
         gdc.send("highlight-yellow", "Device awake");
     }
-
     
-    void set_control_variables(JSONary data) {
-
-        SAMPLING_INTERVAL = data.parseInt("SAMPLING_INTERVAL");
-        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
-        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
-
-        gb.log("Updating runtime variables -> Done");
-
-        // Send the fresh list of control variables
-        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
-    }
-    
-    void devicereboot () {
-
-        gb.color("red").log("Rebooting device -> Done");
-
-        // Reset flag
-        REBOOT_FLAG = false;
-        sd.updatecontrolbool("REBOOT_FLAG", REBOOT_FLAG, set_control_variables);
-
-        buzzer.play(".....");
-        sntl.reboot();
-    }
-
-    void parse_mqtt_message(String str){
-
-        // Update the variables in SD card and in runtime memory
-        sd.updatecontrol(str, set_control_variables);
-        
-        mqtt.publish("log/message", "Control variables updated.");
-
-        if (REBOOT_FLAG) {
-            devicereboot();
-            REBOOT_FLAG = 0;
-        }
-    }
-
     /* 
         ! Peripherals configurations and initializations
         Here, objects for the peripherals/components used are initialized and configured. This is where
@@ -299,6 +299,18 @@
             
             //! Publish first ten queued-data with MQTT
             sntl.shield(120, [] {
+
+                sntl.shield(120, [] {
+                
+                //! Connect to network
+                mcu.connect("cellular");
+                
+                sntl.kick();
+
+                //! Connect to MQTT servver
+                mqtt.connect("pi", "abe-gb-mqtt");
+                
+            });
 
                 if (CONNECTED_TO_MQTT_BROKER) {
                     int counter = 10;

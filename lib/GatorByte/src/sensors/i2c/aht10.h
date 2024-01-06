@@ -63,7 +63,6 @@ GB_AHT10& GB_AHT10::on() {
     delay(10);
     if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
-    delay(50);
     return *this;
 }
 
@@ -113,21 +112,20 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
 
         if (!error) {
             
-            _gb->log(" -> Done", false);
+            _gb->arrow().log("Done", false);
 
             if (_gb->globals.GDC_CONNECTED) {
-                _gb->log();
                 this->off();
                 return *this;
             }
 
-            _gb->log(" -> " + String(this->temperature()) + " Celcius and " + String(this->humidity()) + " % R.H."); 
+            delay(2000); _gb->arrow().log(String(this->temperature()) + " Celcius and " + String(this->humidity()) + " % R.H."); 
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("---").wait(250).play("...");
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
         }
         else {
-            _gb->log(" -> Not detected"); 
+            _gb->arrow().log("Not detected"); 
             
             if (_gb->globals.GDC_CONNECTED) {
                 this->off();
@@ -140,7 +138,7 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
     }
     else {
         this->device.detected = true;
-        _gb->log(" -> Done");
+        _gb->arrow().log("Done");
     }
     this->off();
     return *this;    
@@ -149,18 +147,17 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
 float GB_AHT10::temperature() {
     this->on();
 
-    // Enable watchdog
-    _gb->getmcu().watchdog("enable", 8000);
-
     // Get the latest values
     float value = _aht.readTemperature();
     int count = 0;
-    while (value == 255 && count++ <= 3) {
-        _aht.readTemperature(); delay(250);
+    if (value == 255) delay(3000);
+    while (value == 255 && count++ <= 5) {
+        if ((count + 1) % 2 == 0) { _aht.softReset(); delay(50); }
+        value = _aht.readTemperature();
+        delay(40 * count);
     }
 
-    // Disable watchdog
-    _gb->getmcu().watchdog("disable");
+    if (value <= -20 || value >= 200 || value == 255) value = 255;
     
     this->off();
 
@@ -170,19 +167,17 @@ float GB_AHT10::temperature() {
 float GB_AHT10::humidity() {
     this->on();
     
-    // Enable watchdog
-    _gb->getmcu().watchdog("enable", 8000);
-
     // Get the latest values
     float value = _aht.readHumidity();
+    if (value == 255) delay(3000);
     int count = 0;
-    while (value == 255 && count++ <= 1) {
-        _aht.softReset(); delay(150);
-        _aht.readHumidity(); delay(150);
+    while ((value <= 0 || value >= 100 || value == 255) && count++ <= 5) {
+        if (count % 2 == 0) { _aht.softReset(); delay(50); }
+        value = _aht.readHumidity();
+        delay(40 * count);
     }
     
-    // Disable watchdog
-    _gb->getmcu().watchdog("disable");
+    if (value <= 0 || value >= 100 || value == 255) value = 255;
     
     this->off();
 
