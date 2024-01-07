@@ -8,7 +8,6 @@
     */
     #include "GB.h"
 
-
     /* 
         ! Gatorbyte core instance
         This is a virtual twin of the GatorByte datalogger. All the peripherals and sensors 
@@ -356,8 +355,6 @@
 
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
-        
-        aht.configure({true, SR0}).initialize();
         
         sntl.shield(120, []() {
 

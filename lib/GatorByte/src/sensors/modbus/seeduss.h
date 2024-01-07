@@ -99,7 +99,7 @@ GB_USS& GB_USS::initialize() {
     _gb->log(" -> Distance: " + String(distance), false);
 
     bool success = distance > 0;
-    _gb->log(success ? " -> Done" : " -> Failed");
+    _gb->arrow().log(success ? "Done" : "Not detected");
 
     this->device.detected = success;
 
@@ -152,7 +152,7 @@ GB_USS& GB_USS::persistent(bool state) {
 uint32_t GB_USS::read() {
     this->on();
 
-    if (!this->_persistent) delay(3000);
+    if (!this->_persistent) delay(2000);
 
     long distance = 0;
     int counter = 5;
@@ -161,6 +161,7 @@ uint32_t GB_USS::read() {
         for(uint32_t i = 0; i < 3; i++) { 
             this->_request(registers.ultrasonic, registers.calculated);
             distance = this->_fetch();
+            if (distance == -1) break;
             sum += distance;
             uint32_t average = sum / (i + 1);
 

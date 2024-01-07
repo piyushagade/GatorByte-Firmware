@@ -236,12 +236,17 @@ void GB_DESKTOP::process(string command) {
         // Set as busy
         this->_busy(true);
 
-        Serial.println(command);
-    
+        _gb->log("Received GDC command: " + command);
+
         /*
             ! Check command validity
         */
-        if (this->_state == "" && !command.contains("##GB##") && !command.startsWith("cfg")) return;
+        if (
+            this->_state == "" && 
+            !command.contains("##GB##") && 
+            !command.startsWith("cfg") && 
+            !command.startsWith("sdf")
+        ) return;
 
         /*
             ! GB lock/unlock
@@ -256,7 +261,9 @@ void GB_DESKTOP::process(string command) {
         /*
             ! Global configuration download/upload
         */
-        if (true || command.startsWith("cfg")) {
+        if (command.startsWith("cfg")) {
+            
+            // Configuration download request
             if (command.contains("cfgdl:")) {
 
                 String filename = "/config/" + command.substring(command.indexOf("dl:") + 3, command.indexOf(","));
@@ -268,6 +275,7 @@ void GB_DESKTOP::process(string command) {
                 this->sendfile("gdc-cfg", "fdl:" + data);
             }
             
+            // Configuration upload request
             else if (command.contains("cfgupl:")) {
             
                 String filename = "/config/config.ini";
@@ -301,6 +309,48 @@ void GB_DESKTOP::process(string command) {
                 // Update config in the memory
                 _gb->getdevice("sd").readconfig();
 
+            }
+        }
+        
+
+        /*
+            ! Create base folders and files on SD card if they don't exist
+        */
+        if (command.startsWith("sdf")) {
+            
+            if (command.contains("cr:all")) {
+                
+                if (!_gb->hasdevice("sd")) {
+                    this->send("gdc-sdf", "sd:error");
+                    return;
+                }
+                if (!_gb->getdevice("sd").initialized()) {
+                    this->send("gdc-sdf", "sdinit:error");
+                    return;
+                }
+
+                // Create folder
+                String folders[] = {"config", "calibration", "control", "readings", "debug", "logs", "queue"};
+                for (int i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
+                    String foldername = folders[i];
+                    if (!_gb->getdevice("sd").exists("/" + foldername)) {
+                        _gb->log(foldername + " doesn't exist. Creating directory", false);
+                        bool success = _gb->getdevice("sd").mkdir("/" + foldername);
+                        _gb->arrow().log(success ? "Done" : "Failed");
+                    }
+                }
+
+                // Create config file
+                if (!_gb->getdevice("sd").exists("/config/config.ini")) {
+                    _gb->log("File config.ini doesn't exist. Creating file.");
+                    _gb->getdevice("sd").writeLinesToSD("/config/config.ini", "");
+                }
+
+                // Create control file
+                if (!_gb->getdevice("sd").exists("/control/variables.ini")) {
+                    _gb->log("File variables.ini doesn't exist. Creating file.");
+                    _gb->getdevice("sd").writeLinesToSD("/control/variables.ini", "");
+                }
             }
         }
 

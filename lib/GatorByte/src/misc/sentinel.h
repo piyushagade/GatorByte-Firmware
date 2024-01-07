@@ -689,7 +689,7 @@ uint16_t GB_SNTL::_tell(int data, int maxattempts, int currentattempt) {
         }
 
         int end = millis();
-        // _gb->log("Reception time w/ ACK: " + String(end - start) + " ms");
+        // if (this->debug) _gb->log("Reception time w/ ACK: " + String(end - start) + " ms");
 
         // If Sentinel is not connected/communicating
         if (x == 65535) {
@@ -704,10 +704,8 @@ uint16_t GB_SNTL::_tell(int data, int maxattempts, int currentattempt) {
             return x;
         }
 
-        // if (x == 255 || x > 65000) {
-
-        // The reponse codes are 0 to 7
-        if (x > 7) {
+        // The reponse codes are 0 to 7, firmware version can be anything
+        if (x > 1000) {
             // delay(numberofattempts <= 3 ? 250 : (numberofattempts <= 6 ? 250 : (numberofattempts <= 10 ? 500 : (numberofattempts <= 12 ? 1500 : 2000))));
             delay(numberofattempts <= 7 ? 0 : (numberofattempts <= 14 ? 250 : 500));
             return this->_tell(data, maxattempts, currentattempt - 1);

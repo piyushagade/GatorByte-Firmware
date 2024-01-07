@@ -845,7 +845,7 @@ GB_SD& GB_SD::readconfig() {
     
     // If requested config file exists
     if(!this->exists(filename)){
-        _gb->log(" -> Config file not found.");
+        _gb->arrow().log("Config file not found.");
         
         _gb->getdevice("sntl").disable();
         _gb->br().color("red").log("Configuration absent on SD card. Suspending operation.");

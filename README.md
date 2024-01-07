@@ -19,15 +19,15 @@ The PlatformIO VSCode extension is an extension for Microsoft Visual Studio Code
 
 ## Install PlatformIO Extension for VS Code
 
-1. **Open Visual Studio Code:** 
+1. **Open Visual Studio Code:**
 Launch Visual Studio Code after the installation is complete. 
-2. **Open Extensions View:** 
+2. **Open Extensions View:**
 Click on the Extensions icon in the Activity Bar on the side of the window or press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (macOS). 
 3. **Search for PlatformIO:**
 In the Extensions view search bar, type "PlatformIO" and press Enter. 
 4. **Install PlatformIO Extension:**
 Look for the PlatformIO IDE extension in the search results. Click the "Install" button next to the PlatformIO IDE extension to install it. 
-5. **Restart VS Code:** 
+5. **Restart VS Code:**
 After installation, click the "Reload" button or restart Visual Studio Code to activate the PlatformIO extension. 
 
 ## Configure PlatformIO for Arduino MKR NB 1500 
@@ -37,7 +37,7 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
    - Type and select "PlatformIO: New Project."
    - Choose a directory and select the board "Arduino MKR NB 1500."
 
-2. **Edit `platformio.ini` File:** 
+2. **Edit `platformio.ini` File:**
 	- Open the `platformio.ini` file in your project directory. 
 	- Configure the `platform` and `board` settings for Arduino MKR NB 1500: ini
 	- Copy the following lines and paste into `platformio.ini` file.
@@ -61,24 +61,22 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 	        marzogh/SPIMemory@^3.4.0
 	```
 
-3. **Install Dependencies:** 
-	* Save the `platformio.ini` file. 
-	* Open the PlatformIO sidebar (`Ctrl+Alt+P` or `Cmd+Alt+P`) and click on "Platforms." 
-	* Click "Update" to ensure the platform and board packages are up to date. 
-	* PlatformIO will automatically download and install the necessary dependencies. 
+3. **Install Dependencies:**
+	- Save the `platformio.ini` file. 
+	- Open the PlatformIO sidebar (`Ctrl+Alt+P` or `Cmd+Alt+P`) and click on "Platforms." 
+	- Click "Update" to ensure the platform and board packages are up to date. 
+	- PlatformIO will automatically download and install the necessary dependencies. 
 
-4. **Upload Firmware:** 
-	* Write your Arduino sketch in the `src` directory. 
-	* Connect your Arduino MKR NB 1500 to your computer. 
-	* Click on the "PlatformIO" icon in the Activity Bar and select "Upload" to compile and upload the firmware to your GatorByte.
+4. **Upload Firmware:**
+	- Write your Arduino sketch in the `src` directory. 
+	- Connect your Arduino MKR NB 1500 to your computer. 
+	- Click on the "PlatformIO" icon in the Activity Bar and select "Upload" to compile and upload the firmware to your GatorByte.
 
-# Code structure and making changes to the code
-
-## Directory structure
-* The required libraries (including GatorByte library) are stored in `lib` folder.
-* The custom code for the GatorByte is stored in `src` folder. 
-	* The entry code file is `src/platform.h`.
-	* For each project, the `src` directory contains a corresponding subdirectory. 
+# Directory structure
+- The required libraries (including GatorByte library) are stored in `lib` folder.
+- The custom code for the GatorByte is stored in `src` folder. 
+	- The entry code file is `src/platform.h`.
+	- For each project, the `src` directory contains a corresponding subdirectory. 
 	For example, if you have two projects (Project A and Project B) that require different code/logic, the directory structure in `src` directory will be as follows:
 
 	```
@@ -97,7 +95,7 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 		└── platformio.ini
 		
 	```
-	* The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``src/Project A/wauburg.cpp`` for flashing. 
+	- The `platform.h` allows selecting a project's code for updating (flashing) on the NB1500's microcontroller. The following lines of code selects ``src/Project A/wauburg.cpp`` for flashing. 
 
 	```
 	/*
@@ -112,7 +110,7 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 	#define GB_PLATFORM_IS_LAKE_ALICE false
 	```
 
-	* For the code above to work, the code in each ``.cpp`` file needs to include ``platform.h`` and needs to be enclosed in ``#if`` and ``#endif`` block. For example, the ``wauburg.cpp`` code should look like the following:
+	- For the code above to work, the code in each ``.cpp`` file needs to include ``platform.h`` and needs to be enclosed in ``#if`` and ``#endif`` block. For example, the ``wauburg.cpp`` code should look like the following:
 
 	```
 	#include "../platform.h"
@@ -123,7 +121,7 @@ After installation, click the "Reload" button or restart Visual Studio Code to a
 
 	#endif
 	```  
-	* The code for ``alice.cpp`` should look like as follows:
+	- The code for ``alice.cpp`` should look like as follows:
 
 	```
 	#include "../platform.h"
