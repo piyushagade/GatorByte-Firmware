@@ -262,7 +262,7 @@ void GB_DESKTOP::process(string command) {
             ! Global configuration download/upload
         */
         if (command.startsWith("cfg")) {
-            
+
             // Configuration download request
             if (command.contains("cfgdl:")) {
 
@@ -310,6 +310,25 @@ void GB_DESKTOP::process(string command) {
                 _gb->getdevice("sd").readconfig();
 
             }
+
+            // Post config upload tasks
+            else if (command.contains("hash")) {
+            
+                String configdata = _gb->getdevice("sd").readfile("/config/config.ini");
+
+                // Compute hash
+                unsigned int hash = 0;
+                for (int i = 0; i < configdata.length(); i++) {
+                    unsigned int charCode = static_cast<unsigned int>(configdata.charAt(i));
+                    hash = (hash << 5) - charCode;
+                }
+
+                _gb->log("Computed hash from config on SD: " + String(hash));
+
+                // Send acknowledgement
+                this->send("gdc-cfg", "cfghash:" + String(hash));
+
+            }
         }
         
 
@@ -319,7 +338,6 @@ void GB_DESKTOP::process(string command) {
         if (command.startsWith("sdf")) {
             
             if (command.contains("cr:all")) {
-                
                 if (!_gb->hasdevice("sd")) {
                     this->send("gdc-sdf", "sd:error");
                     return;
@@ -351,6 +369,9 @@ void GB_DESKTOP::process(string command) {
                     _gb->log("File variables.ini doesn't exist. Creating file.");
                     _gb->getdevice("sd").writeLinesToSD("/control/variables.ini", "");
                 }
+
+                // Send acknowledgement
+                this->send("gdc-sdf", "success");
             }
         }
 
