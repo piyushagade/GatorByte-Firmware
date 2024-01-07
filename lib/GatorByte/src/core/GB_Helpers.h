@@ -312,3 +312,14 @@ GB& GB::logd(String message, bool newline) {
 
     return *this;
 }
+
+int GB::s2hash(String data) {
+    
+    unsigned int hash = 0;
+    for (int i = 0; i < data.length(); i++) {
+        unsigned int charCode = static_cast<unsigned int>(data.charAt(i));
+        hash = (hash << 5) - charCode;
+    }
+
+    return hash;
+}

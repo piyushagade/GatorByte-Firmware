@@ -317,11 +317,7 @@ void GB_DESKTOP::process(string command) {
                 String configdata = _gb->getdevice("sd").readfile("/config/config.ini");
 
                 // Compute hash
-                unsigned int hash = 0;
-                for (int i = 0; i < configdata.length(); i++) {
-                    unsigned int charCode = static_cast<unsigned int>(configdata.charAt(i));
-                    hash = (hash << 5) - charCode;
-                }
+                unsigned int hash = _gb->s2hash(configdata);
 
                 _gb->log("Computed hash from config on SD: " + String(hash));
 

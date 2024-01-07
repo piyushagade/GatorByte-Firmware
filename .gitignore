@@ -3,7 +3,11 @@
 build/
 test/
 zephyr/
+include/
+.gitignore
+.gitattributes
 CMakeLists.txt
 data.txt
 tasks.todo
 **/sm.log
+platformconfig.txt

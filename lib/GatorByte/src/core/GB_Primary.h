@@ -215,6 +215,7 @@ class GB {
         String uuid();
         String uuid(int length);
 
+        int s2hash(String);
         String split(String, char, int);
         char* s2c(String str);
         String ca2s(char char_array[]);
