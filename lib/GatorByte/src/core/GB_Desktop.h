@@ -319,6 +319,7 @@ void GB_DESKTOP::process(string command) {
                 // Compute hash
                 unsigned int hash = _gb->s2hash(configdata);
 
+
                 _gb->log("Computed hash from config on SD: " + String(hash));
 
                 // Send acknowledgement
@@ -790,6 +791,149 @@ void GB_DESKTOP::process(string command) {
                     }
                 }
             }
+        }
+        
+        /* 
+            ! Control variables
+        */
+        if (this->_state == "controlvariables" || command.contains("cv")) {
+            this->_state = "controlvariables";
+
+            if (!_gb->hasdevice("sd")) {
+                this->send("gdc-sdf", "sd:error");
+                return;
+            }
+            if (!_gb->getdevice("sd").initialized()) {
+                this->send("gdc-sdf", "sdinit:error");
+                return;
+            }
+
+            // Strip prefix and suffix
+            command.replace("##GB##cv", "");
+            command.replace("#EOF#", "");
+
+            // Configuration download request
+            if (command.contains("cvdl:")) {
+
+                String filename = "/control/variables.ini";
+
+                // int initialcharindex = command.substring(command.indexOf(":") + 1, command.length()).toInt();
+                // int charsatatime = 30;
+
+                // String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // this->sendfile("gdc-cv", "fdl:" + data);
+
+                String data = _gb->getdevice("sd").readfile(filename);
+                for (int i = 0; i < data.length(); i += 30) {
+                    // Extract a chunk of 30 characters
+                    String chunk = data.substring(i, i + 30);
+
+                    // Send the chunk over Serial
+                    this->sendfile("gdc-cv", "fdl:" + chunk);
+                    _gb->log("Sent: " + chunk);
+
+                    // Add a delay if needed to prevent data loss
+                    delay(10);
+                }
+                this->sendfile("gdc-cv", "fdl:#EOF#");
+            }
+            
+            // Configuration upload request
+            else if (command.contains("cvupl:")) {
+            
+                String filename = "/control/variables.ini";
+                string data = command.substring(command.indexOf("upl:") + 4, command.indexOf("^"));
+                int initialcharindex = command.substring(command.indexOf("^") + 1, command.length()).toInt();
+
+                while(data.contains("~")) {
+                    data.replace("~", "\n");
+                }
+
+                while(data.contains("`")) {
+                    data.replace("`", " ");
+                }
+
+                // Delete preexisting file if the upload has just started.
+                if (initialcharindex == 0) _gb->getdevice("sd").rm(filename);
+
+                // Append data to the file
+                _gb->getdevice("sd").writeLinesToSD(filename, data);
+
+                // Pause
+                delay(10);
+
+                // Send acknowledgement
+                this->send("gdc-cv", "fupl:ack");
+            }
+
+            // Post config upload tasks
+            else if (command.contains("cvupd:")) {
+            
+                // Update config in the memory
+                _gb->getdevice("sd").readconfig();
+
+            }
+
+            //! Get hash from stored file
+            if (command.contains("cv:hash")) {
+
+                String cvdata = _gb->getdevice("sd").readfile("/control/variables.ini");
+                int hash = _gb->s2hash(cvdata);
+
+                _gb->log("Control variables hash: " + String(hash));
+
+                // Send response
+                this->send("gdc-cv", "hash:" + String(hash));
+            }
+
+            //! Get all variables
+            else if (command.contains("get:all")) {
+
+                // Send response
+                this->send("gdc-cv", "get:" + _gb->CONTROLVARIABLES.get());
+            }
+            
+            //! Get all variables
+            else if (command.contains("add:")) {
+                command = command.substring(4, command.length());
+
+                String variablename = command.substring(0, command.indexOf(":"));
+                command = command.substring(variablename.length() + 1, command.length());
+
+                String variabletype = command.substring(0, command.indexOf(":"));
+                command = command.substring(variabletype.length() + 1, command.length());
+
+                String variablevalue = command;
+
+                // Write to variables file and update
+                typedef void (*callback_t_on_control)(JSONary data);
+                callback_t_on_control func = [](JSONary data){};
+                if (variabletype == "string") {
+                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->getdevice("sd").updatecontrolstring(variablename, variablevalue, func);
+                }
+                else if (variabletype == "bool") {
+                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->getdevice("sd").updatecontrolbool(variablename, variablevalue == "true", func);
+                }
+                else if (variabletype == "int")  {
+                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->getdevice("sd").updatecontrolint(variablename, variablevalue.toInt(), func);
+                }
+                else if (variabletype == "float")  {
+                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->getdevice("sd").updatecontrolfloat(variablename, variablevalue.toDouble(), func);
+                }
+                else _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+
+                _gb->log("Control variables updated.");
+                _gb->getdevice("sd").readcontrol();
+                _gb->log(_gb->getdevice("sd").readfile("/control/variables.ini"));
+
+                // Send response
+                this->send("gdc-cv", "ack:true");
+            }
+
         }
         
         /* 

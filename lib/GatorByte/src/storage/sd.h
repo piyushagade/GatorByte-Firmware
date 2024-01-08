@@ -79,6 +79,7 @@ class GB_SD : public GB_DEVICE {
         void writequeuefile(String filename, CSVary csv);
 
         // Write functions
+        void writefile(String filename, String data);
         void writeString(String filename, String data);
         void writeCSV(CSVary csv);
         void writeCSV(String filename, CSVary csv);
@@ -557,6 +558,9 @@ String GB_SD::getlastfilenamecontaining(String contains, String folder){
 }
 
 // Write a string to a file (i.e. a CSV without a header)
+void GB_SD::writefile(String filename, String data) {
+    this->writeString(filename, data);
+}
 void GB_SD::writeString(String filename, String data) {
     this->writeCSV(filename, data, "");
 }
@@ -1493,8 +1497,7 @@ bool GB_SD::rwtest() {
 */
 GB_SD& GB_SD::readcontrol() {
     callback_t_on_control func = [](JSONary data){};
-    this->readcontrol(func);
-    return *this;
+    return this->readcontrol(func);
 }
 GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
 

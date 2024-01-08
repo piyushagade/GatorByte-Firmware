@@ -54,7 +54,8 @@
     class GB_DEVICE {
         public:
             GB_DEVICE() {};
-            
+            typedef void (*callback_t_on_control)(JSONary data);
+
             //! General functions
             virtual GB_DEVICE& on() { Serial.println("on from Base class"); return *this; };
             virtual GB_DEVICE& off() { Serial.println("off from Base class"); return *this; };
@@ -130,6 +131,7 @@
             virtual bool mkdir(String path) { return false;}
             virtual bool rm (String filename) { return false; };
             virtual bool rmdir (String foldername) { return false; };
+            virtual void writefile(String filename, String data) { return; };
             virtual void writeString(String filename, String data) { return; };
             virtual void writeCSV(String filename, String data, String header) { return; };
             virtual void writeCSV(String filename, CSVary csv) { return; };
@@ -140,6 +142,11 @@
             virtual String getfilelist(String root) { return ""; };
             virtual String readfile(String filename, String folder) { return ""; };
             virtual String readfile(String filename) { return ""; };
+            virtual GB_DEVICE& readcontrol() { return *this; };
+            virtual GB_DEVICE& updatecontrolstring(String, String, callback_t_on_control) { return *this; };
+            virtual GB_DEVICE& updatecontrolbool(String, bool, callback_t_on_control) { return *this; };
+            virtual GB_DEVICE& updatecontrolint(String, int, callback_t_on_control) { return *this; };
+            virtual GB_DEVICE& updatecontrolfloat(String, double, callback_t_on_control) { return *this; };
             virtual String readconfig(String filename, String type) { return ""; };
             virtual String readconfig(String type) { return ""; };
             virtual void updateconfig(String filename, String type, String data) { return; };
