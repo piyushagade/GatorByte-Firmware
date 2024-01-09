@@ -1018,6 +1018,9 @@ GB_SD& GB_SD::readconfig() {
 // Read config file and return a line by type
 String GB_SD::readconfig(String type) { return this->readconfig("/config/config.ini", type); }
 String GB_SD::readconfig(String filename, String type) { 
+    
+    // Detect GDC without lock
+    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc").detect(false);
 
     // Enable watchdog
     _gb->getmcu().watchdog("enable");
@@ -1500,6 +1503,9 @@ GB_SD& GB_SD::readcontrol() {
     return this->readcontrol(func);
 }
 GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
+    
+    // Detect GDC without lock
+    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc").detect(false);
 
     _gb->log("Reading control file from SD", false);
 

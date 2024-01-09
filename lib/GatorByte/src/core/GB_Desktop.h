@@ -268,11 +268,24 @@ void GB_DESKTOP::process(string command) {
 
                 String filename = "/config/" + command.substring(command.indexOf("dl:") + 3, command.indexOf(","));
 
-                int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
-                int charsatatime = 30;
+                // int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
+                // int charsatatime = 30;
 
-                String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
-                this->sendfile("gdc-cfg", "fdl:" + data);
+                // String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // this->sendfile("gdc-cfg", "fdl:" + data);
+
+                String data = _gb->getdevice("sd").readfile(filename);
+                for (int i = 0; i < data.length(); i += 30) {
+                    // Extract a chunk of 30 characters
+                    String chunk = data.substring(i, i + 30);
+
+                    // Send the chunk over Serial
+                    this->sendfile("gdc-cfg", "fdl:" + chunk);
+
+                    // Add a delay if needed to prevent data loss
+                    delay(10);
+                }
+                this->sendfile("gdc-cfg", "fdl:#EOF#");
             }
             
             // Configuration upload request
