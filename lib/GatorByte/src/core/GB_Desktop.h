@@ -441,14 +441,20 @@ void GB_DESKTOP::process(string command) {
             // Download a file
             if (command.contains("dl:")) {
 
-                // dl:caip-trial_readings.csv,0
+                String filename = command.substring(command.indexOf(":") + 1, command.indexOf(","));
 
-                String file = command.substring(command.indexOf(":") + 1, command.indexOf(","));
-                int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
-                int charsatatime = 30;
-                String data = _gb->getdevice("sd").readLinesFromSD(file, charsatatime, initialcharindex);
-                
-                this->sendfile("gdc-dfl", "fdl:" + data);
+                String data = _gb->getdevice("sd").readfile(filename);
+                for (int i = 0; i < data.length(); i += 30) {
+                    // Extract a chunk of 30 characters
+                    String chunk = data.substring(i, i + 30);
+
+                    // Send the chunk over Serial
+                    this->sendfile("gdc-dfl", "fdl:" + chunk);
+
+                    // Add a delay if needed to prevent data loss
+                    delay(10);
+                }
+                this->sendfile("gdc-dfl", "fdl:#EOF#");
             }
 
             // Delete a file
