@@ -16,6 +16,7 @@ class JSONary
 		JSONary& set(String, double);
 		JSONary& set(String, String);
 		String unset(String);
+		JSONary& reset();
 		bool parseBoolean(String key);
 		float parseFloat(String key);
 		int parseInt(String key);
@@ -54,6 +55,11 @@ JSONary& JSONary::set(String key, String value) {
 
 JSONary& JSONary::set(String key, double value) {
     return this->_set(key, String(value));
+}
+
+JSONary& JSONary::reset() {
+	this->_data = "{}";
+    return *this;
 }
 
 String JSONary::unset(String key) {

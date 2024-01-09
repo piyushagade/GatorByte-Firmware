@@ -814,7 +814,7 @@ void GB_DESKTOP::process(string command) {
 
             // Configuration download request
             if (command.contains("cvdl:")) {
-
+                
                 String filename = "/control/variables.ini";
 
                 // int initialcharindex = command.substring(command.indexOf(":") + 1, command.length()).toInt();
@@ -838,7 +838,7 @@ void GB_DESKTOP::process(string command) {
                 this->sendfile("gdc-cv", "fdl:#EOF#");
             }
             
-            // Configuration upload request
+            // Control variables upload request
             else if (command.contains("cvupl:")) {
             
                 String filename = "/control/variables.ini";
@@ -862,12 +862,18 @@ void GB_DESKTOP::process(string command) {
                 // Pause
                 delay(10);
 
+                // Reset global variable
+                _gb->CONTROLVARIABLES.reset();
+
                 // Send acknowledgement
                 this->send("gdc-cv", "fupl:ack");
             }
 
             // Post config upload tasks
             else if (command.contains("cvupd:")) {
+
+                // Reset global variable
+                _gb->CONTROLVARIABLES.reset();
             
                 // Update config in the memory
                 _gb->getdevice("sd").readconfig();
@@ -885,15 +891,8 @@ void GB_DESKTOP::process(string command) {
                 // Send response
                 this->send("gdc-cv", "hash:" + String(hash));
             }
-
-            //! Get all variables
-            else if (command.contains("get:all")) {
-
-                // Send response
-                this->send("gdc-cv", "get:" + _gb->CONTROLVARIABLES.get());
-            }
             
-            //! Get all variables
+            //! Add a variable
             else if (command.contains("add:")) {
                 command = command.substring(4, command.length());
 
