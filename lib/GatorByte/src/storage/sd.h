@@ -444,9 +444,11 @@ File GB_SD::openFile(String reason, String file_name) {
         if (!_sd_card_present) _gb->log(" -> SD card absent", false);
         else if(!file.open(_gb->s2c(file_name), FILE_WRITE)) {
             // File couldn't be opened
+            // _gb->log("Error opening file");
         }
         else {
             // File opened successfully
+            // _gb->log("Done opening file");
         }
     }
     else if(strcmp(_gb->s2c(reason), "read") == 0) {
@@ -454,9 +456,11 @@ File GB_SD::openFile(String reason, String file_name) {
             _gb->log(" -> SD card absent", false);
         else if(!file.open(_gb->s2c(file_name), FILE_READ)) {
             // File couldn't be opened
+            // _gb->log("Error opening file");
         }
         else {
             // File opened successfully
+            // _gb->log("Done opening file");
         }
     }
     return file;
@@ -1161,7 +1165,14 @@ String GB_SD::getfilelist(String root) {
         if (String(f_name).length() > 0) { 
             filecount++;
 
+            // Get file size in bytes
             int size = file.size();
+
+            if (false && !file.isDir()) {
+                _gb->br().log("File: " + String(f_name));
+                _gb->log("Size: " + String(size));
+            }
+
             list += String(f_name).indexOf("FOUND.") == -1 ? 
                         (f_name) + String(file.isDir() ? "/" : "") + 
                         String(":") + String(size) +
@@ -1292,10 +1303,8 @@ String GB_SD::download(String file_name){
 
     String result = "";
     while ((char_code = file.read()) >= 0){
-      if(char_code == 44)
-          result += ",";
-      else
-          result += "!" + String(char_code);
+        if(char_code == 44) result += ",";
+        else result += "!" + String(char_code);
     }
     _gb->log("###" + String(result), true);
     this->closeFile(file);
@@ -1311,16 +1320,17 @@ String GB_SD::readLinesFromSD(String file_name, int chars_at_a_time, int startin
     String result = "";
     int charnumber = 0;
 
+    bool log = file_name.indexOf("readings") != -1;
+
     // Read lines one at a time
     while(file.available()) {
-
         // Read characters
         char c = file.read();
         charnumber++;
         if (starting_char_index <= charnumber && charnumber < starting_char_index + chars_at_a_time) result += String(c);
-        delay(1);
+        // delay(1);
     }
-
+    
     this->closeFile(file);
     this->off();
     return result;

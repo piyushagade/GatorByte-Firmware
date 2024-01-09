@@ -48,6 +48,10 @@
     };
 #endif
 
+#ifndef FsFile_h
+    #include "SdFat.h"
+#endif
+
 //! Base class for GB_DEVICE
 #ifndef GB_DEVICE_h
     #define GB_DEVICE_h
@@ -124,6 +128,7 @@
             virtual bool rwtest() { return false; };
             virtual bool exists(String) { return false; };
             virtual bool sdtest() { return false; };
+            virtual File openFile(String reason, String file_name) { File file; return file; }
             virtual String readLinesFromSD(String file_name, int lines_at_a_time, int starting_line) { return ""; }
             virtual String writeLinesToSD(String file_name, String data) { return ""; }
             virtual GB_DEVICE& readconfig() { return *this; };

@@ -236,7 +236,7 @@ void GB_DESKTOP::process(string command) {
         // Set as busy
         this->_busy(true);
 
-        _gb->log("Received GDC command: " + command);
+        // _gb->log("Received GDC command: " + command);
 
         /*
             ! Check command validity
@@ -244,7 +244,7 @@ void GB_DESKTOP::process(string command) {
         if (
             this->_state == "" && 
             !command.contains("##GB##") && 
-            !command.startsWith("cfg") && 
+            !command.startsWith("cfg") &&
             !command.startsWith("sdf")
         ) return;
 
@@ -270,7 +270,6 @@ void GB_DESKTOP::process(string command) {
 
                 // int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
                 // int charsatatime = 30;
-
                 // String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
                 // this->sendfile("gdc-cfg", "fdl:" + data);
 
@@ -285,7 +284,7 @@ void GB_DESKTOP::process(string command) {
                     // Add a delay if needed to prevent data loss
                     delay(10);
                 }
-                this->sendfile("gdc-cfg", "fdl:#EOF#");
+                this->sendfile("gdc-cfg", "fdl:#EOF#"); delay(10);
             }
             
             // Configuration upload request
@@ -332,11 +331,8 @@ void GB_DESKTOP::process(string command) {
                 // Compute hash
                 unsigned int hash = _gb->s2hash(configdata);
 
-
-                _gb->log("Computed hash from config on SD: " + String(hash));
-
                 // Send acknowledgement
-                this->send("gdc-cfg", "cfghash:" + String(hash));
+                this->send("gdc-cfg", "cfghash:" + String(hash)); delay(10);
 
             }
         }
@@ -403,7 +399,7 @@ void GB_DESKTOP::process(string command) {
                 
                 // Get the name of the folder to get file list
                 String root = command.substring(command.indexOf(",") + 1, command.length());
-                _gb->log("Listing folder: " + root);
+                // _gb->log("Listing folder: " + root);
                 
                 String filelistdata = _gb->getdevice("sd").getfilelist(root);
                 int filecount = filelistdata.substring(0, filelistdata.indexOf("::")).toInt();
@@ -442,19 +438,77 @@ void GB_DESKTOP::process(string command) {
             if (command.contains("dl:")) {
 
                 String filename = command.substring(command.indexOf(":") + 1, command.indexOf(","));
+                
+                int initialcharindex = 0;
+                int charsatatime = 100;
 
-                String data = _gb->getdevice("sd").readfile(filename);
-                for (int i = 0; i < data.length(); i += 30) {
-                    // Extract a chunk of 30 characters
-                    String chunk = data.substring(i, i + 30);
+                // int chunkcounter = 0;
+                // String chunk;
+                // chunk.reserve(1000);
+                // String chunk = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // while(chunk.length() > 0) {
+                //     // _gb->log("Chunk counter: " + String(++chunkcounter));
 
-                    // Send the chunk over Serial
-                    this->sendfile("gdc-dfl", "fdl:" + chunk);
+                //     for (int i = 0; i < chunk.length(); i += 30) {
+                //         // _gb->log("   subchunk counter: " + String(i));
 
-                    // Add a delay if needed to prevent data loss
-                    delay(10);
+                //         // Extract a chunk of 30 characters
+                //         String subchunk = chunk.substring(i, i + 30);
+
+                //         // Send the chunk over Serial
+                //         this->sendfile("gdc-dfl", "fdl:" + subchunk);
+                //         starttimestamp = millis();
+
+                //         // Add a delay if needed to prevent data loss
+                //         delay(10);
+                //     }
+                    
+                //     // Read the next chunk of data
+                //     initialcharindex += charsatatime;
+                //     chunk = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // }
+                // this->sendfile("gdc-dfl", "fdl:#EOF#"); delay(10);
+
+
+                /* NO LFS */
+                // String data = _gb->getdevice("sd").readfile(filename);
+
+                // for (int i = 0; i < data.length(); i += 30) {
+                //     // Extract a chunk of 30 characters
+                //     String chunk = data.substring(i, i + 30);
+
+                //     // Send the chunk over Serial
+                //     this->sendfile("gdc-dfl", "fdl:" + chunk);
+
+                //     // Add a delay if needed to prevent data loss
+                //     delay(10);
+                // }
+                // this->sendfile("gdc-dfl", "fdl:#EOF#"); delay(10);
+
+
+                
+                File file = _gb->getdevice("sd").openFile("read", filename);
+                if (!file) {
+                    _gb->log("Error opening file!");
+                    return;
                 }
-                this->sendfile("gdc-dfl", "fdl:#EOF#");
+
+                const int bufferSize = 40;  // Adjust the buffer size as needed
+                char buffer[bufferSize];
+
+                while (file.available()) {
+                    int bytesRead = file.read(buffer, bufferSize);
+
+                    // Process the data in the buffer (e.g., print to Serial)
+                    String chunk = "";
+                    for (int i = 0; i < bytesRead; i++) {
+                        chunk += String(buffer[i]);
+                    }
+                    this->sendfile("gdc-dfl", "fdl:" + String(chunk)); delay(25);
+                }
+
+                _gb->log("File upload completed: " + filename);
+                delay(20); this->sendfile("gdc-dfl", "fdl:#DLEOF#"); delay(10);
             }
 
             // Delete a file
@@ -849,12 +903,11 @@ void GB_DESKTOP::process(string command) {
 
                     // Send the chunk over Serial
                     this->sendfile("gdc-cv", "fdl:" + chunk);
-                    _gb->log("Sent: " + chunk);
 
                     // Add a delay if needed to prevent data loss
                     delay(10);
                 }
-                this->sendfile("gdc-cv", "fdl:#EOF#");
+                this->sendfile("gdc-cv", "fdl:#EOF#"); delay(10);
             }
             
             // Control variables upload request
@@ -1141,7 +1194,7 @@ void GB_DESKTOP::sendfile(String category, String data) {
         suffix
     );
     // this->_gb->serial.debug->flush();
-    delay(10);
+    // delay(10);
 }
 
 #endif
