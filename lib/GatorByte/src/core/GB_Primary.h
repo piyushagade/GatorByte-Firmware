@@ -217,6 +217,7 @@ class GB {
 
         int s2hash(String);
         String sremove(String, String, String);
+        String sreplace(String, String, String);
         String split(String, char, int);
         char* s2c(String str);
         String ca2s(char char_array[]);

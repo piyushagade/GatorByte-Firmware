@@ -30,6 +30,25 @@ String GB::split(String data, char delimiter, int index) {
 /*
     ! Remove a substring from a string
 */
+String GB::sreplace(String original, String target, String replacement) {
+    String result = "";
+
+    int index = 0;
+    int lastIndex = 0;
+
+    while ((index = original.indexOf(target, lastIndex)) != -1) {
+        result += original.substring(lastIndex, index) + replacement;
+        lastIndex = index + target.length();
+    }
+
+    result += original.substring(lastIndex);
+
+    return result;
+}
+
+/*
+    ! Remove a substring from a string
+*/
 String GB::sremove(String input, String startSubstring, String endSubstring) {
     int startIndex = input.indexOf(startSubstring);
     int endIndex = input.indexOf(endSubstring, startIndex);

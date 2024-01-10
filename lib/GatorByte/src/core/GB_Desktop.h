@@ -518,8 +518,12 @@ void GB_DESKTOP::process(string command) {
                 // command = command.substring(command.indexOf("fupl:") + 1, command.length());
 
                 String filepath = this->tempstring[0];
-                String data = command.substring(5, command.length());
 
+                String target = "fupl:";
+                String replacement = "";
+                
+                String data = _gb->sreplace(command, target, replacement);
+                
                 if (filepath.length() == 0) {
                     _gb->log("File path not set");
                 }
@@ -537,6 +541,8 @@ void GB_DESKTOP::process(string command) {
                     }
 
                     _gb->getdevice("sd").writeLinesToSD(filepath, data);
+
+                    this->send("gdc-dfl", "upl:ack");
                 }
             }
         }
