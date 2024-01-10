@@ -124,7 +124,7 @@ class GB {
 
             int TIMEOUT_CELLULAR_CONNECTION;
             int SLEEP_DURATION = 5 * 60 * 1000;
-            int BREATHE_INTERVAL = 10 * 1000;
+            int BREATHE_INTERVAL = 60 * 1000;
             bool OFFLINE_MODE;
             int FAULTS_PRIMARY = 0;
             int FAULTS_SECONDARY = 0;
@@ -216,6 +216,7 @@ class GB {
         String uuid(int length);
 
         int s2hash(String);
+        String sremove(String, String, String);
         String split(String, char, int);
         char* s2c(String str);
         String ca2s(char char_array[]);
@@ -395,9 +396,6 @@ bool GB::hasdevice(String device_name) {
 
 GB& GB::setup() {
     this->_boot_timestamp = millis();
-
-    delay(100);
-
     return *this;
 }
 
@@ -529,17 +527,6 @@ GB& GB::loop(int wait) {
     // RGB - Indicate if dummy mode
     if(this->globals.MODE == "dummy") if (this->hasdevice("rgb")) this->getdevice("rgb").on("green");
     else if (this->hasdevice("rgb")) this->getdevice("rgb").on("magenta");
-
-    // // RGB - Flash white
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").on("white");
-    // delay(50); if (this->hasdevice("rgb")) this->getdevice("rgb").revert(); delay(50);
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").on("white");
-    // delay(wait + 100);
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").revert();
-
-
-    // //! Loop mqtt
-    // if (this->hasdevice("mqtt")) this->getdevice("mqtt").update();
 
     this->getdevice("gdc").send("gdc-db", "loopiteration=" + String(this->globals.ITERATION));
 

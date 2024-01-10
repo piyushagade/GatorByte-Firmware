@@ -41,6 +41,13 @@ class GB_DESKTOP : public GB_DEVICE {
         bool lock = false;
         String _received_config_str = "";
         GB_DESKTOP& _busy(bool busy);
+
+        
+        // Temporary data
+        String tempstring[5];
+        int tempint[5];
+        bool tempbool[5];
+        float tempfloat[5];
 };
 
 // Constructor 
@@ -442,64 +449,19 @@ void GB_DESKTOP::process(string command) {
                 int initialcharindex = 0;
                 int charsatatime = 100;
 
-                // int chunkcounter = 0;
-                // String chunk;
-                // chunk.reserve(1000);
-                // String chunk = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
-                // while(chunk.length() > 0) {
-                //     // _gb->log("Chunk counter: " + String(++chunkcounter));
-
-                //     for (int i = 0; i < chunk.length(); i += 30) {
-                //         // _gb->log("   subchunk counter: " + String(i));
-
-                //         // Extract a chunk of 30 characters
-                //         String subchunk = chunk.substring(i, i + 30);
-
-                //         // Send the chunk over Serial
-                //         this->sendfile("gdc-dfl", "fdl:" + subchunk);
-                //         starttimestamp = millis();
-
-                //         // Add a delay if needed to prevent data loss
-                //         delay(10);
-                //     }
-                    
-                //     // Read the next chunk of data
-                //     initialcharindex += charsatatime;
-                //     chunk = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
-                // }
-                // this->sendfile("gdc-dfl", "fdl:#EOF#"); delay(10);
-
-
-                /* NO LFS */
-                // String data = _gb->getdevice("sd").readfile(filename);
-
-                // for (int i = 0; i < data.length(); i += 30) {
-                //     // Extract a chunk of 30 characters
-                //     String chunk = data.substring(i, i + 30);
-
-                //     // Send the chunk over Serial
-                //     this->sendfile("gdc-dfl", "fdl:" + chunk);
-
-                //     // Add a delay if needed to prevent data loss
-                //     delay(10);
-                // }
-                // this->sendfile("gdc-dfl", "fdl:#EOF#"); delay(10);
-
-
-                
                 File file = _gb->getdevice("sd").openFile("read", filename);
                 if (!file) {
                     _gb->log("Error opening file!");
                     return;
                 }
 
-                const int bufferSize = 40;  // Adjust the buffer size as needed
+                const int bufferSize = 40;
                 char buffer[bufferSize];
 
                 while (file.available()) {
                     int bytesRead = file.read(buffer, bufferSize);
 
-                    // Process the data in the buffer (e.g., print to Serial)
+                    // Process the data in the buffer
                     String chunk = "";
                     for (int i = 0; i < bytesRead; i++) {
                         chunk += String(buffer[i]);
@@ -508,7 +470,7 @@ void GB_DESKTOP::process(string command) {
                 }
 
                 _gb->log("File upload completed: " + filename);
-                delay(20); this->sendfile("gdc-dfl", "fdl:#DLEOF#"); delay(10);
+                this->sendfile("gdc-dfl", "fdl:#DLEOF#"); delay(10);
             }
 
             // Delete a file
@@ -535,6 +497,47 @@ void GB_DESKTOP::process(string command) {
             // Preview file
             if (command.contains("pv:")) {
 
+            }
+
+            // Upload file meta
+            if (command.contains("fuplm:")) {
+                String filepath = command.substring(String("fuplm:").length(), command.length());
+                this->tempstring[0] = filepath;
+
+                bool exists = _gb->getdevice("sd").exists(filepath);
+                if (exists) {
+                    _gb->log("File already exists. Deleting file.");
+                    _gb->getdevice("sd").rm(filepath);
+                }
+                
+                _gb->log("Setting file path: " + filepath);
+            }
+
+            // Upload file
+            if (command.contains("fupl:")) {
+                // command = command.substring(command.indexOf("fupl:") + 1, command.length());
+
+                String filepath = this->tempstring[0];
+                String data = command.substring(5, command.length());
+
+                if (filepath.length() == 0) {
+                    _gb->log("File path not set");
+                }
+
+                else {
+                    _gb->log("File upload request received: ", false);
+                    _gb->log(filepath);
+
+                    while(data.contains("~")) {
+                        data.replace("~", "\n");
+                    }
+
+                    while(data.contains("`")) {
+                        data.replace("`", " ");
+                    }
+
+                    _gb->getdevice("sd").writeLinesToSD(filepath, data);
+                }
             }
         }
         

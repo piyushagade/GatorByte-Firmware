@@ -45,15 +45,15 @@
     GB_AHT10 aht(gb);
     GB_DESKTOP gdc(gb);
 
-    GB_PIPER breathpiper(gb);
-    GB_PIPER wlevpiper(gb);
-    GB_PIPER resetvariablespiper(gb);
-    GB_PIPER uploaderpiper(gb);
-    GB_PIPER controlvariablespiper(gb);
-    GB_PIPER antifreezepiper(gb);
-    GB_PIPER fivedayantifreezepiper(gb);
-    GB_PIPER pingpiper(gb);
-    GB_PIPER statepiper(gb);
+    GB_PIPER breathpiper;
+    GB_PIPER wlevpiper;
+    GB_PIPER resetvariablespiper;
+    GB_PIPER uploaderpiper;
+    GB_PIPER controlvariablespiper;
+    GB_PIPER antifreezepiper;
+    GB_PIPER fivedayantifreezepiper;
+    GB_PIPER pingpiper;
+    GB_PIPER statepiper;
     
     /*
         Control variables

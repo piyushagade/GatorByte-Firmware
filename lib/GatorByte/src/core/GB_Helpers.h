@@ -27,6 +27,22 @@ String GB::split(String data, char delimiter, int index) {
     return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
+/*
+    ! Remove a substring from a string
+*/
+String GB::sremove(String input, String startSubstring, String endSubstring) {
+    int startIndex = input.indexOf(startSubstring);
+    int endIndex = input.indexOf(endSubstring, startIndex);
+
+    // Check if both start and end substrings are found
+    if (startIndex != -1 && endIndex != -1) {
+        // Remove the dynamic substring
+        input.remove(startIndex, endIndex - startIndex + endSubstring.length());
+    }
+
+    return input;
+}
+
 String GB::uuid() {
     int randomNumber = random(10000, 99999);
     return String(randomNumber);
