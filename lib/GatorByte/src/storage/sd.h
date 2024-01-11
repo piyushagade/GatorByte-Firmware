@@ -101,6 +101,7 @@ class GB_SD : public GB_DEVICE {
         String getlastfilenamecontaining(String contains, String folder);
         bool exists(String path);
         bool mkdir(String path);
+        bool renamedir(String originalfolder, String newfolder);
         String download(String file_name);
         String readLinesFromSD(String file_name, int lines_at_a_time, int starting_line);
         String writeLinesToSD(String file_name, String data);
@@ -1342,10 +1343,14 @@ String GB_SD::readLinesFromSD(String file_name, int chars_at_a_time, int startin
 String GB_SD::writeLinesToSD(String file_name, String data) {
     File file = this->openFile("write", file_name);
 
-    if(file) file.print(data);
-        
-    this->closeFile(file);
-    delay(5);
+    if(file) {
+        file.print(data);
+        this->closeFile(file);
+        delay(5);
+    }
+    else {
+        _gb->log("File creation failed");
+    }
     return "";
 }
 
@@ -1359,14 +1364,23 @@ bool GB_SD::rmdir(String folderpath){
     String parentpath = folderpath.substring(1, folderpath.lastIndexOf("/"));
     String foldername = folderpath.substring(folderpath.lastIndexOf("/") + 1, folderpath.length());
     
+    // Delete contents first
+    SdFile delfile;
     File dir;
+    dir.open(folderpath.c_str());
+    while (delfile.openNext(&dir, O_READ)) {
+        char fileName[25];
+        delfile.getName(fileName, 25);
+
+        // Create a new file with the same name in the new folder
+        delfile.close();
+        if (delfile.isDir()) this->rmdir(fileName);
+        else this->rm(folderpath + "/" + fileName);
+    }
+
     dir.open(_gb->s2c(folderpath));
     
-    _gb->log("Path: " + folderpath);
-    _gb->log("Parent folder: " + parentpath);
-    _gb->log("Folder: " + foldername);
-
-    // Check if file exists, and delete it if it does
+    // Check if folder exists, and delete it if it does
     if (this->exists(folderpath)) {
 
         // Traverse to parent folder
@@ -1374,7 +1388,6 @@ bool GB_SD::rmdir(String folderpath){
 
         // If the delete action was unsuccessful
         if (!_sd.rmdir(foldername)) {
-            _gb->log(" -> Failed (code 4) (" + foldername + ")");
             erroroccured = true;
         }
                 
@@ -1384,7 +1397,6 @@ bool GB_SD::rmdir(String folderpath){
 
     // The the file does not exist
     else {
-        _gb->log(" -> Failed (code 5) (" + foldername + ")");
         erroroccured = true;
     }
 
@@ -1432,26 +1444,90 @@ bool GB_SD::exists(String path) {
 }
 
 bool GB_SD::mkdir(String path) {
-    bool success = _sd.mkdir(path, true);
+    bool success = _sd.mkdir(_gb->s2c(path), true);
     return success;
 }
 
 
+bool GB_SD::renamedir(String originalFolder, String newFolder) {
 
-String GB_SD::_split_string(String data, char separator, int index) {
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length()-1;
-
-  for(int i=0; i<=maxIndex && found<=index; i++){
-    if(data.charAt(i)==separator || i==maxIndex) {
-        found++;
-        strIndex[0] = strIndex[1]+1;
-        strIndex[1] = (i == maxIndex) ? i+1 : i;
+    // Create a new folder with the new name
+    if (!_sd.mkdir(newFolder)) {
+        // Handle folder creation failure
+        return false;
     }
-  }
 
-  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+    SdFile file;
+    SdFile dir;
+
+    // Open the original folder
+    if (!dir.open(originalFolder.c_str())) {
+        // Handle failure to open the original folder
+        return false;
+    }
+
+    // Iterate through the contents of the original folder
+    while (file.openNext(&dir, O_READ)) {
+        char fileName[25];
+        file.getName(fileName, 25);
+
+        // Create a new file with the same name in the new folder
+        File newFile;
+        if (newFile.open(_gb->s2c(newFolder + "/" + fileName), O_CREAT | O_WRITE | O_APPEND)) {
+            // Copy the content of the file
+            file.rewind();
+            uint8_t buf[128];
+            int bytesRead;
+            while ((bytesRead = file.read(buf, sizeof(buf))) > 0) {
+                newFile.write(buf, bytesRead);
+            }
+            newFile.close();
+        } else {
+            // Handle failure to create a new file in the new folder
+            return false;
+        }
+        file.close();
+    }
+
+    // // Iterate through the files of the original folder and delete them
+    // SdFile delfile;
+    // dir.open(originalFolder.c_str());
+    // while (delfile.openNext(&dir, O_READ)) {
+    //     char fileName[25];
+    //     delfile.getName(fileName, 25);
+
+    //     // Create a new file with the same name in the new folder
+    //     delfile.close();
+    //     if (delfile.isDir()) this->rmdir(fileName);
+    //     else this->rm(originalFolder + "/" + fileName);
+    // }
+
+    dir.close();
+
+
+
+    // Delete the original folder and its contents
+    if (this->rmdir(originalFolder.c_str())) {
+        // Handle failure to delete the original folder
+        return false;
+    }
+
+    return true;
+}
+String GB_SD::_split_string(String data, char separator, int index) {
+    int found = 0;
+    int strIndex[] = {0, -1};
+    int maxIndex = data.length() - 1;
+
+    for (int i = 0; i <= maxIndex && found <= index; i++) {
+        if (data.charAt(i) == separator || i == maxIndex) {
+            found++;
+            strIndex[0] = strIndex[1] + 1;
+            strIndex[1] = (i == maxIndex) ? i + 1 : i;
+        }
+    }
+
+    return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 bool GB_SD::rwtest() {

@@ -488,10 +488,26 @@ void GB_DESKTOP::process(string command) {
             }
 
             // Make directory
-            if (command.contains("mkdir:")) {
-                String dirname = command.substring(command.indexOf("mkdir:") + 3, command.length());
+            if (command.contains("crd:")) {
+                String dirname = command.substring(command.indexOf("crd:") + 4, command.length());
                 _gb->log("Creating directory: " + dirname);
-                _gb->getdevice("sd").mkdir(dirname);
+                
+                String foldername = dirname;
+                if (!_gb->getdevice("sd").exists("/" + foldername)) {
+                    bool success = _gb->getdevice("sd").mkdir("/" + foldername);
+                }
+            }
+            
+            // Rename directory
+            if (command.contains("rnd:")) {
+                String stripped = command.substring(command.indexOf("rnd:") + 4, command.length());
+                String oldname = stripped.substring(0, stripped.indexOf("#"));
+                String newname = stripped.substring(stripped.indexOf("#") + 1, stripped.length());
+                _gb->log("Renaming directory: " + oldname + " to " + newname);
+                
+                if (_gb->getdevice("sd").exists("/" + oldname)) {
+                    bool success = _gb->getdevice("sd").renamedir(oldname , newname);
+                }
             }
 
             // Preview file

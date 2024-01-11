@@ -133,6 +133,7 @@
             virtual String writeLinesToSD(String file_name, String data) { return ""; }
             virtual GB_DEVICE& readconfig() { return *this; };
 
+            virtual bool renamedir(String originalfolder, String newfolder) { return false;}
             virtual bool mkdir(String path) { return false;}
             virtual bool rm (String filename) { return false; };
             virtual bool rmdir (String foldername) { return false; };
