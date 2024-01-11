@@ -237,13 +237,14 @@ void GB_DESKTOP::process(string command) {
     */
     if (command.contains("gdc-ping")) {
         Serial.println("##CL-GDC-PONG##"); delay(50);
+
         if (_gb->hasdevice("sd")) {
             if (!_gb->getdevice("sd").testdevice()) Serial.println("##CL-GB-SD-UINT##");
+            if (_gb->globals.GDC_SETUP_READY) Serial.println("##CL-GB-READY##");
         }
         else if (!_gb->hasdevice("sd")) {
-            if (!_gb->getdevice("sd").testdevice()) Serial.println("##CL-GB-SD-UINT##");
+            Serial.println("##CL-GB-SD-UINT##");
         }
-        else if (_gb->globals.GDC_SETUP_READY) Serial.println("##CL-GB-READY##");
     }
     
     #if not defined (LOW_MEMORY_MODE)
