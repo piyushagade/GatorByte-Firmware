@@ -388,6 +388,7 @@ GB_SD& GB_SD::initialize(String speed) {
             this->device.detected = false;
 
             if (_gb->globals.GDC_CONNECTED) {
+                Serial.println("##CL-GB-SD-ABS##");
                 this->off();
                 return *this;
             }
@@ -401,6 +402,7 @@ GB_SD& GB_SD::initialize(String speed) {
             this->device.detected = false;
 
             if (_gb->globals.GDC_CONNECTED) {
+                Serial.println("##CL-GB-SD-UINT##");
                 this->off();
                 return *this;
             }
@@ -420,6 +422,8 @@ GB_SD& GB_SD::initialize(String speed) {
             this->device.detected = result;
             
             if (_gb->globals.GDC_CONNECTED) {
+                if (this->device.detected) Serial.println("##CL-GB-SD-READY##");
+                else  Serial.println("##CL-GB-SD-RWF##");
                 this->off();
                 return *this;
             }
