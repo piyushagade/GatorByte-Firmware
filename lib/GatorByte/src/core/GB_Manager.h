@@ -122,6 +122,7 @@
             virtual String date(String) { return ""; };
             virtual String time() { return ""; };
             virtual String time(String) { return ""; };
+            virtual String getsource() { return ""; };
 
             //! SD functions
             virtual bool detected() { return false; };

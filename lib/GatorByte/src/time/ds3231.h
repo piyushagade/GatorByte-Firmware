@@ -56,7 +56,7 @@ class GB_DS3231 : public GB_DEVICE {
         String converttotz(String, String, String);
         int converttotz(String, String, int);
         GB_DS3231& settimezone(String);
-        String source = "rtc";
+        String getsource();
         
         bool testdevice();
         String status();
@@ -118,6 +118,7 @@ class GB_DS3231 : public GB_DEVICE {
         GB *_gb;
         bool _persistent = false;
         long _timezone_offset = 0;
+        String _source = "rtc";
 };
 
 /* 
@@ -176,24 +177,21 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
         if (testdevice) {
             bool success = this->valid();
             
-            // int counter = 3;
-            // while((!success || this->date("YYYY") == "2000") && counter-- >= 0) { delay(500); success = this->valid(); }
-            
             if (success) {
                 this->device.detected = true;
                 
                 if (_gb->globals.GDC_CONNECTED) {
                     this->off();
-                    _gb->log(" -> Done");
+                    _gb->arrow().log("Done");
                     this->settimezone("EST");
                     return *this;
                 }
                 
-                _gb->log(" -> " + this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss"), false);
+                _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss"), false);
                 
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("...");
                 if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
-                _gb->log(" -> Done", true);
+                _gb->arrow().log("Done", true);
                 this->settimezone("EST");
 
                 // Sync if the RTC is booted for the first time
@@ -201,7 +199,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
             }
             else {
                 this->device.detected = false;
-                _gb->log(" -> Not detected", true);
+                _gb->arrow().log("Not detected. Falling back to MODEM for time.", true);
                 
                 if (_gb->globals.GDC_CONNECTED) {
                     this->off();
@@ -214,7 +212,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
         }
         else {
             this->device.detected = true;
-            _gb->log(" -> Done", true);
+            _gb->arrow().log("Done", true);
             this->settimezone("EST");
             
             if (_gb->globals.GDC_CONNECTED) {
@@ -243,8 +241,6 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
     // // Disable watchdog timer
     // this->_gb->getmcu().watchdog("disable");
 
-    this->device.detected = false;
-
     this->off();
     return *this;
 }
@@ -255,17 +251,20 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
     Time format: 15:23:59
 */
 GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
-    this->on();delay(50);
 
     _gb->log("Syncing RTC to the provided time", false);
     DateTime dt = DateTime(date, time);
     
     if (this->device.detected) {
+        this->on();delay(50);
+        
         _rtc.adjust(dt); delay(50);
         _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
         _gb->log(" -> Done");
+        
+        this->off();
     }
-    else _gb->arrow().log("Not detected. Skipping");
+    else _gb->arrow().color("red").log("Not detected. Skipping.").color();
 
     // Sync MODEM's clock
     if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
@@ -282,26 +281,12 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
         String timestr = (hour.length() == 1 ? "0" : "") + hour + ":" + (minute.length() == 1 ? "0" : "") + minute + ":" + (second.length() == 1 ? "0" : "") + second + "+00";
         String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
 
-        _gb->log("AT command: " + atcommand);
-
-        String resok = _gb->getmcu().send_at_command("AT");
-        _gb->log("Response OK:");
-        _gb->log(resok);
-
         String res = _gb->getmcu().send_at_command(atcommand);
-        _gb->log("Response:");
-        _gb->log(res);
-
         if (res.endsWith("OK")) _gb->log(" -> Done");
         else _gb->log(" -> Failed");
 
-        // time = DateTime(year, month, day, hour, minute, second);
     }
     
-
-    // sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
-    
-    this->off();
     return *this;
 }
 
@@ -504,8 +489,10 @@ GB_DS3231& GB_DS3231::persistent() {
 DateTime GB_DS3231::now() {
 
     DateTime time;
+
+    // If RTC was not detected or not initialized, use MODEM
     if (!this->device.detected) {
-        this->source = "modem";
+        this->_source = "modem";
         if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
         if(MODEM_INITIALIZED) {
             String nwtimestr = _gb->getmcu().gettime();
@@ -518,15 +505,16 @@ DateTime GB_DS3231::now() {
             return DateTime(0);
         }
     }
+
+    // Get timestamp from RTC
     else {
-        this->source = "rtc";
+        this->_source = "rtc";
         this->on();
         delay(50);
         time = _rtc.now(); 
         this->off();
     }
 
-    _gb->log("Time source: " + this->source);
     return time;
 }
 
@@ -637,6 +625,13 @@ String GB_DS3231::date(String format) {
     #endif
 
     return String(format);
+}
+
+/* 
+    Return the source of time
+*/
+String GB_DS3231::getsource() {
+    return this->_source;
 }
 
 /* 
