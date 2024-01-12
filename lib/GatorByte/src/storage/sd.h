@@ -835,14 +835,18 @@ GB_SD& GB_SD::readconfig() {
         _gb->log(" -> Skipped");
         
         _gb->getdevice("sntl").disable();
-        _gb->br().color("red").log("SD card not found. Configuration couldn't be read. Suspending operation.");
+        _gb->br().color("red").log("SD card not found. Configuration couldn't be read. Suspending operation until issue is fixed.");
 
         uint8_t now = millis();
         while (!_sd.begin(this->pins.ss, this->_sck_speed)) {
             _gb->getdevice("gdc").detect(true);
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "blue");
-            delay(1000);
+            
+            this->off();delay(1000);
+            this->on(); delay(50);
         }
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("....");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").off();
         return *this;
     }
 
