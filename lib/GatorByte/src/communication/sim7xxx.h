@@ -71,10 +71,10 @@ GB_SIM7XXX& GB_SIM7XXX::setup(String name, String pass) {
     this->on();delay(500);
 
     // Set device BL name
-    this->_send_at_command("AT+NAME=" + String(name));
+    this->send_at_command("AT+NAME=" + String(name));
 
     // Set device BL PIN
-    this->_send_at_command("AT+PSWD=" + String(pass));
+    this->send_at_command("AT+PSWD=" + String(pass));
 
     this->off();
     delay(500);
@@ -104,7 +104,7 @@ void GB_SIM7XXX::print(String message, bool new_line) {
     this->off();
 }
 
-void GB_SIM7XXX::_send_at_command(String command) {
+void GB_SIM7XXX::send_at_command(String command) {
     _gb->serial.hardware->end();delay(100); 
     _gb->serial.hardware->begin(_at_baud);delay(100);
     _gb->serial.hardware->write(command + "\r");delay(1000);

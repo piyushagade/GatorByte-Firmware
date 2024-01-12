@@ -808,8 +808,8 @@ void GB_DESKTOP::process(string command) {
                 //! Sync RTC
                 if (command.contains("sync")) {
 
-                    _gb->log("Syncing RTC time -> ", false);
-                    bool success = _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
+                    _gb->log("Syncing GatorByte time to ", false);
+                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
 
                     if (success) {
                         String month = command.substring(4, 7);
@@ -840,13 +840,11 @@ void GB_DESKTOP::process(string command) {
                 //! Get RTC timestamp
                 if (command.contains("get")) {
                     
-                    _gb->log("Getting RTC time -> ", false);
-                    bool success = _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
+                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
                     
                     String data;
                     if (success) data = _gb->getdevice("rtc").timestamp();
                     else data = "not-detected";
-                    _gb->log(data);
 
                     // Send RTC time
                     this->send("gdc-cfg", "rtc:" + data);

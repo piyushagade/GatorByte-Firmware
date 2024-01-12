@@ -161,6 +161,7 @@ class GB_NB1500 : public GB_MCU {
         Client& newsslclient();
         Client& deletesslclient();
         Client& getsslclient();
+        String send_at_command(String);
 
         int CELL_SIGNAL_LOWER_BOUND = 5;
         int REBOOTCOUNTER = 0;
@@ -197,7 +198,6 @@ class GB_NB1500 : public GB_MCU {
         String _format_at_response(String);
         bool _wait_for_at_response();
         bool _wait_for_at_response(unsigned long);
-        String _send_at_command(String);
         void _modem_initialize();
         String _sara_at_command(String);
         void _sleep(String, int);
@@ -289,7 +289,7 @@ String GB_NB1500::_sara_at_command(String command) {
     return res;
 }
 
-String GB_NB1500::_send_at_command(String command) {
+String GB_NB1500::send_at_command(String command) {
 
     // _gb->log("Sending AT command: " + command, false);
     
@@ -713,21 +713,21 @@ bool GB_NB1500::connect(bool diagnostics) {
     // counter = 300; while (!MODEM.begin() && counter-- >= 0) delay(10);
 
     // // Test MODEM Serial communication
-    // MODEM_INITIALIZED = this->_send_at_command("AT").contains("OK");
+    // MODEM_INITIALIZED = this->send_at_command("AT").contains("OK");
 
     // // Check if SIM is inserted
-    // this->_send_at_command("AT+CMEE=0");
-    // this->_send_at_command("AT+CFUN=0");
-    // bool SIMFLAG = this->_send_at_command("AT+CPIN?").contains("READY");
+    // this->send_at_command("AT+CMEE=0");
+    // this->send_at_command("AT+CFUN=0");
+    // bool SIMFLAG = this->send_at_command("AT+CPIN?").contains("READY");
     // _gb->log("SIM " + String(!SIMFLAG ? "NOT " : "") + "found.");
 
     // if (MODEM_INITIALIZED && SIMFLAG) {
 
     //     // Check if device is registered on the network
-    //     bool NETREGFLAG = this->_send_at_command("AT+CEREG?").contains(",1");
+    //     bool NETREGFLAG = this->send_at_command("AT+CEREG?").contains(",1");
     //     _gb->log("Network " + String(!NETREGFLAG ? "NOT " : "") + "registered.");
 
-    //     bool GPRSATTFLAG = this->_send_at_command("AT+CGATT?").contains("1,1");
+    //     bool GPRSATTFLAG = this->send_at_command("AT+CGATT?").contains("1,1");
     //     _gb->log(String(!GPRSATTFLAG ? "NOT connected" : "Connected") + " to Internet.");
         
     //     while (!NETREGFLAG || !GPRSATTFLAG) {
@@ -735,27 +735,27 @@ bool GB_NB1500::connect(bool diagnostics) {
     //         _gb->log("\nAttempting connection.");
 
     //         if (!NETREGFLAG) {
-    //             this->_send_at_command("AT+CMGF=1");
-    //             this->_send_at_command("AT+UDCONF=1,1");
-    //             this->_send_at_command("AT+CTZU=1");
-    //             this->_send_at_command("AT+CGDCONT=1,\"IP\",\"\"");
-    //             this->_send_at_command("AT+UAUTHREQ=1,0");
-    //             this->_send_at_command("AT+CFUN=1");
-    //             this->_send_at_command("AT+CEREG?");
+    //             this->send_at_command("AT+CMGF=1");
+    //             this->send_at_command("AT+UDCONF=1,1");
+    //             this->send_at_command("AT+CTZU=1");
+    //             this->send_at_command("AT+CGDCONT=1,\"IP\",\"\"");
+    //             this->send_at_command("AT+UAUTHREQ=1,0");
+    //             this->send_at_command("AT+CFUN=1");
+    //             this->send_at_command("AT+CEREG?");
                 
-    //             NETREGFLAG = this->_send_at_command("AT+CEREG?").contains(",1");
+    //             NETREGFLAG = this->send_at_command("AT+CEREG?").contains(",1");
     //             _gb->log("Network " + String(!NETREGFLAG ? "NOT " : "") + "registered.");
     //             CONNECTED_TO_NETWORK = NETREGFLAG;
     //         }
     //         else CONNECTED_TO_NETWORK = true;
 
     //         if (!GPRSATTFLAG) {
-    //             this->_send_at_command("AT+CGATT=1");
-    //             GPRSATTFLAG = this->_send_at_command("AT+CGACT?").contains("1,1");
+    //             this->send_at_command("AT+CGATT=1");
+    //             GPRSATTFLAG = this->send_at_command("AT+CGACT?").contains("1,1");
     //             _gb->log(String(!GPRSATTFLAG ? "NOT connected" : "Connected") + " to Internet.");
     //             CONNECTED_TO_INTERNET = GPRSATTFLAG;
 
-    //             this->_send_at_command("AT+COPS?");
+    //             this->send_at_command("AT+COPS?");
 
     //             return true;
     //         }

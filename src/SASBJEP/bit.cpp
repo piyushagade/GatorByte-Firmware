@@ -399,8 +399,17 @@
 
     void loop () {
 
+
+        //! Connect to network
+        // mcu.connect("cellular");
+        gb.br().log(rtc.time());
+        gb.log(rtc.date());
+        gb.log(rtc.timestamp());
+
         // GatorByte loop function
         gb.loop();
+
+        return delay(1000);
 
         //! Five-day anti-freeze piper
         fivedayantifreezepiper.pipe(ANTIFREEZE_REBOOT_DELAY, false, [] (int counter) {

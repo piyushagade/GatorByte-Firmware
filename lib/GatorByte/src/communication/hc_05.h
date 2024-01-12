@@ -35,12 +35,12 @@ class GB_HC_05 : public GB_DEVICE {
         void print(String message);
         void print(String message, bool new_line);
         typedef void(*handler_t) (String);
+        String send_at_command(String command);
 
         // void listen(handler_t handler);
 
     private:
         String _read_at_command_response();
-        void _send_at_command(String command);
         GB *_gb;
         int _baud = 9600;
         int _at_baud_hc05 = 38400;
@@ -66,7 +66,7 @@ GB_HC_05& GB_HC_05::initialize() {
     _gb->log(" -> Done");
     
     // Test connection
-    this->_send_at_command("AT");
+    this->send_at_command("AT");
 
     Serial.print("Response: ");
     Serial.println(this->_read_at_command_response());
@@ -98,14 +98,14 @@ GB_HC_05& GB_HC_05::setup(String name, String pass) {
     this->on();delay(500);
 
     // // Test connection
-    // this->_send_at_command("AT");
+    // this->send_at_command("AT");
     // _gb->log(this->_read_at_command_response());
 
     // Set device BL name
-    this->_send_at_command("AT+NAME=" + String(name));
+    this->send_at_command("AT+NAME=" + String(name));
 
     // Set device BL PIN
-    this->_send_at_command("AT+PSWD=" + String(pass));
+    this->send_at_command("AT+PSWD=" + String(pass));
 
     this->off();
     delay(500);
@@ -172,18 +172,17 @@ String GB_HC_05::_read_at_command_response() {
     return response;
 }
 
-void GB_HC_05::_send_at_command(String command) {
+String GB_HC_05::send_at_command(String command) {
     this->on();
-    Serial.println("Here 1");
     _gb->serial.hardware->end();delay(100);
     _gb->serial.hardware->begin(_at_baud_hc05);delay(100);
     _gb->serial.hardware->print(command + "\r\n");delay(1000);    //! AG: Changed .write to .print
-    Serial.println("Here 2");
     this->off();delay(100);this->on();delay(100);
     // _gb->serial.hardware->flush() ;
     _gb->serial.hardware->end();delay(100);
     _gb->serial.hardware->begin(_baud);delay(100);
-    Serial.println("Here 3");
+
+    return "";
 }
 
 

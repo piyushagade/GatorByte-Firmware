@@ -45,6 +45,7 @@ class GB_DS3231 : public GB_DEVICE {
         GB_DS3231& persistent();
         DateTime now();   // add this to other RTC libraries
         bool valid();
+        bool valid(uint32_t);
         String timestamp();
         String date();
         String date(String format);
@@ -55,6 +56,7 @@ class GB_DS3231 : public GB_DEVICE {
         String converttotz(String, String, String);
         int converttotz(String, String, int);
         GB_DS3231& settimezone(String);
+        String source = "rtc";
         
         bool testdevice();
         String status();
@@ -241,6 +243,8 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
     // // Disable watchdog timer
     // this->_gb->getmcu().watchdog("disable");
 
+    this->device.detected = false;
+
     this->off();
     return *this;
 }
@@ -254,12 +258,49 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
     this->on();delay(50);
 
     _gb->log("Syncing RTC to the provided time", false);
-    _rtc.adjust(DateTime(date, time));
+    DateTime dt = DateTime(date, time);
+    
+    if (this->device.detected) {
+        _rtc.adjust(dt); delay(50);
+        _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
+        _gb->log(" -> Done");
+    }
+    else _gb->arrow().log("Not detected. Skipping");
 
-    long timestamp = _rtc.now().unixtime();
-    _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
+    // Sync MODEM's clock
+    if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
+    if(MODEM_INITIALIZED) {
+        
+        _gb->log("Syncing MODEM to the provided time", false);
+        String month = String(dt.month());
+        String day = String(dt.day());
+        String hour = String(dt.hour());
+        String minute = String(dt.minute());
+        String second = String(dt.second());
 
-    _gb->log(" -> Done");
+        String datestr = String(dt.year()).substring(2, 4) + "/" + (month.length() == 1 ? "0" : "") + month + "/" + (day.length() == 1 ? "0" : "") + day;
+        String timestr = (hour.length() == 1 ? "0" : "") + hour + ":" + (minute.length() == 1 ? "0" : "") + minute + ":" + (second.length() == 1 ? "0" : "") + second + "+00";
+        String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
+
+        _gb->log("AT command: " + atcommand);
+
+        String resok = _gb->getmcu().send_at_command("AT");
+        _gb->log("Response OK:");
+        _gb->log(resok);
+
+        String res = _gb->getmcu().send_at_command(atcommand);
+        _gb->log("Response:");
+        _gb->log(res);
+
+        if (res.endsWith("OK")) _gb->log(" -> Done");
+        else _gb->log(" -> Failed");
+
+        // time = DateTime(year, month, day, hour, minute, second);
+    }
+    
+
+    // sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
+    
     this->off();
     return *this;
 }
@@ -278,7 +319,7 @@ GB_DS3231& GB_DS3231::settimezone(String timezone) {
 }
 
 /* 
-    Sync the RTC to the date and time of code compilation
+    Sync the RTC to the date and time (GMT) of code compilation
 */
 GB_DS3231& GB_DS3231::sync() { this->sync(this->timezone); }
 GB_DS3231& GB_DS3231::sync(String timezone) {
@@ -295,7 +336,6 @@ GB_DS3231& GB_DS3231::sync(String timezone) {
 
     // return sync("May 10 2023", "01:11:00");
     return sync(__DATE__, _gb->s2c(__GMTTIME__));
-
 }
 
 /* 
@@ -462,7 +502,32 @@ GB_DS3231& GB_DS3231::persistent() {
     Returns 'now' Datetime object
 */
 DateTime GB_DS3231::now() {
-    return this->_rtc.now();
+
+    DateTime time;
+    if (!this->device.detected) {
+        this->source = "modem";
+        if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
+        if(MODEM_INITIALIZED) {
+            String nwtimestr = _gb->getmcu().gettime();
+
+            int year, month, day, hour, minute, second, offset;
+            sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
+            time = DateTime(year, month, day, hour, minute, second);
+        }
+        else {
+            return DateTime(0);
+        }
+    }
+    else {
+        this->source = "rtc";
+        this->on();
+        delay(50);
+        time = _rtc.now(); 
+        this->off();
+    }
+
+    _gb->log("Time source: " + this->source);
+    return time;
 }
 
 /*
@@ -487,32 +552,50 @@ bool GB_DS3231::valid() {
 
     return !error;
 }
+/*
+    Check if the device is running/communicating properly
+*/
+bool GB_DS3231::valid(uint32_t timestamp) {
+    bool error = false;
+    uint32_t unixtime = timestamp;
+
+    if (unixtime >= 2000000000) error = true;
+    else if (unixtime <= 946684800) error = true;
+    else if (unixtime > 1700000000) error = false;
+    else error = true;
+    return !error;
+}
 
 
 /*
     Returns unix timestamp
 */
 String GB_DS3231::timestamp() {
-    if (!this->device.detected) return "-1";
-
-    // Check if the time is invalid
-    DateTime time;
-    bool invalid = true;
-    int counter = 0;
     
-    // Gt time from the RTC
-    uint32_t unixtime;
-    while (invalid && counter++ <= 4) {
-        this->on(); time = _rtc.now(); this->off();
-        unixtime = time.unixtime();
-        invalid = !this->valid();
-        if (invalid) _gb->log("Invalid timestamp detected: " + String(unixtime));
-        delay(250 + (counter * 250));
-    }
+    DateTime time = this->now();
+    uint32_t unixtime = time.unixtime();
+    bool valid = this->valid(unixtime);
+    if (!valid) unixtime = _gb->globals.INIT_SECONDS + (millis() / 1000);
 
-    // Get timestamp from the time
-    if (!invalid) unixtime = time.unixtime();
-    else unixtime = _gb->globals.INIT_SECONDS + (millis() / 1000);
+    #ifdef false
+        // Check if the time is invalid
+        DateTime time;
+        bool invalid = true;
+        int counter = 0;
+        
+        // Get time from the RTC
+        while (invalid && counter++ <= 4) {
+            this->on(); time = _rtc.now(); this->off();
+            unixtime = time.unixtime();
+            // invalid = !this->valid();
+            if (invalid) _gb->log("Invalid timestamp detected: " + String(unixtime));
+            delay(250 + (counter * 250));
+        }
+
+        // Get timestamp from the time
+        if (!invalid) unixtime = time.unixtime();
+        else unixtime = _gb->globals.INIT_SECONDS + (millis() / 1000);
+    #endif
 
     return String(unixtime);
 }
@@ -529,13 +612,9 @@ String GB_DS3231::date() {
     Returns date in specified format.
 */
 String GB_DS3231::date(String format) {
-    if (!this->device.detected) return "-1";
-
-    this->on();
-    delay(50);
-
-    DateTime time = _rtc.now();
     
+    DateTime time = this->now();
+
     #if not defined (LOW_MEMORY_MODE)
 
         // Format month
@@ -557,7 +636,6 @@ String GB_DS3231::date(String format) {
         format = String(time.month()) + "/" + String(time.day()) + "/" + String(time.year());
     #endif
 
-    this->off();
     return String(format);
 }
 
@@ -573,12 +651,32 @@ String GB_DS3231::time() {
     Returns time in specified format.
 */
 String GB_DS3231::time(String format) {
-    if (!this->device.detected) return "-1";
+    
+    // DateTime time;
+    // if (!this->device.detected) {
+    //     if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
+    //     if(MODEM_INITIALIZED) {
+    //         String nwtimestr = _gb->getmcu().gettime();
 
-    this->on();
-    delay(50);
-    DateTime time = _rtc.now(); 
+    //         int year, month, day, hour, minute, second, offset;
+    //         sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
+    //         time = DateTime(year, month, day, hour, minute, second);
+    //         uint32_t timestamp = time.unixtime();
+    //     }
+    //     else {
+    //         return "-1";
+    //     }
+    // }
+    // else {
+    //     this->on();
+    //     delay(50);
+    //     time = _rtc.now(); 
+    //     this->off();
+    // }
+    
+    DateTime time = this->now();
 
+    // Convert to requested format
     bool hr12 = format.indexOf("a") > -1; int hour;
     if (hr12) hour = time.hour() < 12 ? time.hour() : time.hour() - 12; 
     else hour = time.hour();
@@ -587,8 +685,7 @@ String GB_DS3231::time(String format) {
     format.replace("mm", (time.minute() < 10 ? "0" : "") + String(time.minute()));
     format.replace("ss", (time.second() < 10 ? "0" : "") + String(time.second()));
     format.replace("a", (time.hour() > 12 ? "PM" : "AM"));
-
-    this->off();
+    
     return String(format);
 }
 
