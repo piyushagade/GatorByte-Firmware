@@ -117,7 +117,6 @@ class GB_DS3231 : public GB_DEVICE {
         RTC_DS3231 _rtc;
         GB *_gb;
         bool _persistent = false;
-        long _timezone_offset = 0;
         String _source = "rtc";
 };
 
@@ -183,7 +182,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 if (_gb->globals.GDC_CONNECTED) {
                     this->off();
                     _gb->arrow().log("Done");
-                    this->settimezone("EST");
+                    this->settimezone(_gb->globals.TIMEZONE);
                     return *this;
                 }
                 
@@ -192,19 +191,21 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("...");
                 if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
                 _gb->arrow().log("Done", true);
-                this->settimezone("EST");
+                this->settimezone(_gb->globals.TIMEZONE);
 
                 // Sync if the RTC is booted for the first time
-                if (this->date("YYYY") == "2000") this->sync("EST");
+                if (this->date("YYYY") == "2000") this->sync(_gb->globals.TIMEZONE);
             }
             else {
                 this->device.detected = false;
-                _gb->arrow().log("Not detected. Falling back to MODEM for time.", true);
+                _gb->arrow().log("Not detected. Falling back to MODEM for time", false);
                 
                 if (_gb->globals.GDC_CONNECTED) {
                     this->off();
                     return *this;
                 }
+                _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss"), false);
+                _gb->arrow().log("Done", true);
 
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("---");
                 if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(250).revert(); 
@@ -213,7 +214,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
         else {
             this->device.detected = true;
             _gb->arrow().log("Done", true);
-            this->settimezone("EST");
+            this->settimezone(_gb->globals.TIMEZONE);
             
             if (_gb->globals.GDC_CONNECTED) {
                 this->off();
@@ -237,6 +238,8 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
             // this->sync();
         }
     #endif
+
+    this->device.detected = false;
     
     // // Disable watchdog timer
     // this->_gb->getmcu().watchdog("disable");
@@ -257,35 +260,35 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
     
     if (this->device.detected) {
         this->on();delay(50);
-        
         _rtc.adjust(dt); delay(50);
         _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
         _gb->log(" -> Done");
-        
         this->off();
     }
     else _gb->arrow().color("red").log("Not detected. Skipping.").color();
 
-    // Sync MODEM's clock
-    if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
-    if(MODEM_INITIALIZED) {
-        
-        _gb->log("Syncing MODEM to the provided time", false);
-        String month = String(dt.month());
-        String day = String(dt.day());
-        String hour = String(dt.hour());
-        String minute = String(dt.minute());
-        String second = String(dt.second());
+    // Sync MODEM's clock (Skipped. MODEM resets to local time after every boot.)
+    #ifndef false
+        if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
+        if(MODEM_INITIALIZED) {
+            
+            _gb->log("Syncing MODEM to the provided time", false);
+            String month = String(dt.month());
+            String day = String(dt.day());
+            String hour = String(dt.hour());
+            String minute = String(dt.minute());
+            String second = String(dt.second());
 
-        String datestr = String(dt.year()).substring(2, 4) + "/" + (month.length() == 1 ? "0" : "") + month + "/" + (day.length() == 1 ? "0" : "") + day;
-        String timestr = (hour.length() == 1 ? "0" : "") + hour + ":" + (minute.length() == 1 ? "0" : "") + minute + ":" + (second.length() == 1 ? "0" : "") + second + "+00";
-        String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
+            String datestr = String(dt.year()).substring(2, 4) + "/" + (month.length() == 1 ? "0" : "") + month + "/" + (day.length() == 1 ? "0" : "") + day;
+            String timestr = (hour.length() == 1 ? "0" : "") + hour + ":" + (minute.length() == 1 ? "0" : "") + minute + ":" + (second.length() == 1 ? "0" : "") + second + "+00";
+            String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
 
-        String res = _gb->getmcu().send_at_command(atcommand);
-        if (res.endsWith("OK")) _gb->log(" -> Done");
-        else _gb->log(" -> Failed");
+            String res = _gb->getmcu().send_at_command(atcommand);
+            if (res.endsWith("OK")) _gb->log(" -> Done");
+            else _gb->log(" -> Failed");
 
-    }
+        }
+    #endif
     
     return *this;
 }
@@ -490,10 +493,20 @@ DateTime GB_DS3231::now() {
 
     DateTime time;
 
+    // Get timestamp from RTC
+    if (this->device.detected) {
+        this->_source = "rtc";
+        this->on();
+        delay(50);
+        time = _rtc.now(); 
+        this->off();
+    }
+
     // If RTC was not detected or not initialized, use MODEM
-    if (!this->device.detected) {
+    else {
         this->_source = "modem";
-        if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
+        int counter = 10;
+        while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
         if(MODEM_INITIALIZED) {
             String nwtimestr = _gb->getmcu().gettime();
 
@@ -504,15 +517,6 @@ DateTime GB_DS3231::now() {
         else {
             return DateTime(0);
         }
-    }
-
-    // Get timestamp from RTC
-    else {
-        this->_source = "rtc";
-        this->on();
-        delay(50);
-        time = _rtc.now(); 
-        this->off();
     }
 
     return time;
@@ -562,8 +566,13 @@ String GB_DS3231::timestamp() {
     
     DateTime time = this->now();
     uint32_t unixtime = time.unixtime();
+
+    // Convert the MODEM's timestamp to GMT
+    if (this->_source == "modem") {
+        unixtime = this->converttogmt(this->timezone, unixtime);
+    }
+
     bool valid = this->valid(unixtime);
-    if (!valid) unixtime = _gb->globals.INIT_SECONDS + (millis() / 1000);
 
     #ifdef false
         // Check if the time is invalid
@@ -602,6 +611,19 @@ String GB_DS3231::date() {
 String GB_DS3231::date(String format) {
     
     DateTime time = this->now();
+    
+    // Adjust MODEM time to GMT
+    if (this->_source == "modem") {
+        for (const auto& info : this->tzoffsets) {
+            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+                int offsethour = info.offsetHours;
+                int offsetminutes = info.offsetMinutes;
+                int offsetsign = info.sign;
+                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+                time = time.operator-(span);
+            }
+        }
+    }
 
     #if not defined (LOW_MEMORY_MODE)
 
@@ -670,6 +692,19 @@ String GB_DS3231::time(String format) {
     // }
     
     DateTime time = this->now();
+
+    // Adjust MODEM time to GMT
+    if (this->_source == "modem") {
+        for (const auto& info : this->tzoffsets) {
+            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+                int offsethour = info.offsetHours;
+                int offsetminutes = info.offsetMinutes;
+                int offsetsign = info.sign;
+                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+                time = time.operator-(span);
+            }
+        }
+    }
 
     // Convert to requested format
     bool hr12 = format.indexOf("a") > -1; int hour;

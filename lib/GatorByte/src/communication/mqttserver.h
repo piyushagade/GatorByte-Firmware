@@ -384,8 +384,8 @@ bool GB_MQTT::publish(String topic, String data) {
     // };
 
     // Report the result of the action
-    if (log && success) _gb->log(" -> Done");
-    else if (log) _gb->log(" -> Failed");
+    if (log && success) _gb->arrow().log("Done");
+    else if (log) _gb->arrow().log("Failed");
     delay(5);
 
     // Return false if waiting for acknowledgment, else return success booelan

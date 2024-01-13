@@ -806,26 +806,6 @@ bool GB_SD::_write(String filename, String data) {
 
 /*
     Read config file and set device and survey variables
-    device
-     id:gb-swb
-     devices:mcu,mem,bl,booster,rtc,aht,gps,acc,ph,rtd,dox,ec
-    sleep
-     mode:shallow
-     duration:60000
-    data
-     mode:read
-     readuntil:stability
-    survey
-     mode:stream
-     id:caip-trial
-     date:11-08-2022
-     location:CAIP
-     realtime:true
-    log
-     console:true
-     bl:true
-     rgb:false
-     buzzer:false
 */
 GB_SD& GB_SD::readconfig() {
 
@@ -1623,7 +1603,7 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
     
     // If requested config file exists
     if(!this->exists(filename)){
-        _gb->log(" -> Control file not found. Creating file.");
+        _gb->color("white").log(" -> Control file not found. Creating file.").color();
         this->writeCSV(filename, "", "");
         delay(100);
     }
@@ -1688,7 +1668,7 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
 
         this->closeFile(file);
         this->off();
-        if (counter > 0) _gb->log("-> Read " + String(counter) + " control variables.");
+        if (counter > 0) _gb->arrow().color("green").log("Read " + String(counter) + " control variables.");
         else {
             _gb->arrow().color("red").log("No control variables found.");
         }
@@ -1702,7 +1682,7 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
     // If requested file could not be opened
     else{
         this->off();
-        _gb->log("-> File not found.");
+        _gb->arrow().color("red").log("File not found.");
         return *this;
     }
 
