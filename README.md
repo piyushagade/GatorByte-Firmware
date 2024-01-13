@@ -1,5 +1,5 @@
 <center>
-![GatorByte logo](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png)
+[GatorByte logo](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png)
 </center>
 
 # Setup Instructions
