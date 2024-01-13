@@ -1,6 +1,6 @@
-<div style="text-align:center; width: 100%; height: 200px;">
+
 ![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
-</div>
+
 
 
 # Setup Instructions
