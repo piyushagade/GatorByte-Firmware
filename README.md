@@ -1,7 +1,5 @@
-<div style="text-align:center; height:200px;">
-
+<div style="text-align:center; max-height:200px;">
 ![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
-
 </div>
 
 # Setup Instructions
