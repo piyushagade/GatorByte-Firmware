@@ -1,7 +1,11 @@
 
 ![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
 
+<div style="text-align:center; max-width:200px;">
 
+![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
+
+</div>
 
 # Setup Instructions
 
