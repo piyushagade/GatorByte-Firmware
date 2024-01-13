@@ -1123,7 +1123,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
 
         _gb->log("Entering 'daydream' sleep mode.");
         
-        delay (milliseconds);
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").rainbow(milliseconds);
         _gb->log("Exiting 'daydream' sleep mode.");
     }
     

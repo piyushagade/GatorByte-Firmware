@@ -40,21 +40,26 @@ class GB_DS3231 : public GB_DEVICE {
         GB_DS3231& sync();
         GB_DS3231& sync(String);
         GB_DS3231& sync(char[], char[]);
+        GB_DS3231& sync(uint32_t);
+        GB_DS3231& sync(DateTime);
         GB_DS3231& on();
         GB_DS3231& off();
         GB_DS3231& persistent();
         DateTime now();   // add this to other RTC libraries
         bool valid();
         bool valid(uint32_t);
+        bool valid(DateTime);
         String timestamp();
         String date();
         String date(String format);
         String time();
         String time(String format);
+        DateTime converttogmt(String, DateTime);
         String converttogmt(String, String);
         int converttogmt(String, int);
         String converttotz(String, String, String);
         int converttotz(String, String, int);
+        DateTime converttotz(String, String, DateTime);
         GB_DS3231& settimezone(String);
         String getsource();
         
@@ -136,7 +141,7 @@ bool GB_DS3231::testdevice() {
     return this->device.detected;
 }
 String GB_DS3231::status() { 
-    return this->device.detected ? this->date() + "::" + this->time() : (String("not-detected") + String(":") + device.id);
+    return this->device.detected ? this->date() + "::" + this->time() + "::" + String(this->_source) : (String("not-detected") + String(":") + device.id);
 }
 
 /* 
@@ -239,8 +244,6 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
         }
     #endif
 
-    this->device.detected = false;
-    
     // // Disable watchdog timer
     // this->_gb->getmcu().watchdog("disable");
 
@@ -249,25 +252,47 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
 }
 
 /*
+    ! Sets timezone
+    Provide a 5-character string representing the timezone in
+    the following format: [+/-]HH:MM. For example, +05:30, -4:00
+*/
+GB_DS3231& GB_DS3231::settimezone(String timezone) { 
+    timezone.trim();
+    timezone.toUpperCase();
+    this->timezone = timezone;
+
+    return *this;
+}
+
+/* 
+    Sync the RTC to the date and time of code compilation and convert to GMT
+*/
+GB_DS3231& GB_DS3231::sync() { this->sync(this->timezone); }
+GB_DS3231& GB_DS3231::sync(String timezone) {
+
+    // Create DateTime object
+    DateTime dt = DateTime(__DATE__, __TIME__);
+
+    // Convert to GMT
+    dt = this->converttogmt(timezone, dt);
+
+    return sync(dt);
+}
+
+/*
     Set RTC to a date and time.
+    The provided date and time should be GMT
+
     Date format: Nov 07 20
     Time format: 15:23:59
 */
 GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
 
-    _gb->log("Syncing RTC to the provided time", false);
     DateTime dt = DateTime(date, time);
     
-    if (this->device.detected) {
-        this->on();delay(50);
-        _rtc.adjust(dt); delay(50);
-        _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
-        _gb->log(" -> Done");
-        this->off();
-    }
-    else _gb->arrow().color("red").log("Not detected. Skipping.").color();
-
     // Sync MODEM's clock (Skipped. MODEM resets to local time after every boot.)
+    // TODO: Move to GB_NB1500. 
+    // The dt should be in local timezone
     #ifndef false
         if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
         if(MODEM_INITIALIZED) {
@@ -290,45 +315,44 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
         }
     #endif
     
-    return *this;
+    return this->sync(dt);
 }
 
 /*
-    ! Sets timezone
-    Provide a 5-character string representing the timezone in
-    the following format: [+/-]HH:MM. For example, +05:30, -4:00
-*/
-GB_DS3231& GB_DS3231::settimezone(String timezone) { 
-    timezone.trim();
-    timezone.toUpperCase();
-    this->timezone = timezone;
+    Set RTC to a timestamp.
+    The provided timestamp should be GMT
 
-    return *this;
+    Timestamp units: seconds
+*/
+GB_DS3231& GB_DS3231::sync(uint32_t timestamp) {
+    DateTime dt = DateTime(timestamp);
+    return this->sync(dt);
 }
 
-/* 
-    Sync the RTC to the date and time (GMT) of code compilation
+/*
+    Set RTC to a DateTime.
+    The provided DateTime should be GMT
 */
-GB_DS3231& GB_DS3231::sync() { this->sync(this->timezone); }
-GB_DS3231& GB_DS3231::sync(String timezone) {
-    timezone.trim();
-    timezone.toUpperCase();
+GB_DS3231& GB_DS3231::sync(DateTime dt) {
 
-    // Parse the input time string
-    int hours, minutes, seconds;
-    sscanf(String(__TIME__).c_str(), "%d:%d:%d", &hours, &minutes, &seconds);
+    _gb->log("Syncing RTC to the provided time", false);
+    
+    if (this->device.detected) {
+        this->on();delay(50);
+        _rtc.adjust(dt); delay(50);
+        _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
+        _gb->log(" -> Done");
+        this->off();
+    }
+    else _gb->arrow().color("red").log("Not detected. Skipping.").color();
 
-    // Adjust for the timezone
-    String __GMTTIME__ = this->converttogmt(timezone, __TIME__);
-    _gb->log("Adjusted for local timezone: " + timezone);
-
-    // return sync("May 10 2023", "01:11:00");
-    return sync(__DATE__, _gb->s2c(__GMTTIME__));
+    return *this;
 }
 
 /* 
     Convert a time string to GMT time string
-    May not work on the last day of the month
+    * May not work on the last day of the month
+    * Unreliable on the last day of the month and the year
 */
 String GB_DS3231:: converttogmt(String localtimezone, String time) {
     int offsethour = 0, offsetminutes = 0, offsetsign = 1;
@@ -340,6 +364,7 @@ String GB_DS3231:: converttogmt(String localtimezone, String time) {
             offsethour = info.offsetHours;
             offsetminutes = info.offsetMinutes;
             offsetsign = info.sign;
+            break;
         }
     }
 
@@ -370,6 +395,10 @@ String GB_DS3231:: converttogmt(String localtimezone, String time) {
 
     return (abs(hours) < 9 ? "0" : "") + String(hours) + ":" + (abs(minutes) < 9 ? "0" : "") + String(minutes) + ":" + (abs(seconds) < 9 ? "0" : "") + String(seconds);
 }
+
+/* 
+    Convert a timestamp to GMT timestamp
+*/
 int GB_DS3231:: converttogmt(String localtimezone, int timestamp) {
     int offsethour = 0, offsetminutes = 0, offsetsign = 1;
     localtimezone.trim();
@@ -387,10 +416,33 @@ int GB_DS3231:: converttogmt(String localtimezone, int timestamp) {
     return timestamp;
 }
 
+/* 
+    Convert a DateTime to GMT DateTime
+*/
+DateTime GB_DS3231:: converttogmt(String localtimezone, DateTime dt) {
+    int offsethour = 0, offsetminutes = 0, offsetsign = 1;
+    localtimezone.trim();
+    localtimezone.toUpperCase();
+    
+    for (const auto& info : this->tzoffsets) {
+        if (strcmp(localtimezone.c_str(), info.timezone) == 0) {
+            offsethour = info.offsetHours;
+            offsetminutes = info.offsetMinutes;
+            offsetsign = info.sign;
+
+            TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+            dt = dt.operator-(span);
+            break;
+        }
+    }
+
+    return dt;
+}
 
 /* 
-    Convert a time string to GMT time string
-    May not work on the last day of the month
+    Convert timezones for a time string
+    * May not work on the last day of the month
+    * Unreliable on the last day of the month and the year
 */
 String GB_DS3231:: converttotz(String localtimezone, String targettimezone, String time) {
     int localtzhour = 0, localtzminutes = 0, localtzsign = 1;
@@ -440,6 +492,10 @@ String GB_DS3231:: converttotz(String localtimezone, String targettimezone, Stri
 
     return (abs(hours) < 9 ? "0" : "") + String(hours) + ":" + (abs(minutes) < 9 ? "0" : "") + String(minutes) + ":" + (abs(seconds) < 9 ? "0" : "") + String(seconds);
 }
+
+/* 
+    Convert timezones for a timestamp
+*/
 int GB_DS3231:: converttotz(String localtimezone, String targettimezone, int timestamp) {
     int localtzhour = 0, localtzminutes = 0, localtzsign = 1;
     int targettzhour = 0, targettzminutes = 0, targettzsign = 1;
@@ -464,26 +520,38 @@ int GB_DS3231:: converttotz(String localtimezone, String targettimezone, int tim
     timestamp = timestamp - localtzsign * localtzhour * 3600 - localtzsign * localtzminutes * 60 + targettzsign * targettzhour * 3600 + targettzsign * targettzminutes * 60;
     return timestamp;
 }
-GB_DS3231& GB_DS3231::on() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
-    else digitalWrite(this->pins.enable, HIGH);
-    delay(50);
-    return *this;
-}
 
-GB_DS3231& GB_DS3231::off() {
+/* 
+    Convert timezones for a DateTime
+*/
+DateTime GB_DS3231:: converttotz(String localtimezone, String targettimezone, DateTime dt) {
+    int localtzhour = 0, localtzminutes = 0, localtzsign = 1;
+    int targettzhour = 0, targettzminutes = 0, targettzsign = 1;
+    localtimezone.trim();
+    localtimezone.toUpperCase();
+    targettimezone.trim();
+    targettimezone.toUpperCase();
     
-    if (this->_persistent) return *this;
-    
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
-    else digitalWrite(this->pins.enable, LOW);
-    return *this;
-}
+    for (const auto& info : this->tzoffsets) {
+        if (strcmp(localtimezone.c_str(), info.timezone) == 0) {
+            localtzhour = info.offsetHours;
+            localtzminutes = info.offsetMinutes;
+            localtzsign = info.sign;
+            
+            TimeSpan span(localtzsign * (localtzhour * 3600 + localtzminutes * 60));
+            dt = dt.operator-(span);
+        }
+        if (strcmp(targettimezone.c_str(), info.timezone) == 0) {
+            targettzhour = info.offsetHours;
+            targettzminutes = info.offsetMinutes;
+            targettzsign = info.sign;
 
-GB_DS3231& GB_DS3231::persistent() {
-    
-    this->_persistent = true;
-    return *this;
+            TimeSpan span(targettzsign * (targettzhour * 3600 + targettzminutes * 60));
+            dt = dt.operator+(span);
+        }
+    }
+
+    return dt;
 }
 
 /*
@@ -526,15 +594,30 @@ DateTime GB_DS3231::now() {
     Check if the device is running/communicating properly
 */
 bool GB_DS3231::valid() {
-    this->on();
-    delay(50);
+    this->on(); delay(50);
+    if (!this->_rtc.begin()) return false;
+    DateTime dt = _rtc.now();
+    return this->valid(dt);
+}
+
+/*
+    Check if the timestamp provided is likely accurate
+*/
+bool GB_DS3231::valid(uint32_t timestamp) {
+    bool error = false;
+    DateTime dt = DateTime(timestamp);
+    return this->valid(dt);
+}
+
+/*
+    Check if the DateTime provided is likely accurate
+*/
+bool GB_DS3231::valid(DateTime dt) {
     
     bool error = false;
-    if (!this->_rtc.begin()) error = true;
-
-    DateTime time = _rtc.now();
-    uint32_t unixtime = time.unixtime();
-    uint16_t month = time.month();
+    uint32_t unixtime = dt.unixtime();
+    uint16_t month = dt.month();
+    uint16_t year = dt.year();
 
     if (unixtime >= 2000000000) error = true;
     else if (unixtime <= 946684800) error = true;
@@ -544,23 +627,9 @@ bool GB_DS3231::valid() {
 
     return !error;
 }
-/*
-    Check if the device is running/communicating properly
-*/
-bool GB_DS3231::valid(uint32_t timestamp) {
-    bool error = false;
-    uint32_t unixtime = timestamp;
-
-    if (unixtime >= 2000000000) error = true;
-    else if (unixtime <= 946684800) error = true;
-    else if (unixtime > 1700000000) error = false;
-    else error = true;
-    return !error;
-}
-
 
 /*
-    Returns unix timestamp
+    Returns unix timestamp from either RTC or MODEM
 */
 String GB_DS3231::timestamp() {
     
@@ -598,7 +667,7 @@ String GB_DS3231::timestamp() {
 }
 
 /* 
-    Returns date in default format.
+    Returns date string in default format.
     Format: MM/DD/YY
 */
 String GB_DS3231::date() {
@@ -606,7 +675,7 @@ String GB_DS3231::date() {
 }
 
 /* 
-    Returns date in specified format.
+    Returns date string in specified format.
 */
 String GB_DS3231::date(String format) {
     
@@ -621,6 +690,7 @@ String GB_DS3231::date(String format) {
                 int offsetsign = info.sign;
                 TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
                 time = time.operator-(span);
+                break;
             }
         }
     }
@@ -657,39 +727,17 @@ String GB_DS3231::getsource() {
 }
 
 /* 
-    Returns time in default format.
-    Format: hh:mm:ss
+    Returns time string in default format.
+    Default: hh:mm:ss
 */
 String GB_DS3231::time() {
     return this->time("hh:mm:ss");
 }
 
 /* 
-    Returns time in specified format.
+    Returns time string in specified format.
 */
 String GB_DS3231::time(String format) {
-    
-    // DateTime time;
-    // if (!this->device.detected) {
-    //     if (!MODEM_INITIALIZED) MODEM_INITIALIZED = MODEM.begin() == 1;
-    //     if(MODEM_INITIALIZED) {
-    //         String nwtimestr = _gb->getmcu().gettime();
-
-    //         int year, month, day, hour, minute, second, offset;
-    //         sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
-    //         time = DateTime(year, month, day, hour, minute, second);
-    //         uint32_t timestamp = time.unixtime();
-    //     }
-    //     else {
-    //         return "-1";
-    //     }
-    // }
-    // else {
-    //     this->on();
-    //     delay(50);
-    //     time = _rtc.now(); 
-    //     this->off();
-    // }
     
     DateTime time = this->now();
 
@@ -702,11 +750,12 @@ String GB_DS3231::time(String format) {
                 int offsetsign = info.sign;
                 TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
                 time = time.operator-(span);
+                break;
             }
         }
     }
 
-    // Convert to requested format
+    // Convert to requested string format
     bool hr12 = format.indexOf("a") > -1; int hour;
     if (hr12) hour = time.hour() < 12 ? time.hour() : time.hour() - 12; 
     else hour = time.hour();
@@ -717,6 +766,28 @@ String GB_DS3231::time(String format) {
     format.replace("a", (time.hour() > 12 ? "PM" : "AM"));
     
     return String(format);
+}
+
+GB_DS3231& GB_DS3231::on() {
+    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    else digitalWrite(this->pins.enable, HIGH);
+    delay(50);
+    return *this;
+}
+
+GB_DS3231& GB_DS3231::off() {
+    
+    if (this->_persistent) return *this;
+    
+    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    else digitalWrite(this->pins.enable, LOW);
+    return *this;
+}
+
+GB_DS3231& GB_DS3231::persistent() {
+    
+    this->_persistent = true;
+    return *this;
 }
 
 #endif
