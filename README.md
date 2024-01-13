@@ -1,5 +1,5 @@
 <div style="text-align:center; width: 100%;">
-<img alt="Get it on Google Play" src="https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png" height="150" />
+<img alt="Get it on Google Play" src="https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png" height="200" />
 </div>
 
 # Setup Instructions
