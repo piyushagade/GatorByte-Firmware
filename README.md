@@ -1,5 +1,5 @@
-<div style="text-align:center; max-width:200px;">
-![GatorByte](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png)
+<div style="text-align:center;">
+<img alt="Get it on Google Play" src="https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png" height="100" />
 </div>
 
 # Setup Instructions
