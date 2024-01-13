@@ -1,3 +1,5 @@
+<center>![GatorByte logo](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png)</center>
+
 # Setup Instructions
 
 Please follow the steps below to configure VS Code and PlatformIO extension to enable updating and uploading the firmware to the GatorByte.
