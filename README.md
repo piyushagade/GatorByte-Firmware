@@ -1,8 +1,7 @@
-<div style="text-align:center; width: 100%;">
-<img alt="Get it on Google Play" src="https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png" height="200" />
+<div style="text-align:center; width: 100%; height: 200px;">
+![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
 </div>
 
-![my image](https://projects.ezbean-lab.com/gatorbyte/assets/images/logo.png#center) 
 
 # Setup Instructions
 
