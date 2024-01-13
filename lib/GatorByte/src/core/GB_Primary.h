@@ -231,7 +231,7 @@ class GB {
         void i2cscan();
 
         bool USB_CONNECTED = false;
-        JSONary CONTROLVARIABLES;
+        JSONary controls;
 
         bool MODEMDEBUG = false;
         bool SERIALDEBUG = true;

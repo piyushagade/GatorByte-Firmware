@@ -967,7 +967,7 @@ void GB_DESKTOP::process(string command) {
                 delay(10);
 
                 // Reset global variable
-                _gb->CONTROLVARIABLES.reset();
+                _gb->controls.reset();
 
                 // Send acknowledgement
                 this->send("gdc-cv", "fupl:ack");
@@ -977,7 +977,7 @@ void GB_DESKTOP::process(string command) {
             else if (command.contains("cvupd:")) {
 
                 // Reset global variable
-                _gb->CONTROLVARIABLES.reset();
+                _gb->controls.reset();
             
                 // Update config in the memory
                 _gb->getdevice("sd").readconfig();
@@ -1012,22 +1012,22 @@ void GB_DESKTOP::process(string command) {
                 typedef void (*callback_t_on_control)(JSONary data);
                 callback_t_on_control func = [](JSONary data){};
                 if (variabletype == "string") {
-                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->controls.set(variablename, variablevalue);
                     _gb->getdevice("sd").updatecontrolstring(variablename, variablevalue, func);
                 }
                 else if (variabletype == "bool") {
-                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->controls.set(variablename, variablevalue);
                     _gb->getdevice("sd").updatecontrolbool(variablename, variablevalue == "true", func);
                 }
                 else if (variabletype == "int")  {
-                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->controls.set(variablename, variablevalue);
                     _gb->getdevice("sd").updatecontrolint(variablename, variablevalue.toInt(), func);
                 }
                 else if (variabletype == "float")  {
-                    _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                    _gb->controls.set(variablename, variablevalue);
                     _gb->getdevice("sd").updatecontrolfloat(variablename, variablevalue.toDouble(), func);
                 }
-                else _gb->CONTROLVARIABLES.set(variablename, variablevalue);
+                else _gb->controls.set(variablename, variablevalue);
 
                 _gb->log("Control variables updated.");
                 _gb->getdevice("sd").readcontrol();

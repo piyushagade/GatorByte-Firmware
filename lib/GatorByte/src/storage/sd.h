@@ -1657,10 +1657,10 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
                 else if (_gb->isnumber(value)) isinteger = true;
                 else isstring = true;
                 
-                if (isboolean) _gb->CONTROLVARIABLES.set(key, value);
-                else if (isfloat) _gb->CONTROLVARIABLES.set(key, value.toFloat());
-                else if (isinteger) _gb->CONTROLVARIABLES.set(key, value);
-                else _gb->CONTROLVARIABLES.set(key, value);
+                if (isboolean) _gb->controls.set(key, value);
+                else if (isfloat) _gb->controls.set(key, value.toFloat());
+                else if (isinteger) _gb->controls.set(key, value);
+                else _gb->controls.set(key, value);
 
                 line = "";
             }
@@ -1674,7 +1674,7 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
         }
 
         // Callback
-        if (this->initialized() && _gb->CONTROLVARIABLES.get() != "{}") callback(_gb->CONTROLVARIABLES);
+        if (this->initialized() && _gb->controls.get() != "{}") callback(_gb->controls);
 
         return *this;
     }
@@ -1741,7 +1741,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
         String key = keys[i];
         
         if (key != "") {
-            _gb->CONTROLVARIABLES.set(key, values[i]);
+            _gb->controls.set(key, values[i]);
         }
     }
 
@@ -1759,7 +1759,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
     this->_write(filename, keyvalue);
 
     // Update variables in runtime memory
-    callback(_gb->CONTROLVARIABLES);
+    callback(_gb->controls);
 
     return *this;
 }
@@ -1770,10 +1770,10 @@ GB_SD& GB_SD::updatecontrolstring(String key, String value, callback_t_on_contro
     this->readcontrol();
 
     // Update/add key-value pair to the control object
-    _gb->CONTROLVARIABLES.set(key, value);
+    _gb->controls.set(key, value);
 
     // Convert JSON to key-value
-    String keyvalue = _gb->CONTROLVARIABLES.toKeyValue();
+    String keyvalue = _gb->controls.toKeyValue();
 
     String filename = "/control/variables.ini";
     
@@ -1784,7 +1784,7 @@ GB_SD& GB_SD::updatecontrolstring(String key, String value, callback_t_on_contro
     this->_write(filename, keyvalue);
 
     // Update variables in runtime memory
-    callback(_gb->CONTROLVARIABLES);
+    callback(_gb->controls);
 
     return *this;
 }

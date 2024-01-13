@@ -69,14 +69,14 @@
 
     void set_control_variables(JSONary data) {
 
-        SAMPLING_INTERVAL = data.parseInt("SAMPLING_INTERVAL");
-        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
-        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
+        SAMPLING_INTERVAL = data.getint("SAMPLING_INTERVAL");
+        REBOOT_FLAG = data.getboolean("REBOOT_FLAG");
+        ANTIFREEZE_REBOOT_DELAY = data.getint("ANTIFREEZE_REBOOT_DELAY");
 
         gb.log("Updating runtime variables -> Done");
 
         // Send the fresh list of control variables
-        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+        mqtt.publish("control/report", gb.controls.get());
     }
 
     void devicereboot () {

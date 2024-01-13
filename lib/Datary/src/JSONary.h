@@ -12,15 +12,15 @@ class JSONary
 		JSONary();
 		String get();
 		JSONary& set(String);
-		// JSONary& set(String, int);
 		JSONary& set(String, double);
 		JSONary& set(String, String);
 		String unset(String);
 		JSONary& reset();
-		bool parseBoolean(String key);
-		float parseFloat(String key);
-		int parseInt(String key);
-		String parseString(String key);
+		
+		bool getboolean(String key);
+		float getfloat(String key);
+		int getint(String key);
+		String getstring(String key);
 		String toKeyValue();
 	private:
 		String _data;
@@ -42,10 +42,6 @@ JSONary& JSONary::set(String data) {
 	if (data.indexOf(":") > -1) this->set(strtok(this->s2c(data), ":"), strtok(NULL, ":"));
 	return *this;
 }
-
-// JSONary& JSONary::set(String key, int value) {
-//     return this->_set(key, String(value));
-// }
 
 JSONary& JSONary::set(String key, String value) {
 	if (value == "true" || value == "false") return this->_set(key, String(value));
@@ -143,8 +139,7 @@ bool JSONary::isnumber (String str) {
     return isvalidnumber;
 }
 
-
-String JSONary::parseString(String key){
+String JSONary::getstring(String key){
 
 	String state = "key";
 	String jsonstr = this->_data;
@@ -191,16 +186,16 @@ String JSONary::parseString(String key){
 	return "-1";
 }
 
-bool JSONary::parseBoolean(String key){
-	return this->parseString(key) == "true" || this->parseString(key) == "1" ? true : false;
+bool JSONary::getboolean(String key){
+	return this->getstring(key) == "true" || this->getstring(key) == "1" ? true : false;
 }
 
-float JSONary::parseFloat(String key){
-	return this->parseString(key).toFloat();
+float JSONary::getfloat(String key){
+	return this->getstring(key).toFloat();
 }
 
-int JSONary::parseInt(String key){
-	return this->parseString(key).toInt();
+int JSONary::getint(String key){
+	return this->getstring(key).toInt();
 }
 
 // Parse a JSON string and return the number of keys in the object

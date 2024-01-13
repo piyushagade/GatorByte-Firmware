@@ -184,7 +184,7 @@
 
     void send_control_variables () {
         
-        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+        mqtt.publish("control/report", gb.controls.get());
     }
 
 
@@ -195,22 +195,22 @@
 
     void set_control_variables(JSONary data) {
 
-        QUEUE_UPLOAD_INTERVAL = data.parseInt("CV_UPLOAD_INTERVAL");
-        WLEV_SAMPLING_INTERVAL = data.parseInt("WLEV_SAMPLING_INTERVAL");
-        END_TIP_CONT_THRESHOLD = data.parseInt("END_TIP_CONT_THRESHOLD");
-        MIN_TIP_CONT_THRESHOLD = data.parseInt("MIN_TIP_CONT_THRESHOLD");
-        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
-        RESET_VARIABLES_FLAG = data.parseBoolean("RESET_VARIABLES_FLAG");
-        INTER_TIP_TIMEOUT = data.parseInt("INTER_TIP_TIMEOUT");
-        HOMOGENIZATION_DELAY = data.parseInt("HOMOGENIZATION_DELAY");
-        INTER_SAMPLE_DURATION = data.parseInt("INTER_SAMPLE_DURATION");
-        CV_UPLOAD_INTERVAL = data.parseInt("CV_UPLOAD_INTERVAL");
-        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
+        QUEUE_UPLOAD_INTERVAL = data.getint("CV_UPLOAD_INTERVAL");
+        WLEV_SAMPLING_INTERVAL = data.getint("WLEV_SAMPLING_INTERVAL");
+        END_TIP_CONT_THRESHOLD = data.getint("END_TIP_CONT_THRESHOLD");
+        MIN_TIP_CONT_THRESHOLD = data.getint("MIN_TIP_CONT_THRESHOLD");
+        REBOOT_FLAG = data.getboolean("REBOOT_FLAG");
+        RESET_VARIABLES_FLAG = data.getboolean("RESET_VARIABLES_FLAG");
+        INTER_TIP_TIMEOUT = data.getint("INTER_TIP_TIMEOUT");
+        HOMOGENIZATION_DELAY = data.getint("HOMOGENIZATION_DELAY");
+        INTER_SAMPLE_DURATION = data.getint("INTER_SAMPLE_DURATION");
+        CV_UPLOAD_INTERVAL = data.getint("CV_UPLOAD_INTERVAL");
+        ANTIFREEZE_REBOOT_DELAY = data.getint("ANTIFREEZE_REBOOT_DELAY");
 
         gb.log("Updating runtime variables -> Done");
 
         // Send the fresh list of control variables
-        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+        mqtt.publish("control/report", gb.controls.get());
     }
     
     void resetvariables () {
@@ -707,7 +707,7 @@
             if (command == "control") {
                 bl.print("Control sent to server");
                 bl.print("--------------------------------------------");
-                bl.print(gb.CONTROLVARIABLES.get());
+                bl.print(gb.controls.get());
                 send_control_variables();
 
             }

@@ -121,7 +121,7 @@
         });
 
         sntl.shield(60, [] {
-            mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+            mqtt.publish("control/report", gb.controls.get());
         });
     }
 
@@ -132,16 +132,16 @@
 
     void set_control_variables(JSONary data) {
 
-        WLEV_SAMPLING_INTERVAL = data.parseInt("WLEV_SAMPLING_INTERVAL");
-        REBOOT_FLAG = data.parseBoolean("REBOOT_FLAG");
-        RESET_VARIABLES_FLAG = data.parseBoolean("RESET_VARIABLES_FLAG");
-        CV_UPLOAD_INTERVAL = data.parseInt("CV_UPLOAD_INTERVAL");
-        ANTIFREEZE_REBOOT_DELAY = data.parseInt("ANTIFREEZE_REBOOT_DELAY");
+        WLEV_SAMPLING_INTERVAL = data.getint("WLEV_SAMPLING_INTERVAL");
+        REBOOT_FLAG = data.getboolean("REBOOT_FLAG");
+        RESET_VARIABLES_FLAG = data.getboolean("RESET_VARIABLES_FLAG");
+        CV_UPLOAD_INTERVAL = data.getint("CV_UPLOAD_INTERVAL");
+        ANTIFREEZE_REBOOT_DELAY = data.getint("ANTIFREEZE_REBOOT_DELAY");
 
         gb.log("Updating runtime variables -> Done");
 
         // Send the fresh list of control variables
-        mqtt.publish("control/report", gb.CONTROLVARIABLES.get());
+        mqtt.publish("control/report", gb.controls.get());
     }
     
     void resetvariables () {
@@ -345,7 +345,6 @@
         //! Configure microcontroller
         mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
-        delay(2000);
         //! Configure peripherals
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
         buzzer.configure({6}).initialize().play("...");
@@ -394,7 +393,7 @@
 
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
-        gb.log("Water level sensing timeout: " + String(WLEV_SAMPLING_INTERVAL));
+        gb.log("Water level sensing timeout: " + String(gb.controls.getint("WLEV_SAMPLING_INTERVAL")));
     }
 
     void loop () {
@@ -403,7 +402,7 @@
         gb.loop();
 
         //! Five-day anti-freeze piper
-        fivedayantifreezepiper.pipe(ANTIFREEZE_REBOOT_DELAY, false, [] (int counter) {
+        fivedayantifreezepiper.pipe(gb.controls.getint("ANTIFREEZE_REBOOT_DELAY"), false, [] (int counter) {
 
             gb.log("Resetting system to prevent millis() rollover/freeze");
             
@@ -455,12 +454,13 @@
         });
 
         //! Upload control variables state to the server
-        controlvariablespiper.pipe(CV_UPLOAD_INTERVAL, true, [] (int counter) {
+        controlvariablespiper.pipe(gb.controls.getint("CV_UPLOAD_INTERVAL"), true, [] (int counter) {
             send_control_variables();
         });
 
         //! Read water level data
-        wlevpiper.pipe(WLEV_SAMPLING_INTERVAL, true, [] (int counter) {
+        gb.log("Readings timeout: " + String (gb.controls.getint("WLEV_SAMPLING_INTERVAL")) + " ms");
+        wlevpiper.pipe(gb.controls.getint("WLEV_SAMPLING_INTERVAL"), true, [] (int counter) {
 
             sntl.shield(90, [] {
                 
