@@ -166,7 +166,7 @@ GB& GB::log(String message, bool newline) {
         newline = false;
     }
 
-    if (!this->globals.GDC_CONNECTED) {
+    // if (!this->globals.GDC_CONNECTED) {
         if (message.contains("Done")) {
             message.replace("Done", "\033[1;37;42mDone");
         }
@@ -185,7 +185,7 @@ GB& GB::log(String message, bool newline) {
         else if (message.contains(" NOT ")) {
             message.replace(" NOT ", " \033[1;30;47mNOT ");
         }
-    }
+    // }
 
     if(newline) {
         
@@ -202,17 +202,14 @@ GB& GB::log(String message, bool newline) {
         }
 
         if (this->SERIALDEBUG) {
-            if (this->globals.GDC_CONNECTED) this->serial.debug->println(message);
-            else {
-                this->serial.debug->print((this->globals.SENTENCEENDED ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : (this->globals.NEWSENTENCE ? "   " : ""))  + this->globals.LOGCOLOR + message);
+            this->serial.debug->print((this->globals.SENTENCEENDED ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : (this->globals.NEWSENTENCE ? "   " : ""))  + this->globals.LOGCOLOR + message);
+        
+            // Reset color
+            this->serial.debug->println("\033[0m");
+            this->globals.LOGCOLOR = "";
             
-                // Reset color
-                this->serial.debug->println("\033[0m");
-                this->globals.LOGCOLOR = "";
-                
-                this->globals.NEWSENTENCE = true;
-                this->globals.SENTENCEENDED = true;
-            }
+            this->globals.NEWSENTENCE = true;
+            this->globals.SENTENCEENDED = true;
         }
         
     }
@@ -232,15 +229,11 @@ GB& GB::log(String message, bool newline) {
         }
 
         if (this->SERIALDEBUG) {
-            if (this->globals.GDC_CONNECTED) this->serial.debug->print(message);
-            else {
-
-                this->serial.debug->print((this->globals.NEWSENTENCE ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : "")  + this->globals.LOGCOLOR + message);
-                
-                // Reset color
-                this->serial.debug->print("\033[0m");
-                this->globals.SENTENCEENDED = false;
-            }
+            this->serial.debug->print((this->globals.NEWSENTENCE ? (this->globals.LOGPREFIX.length() > 0 ? this->globals.LOGPREFIX + " " : "  ") : "")  + this->globals.LOGCOLOR + message);
+            
+            // Reset color
+            this->serial.debug->print("\033[0m");
+            this->globals.SENTENCEENDED = false;
         }
     }
 
