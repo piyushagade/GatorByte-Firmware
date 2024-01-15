@@ -29,8 +29,9 @@ class GB_HTTP : public GB_DEVICE {
         GB_HTTP& configure(String IP, int port);
 
         // int time(String);
-        String post(String, String);
-        String get(String);
+        bool post(String, String);
+        bool get(String);
+        String httpresponse();
         String help();
 
     private:
@@ -69,11 +70,24 @@ GB_HTTP& GB_HTTP::configure(String ip, int port) {
     return *this;
 }
 
-// Low level get request + response function
-String GB_HTTP::get(String path) {
+// Low level GET request + response function
+bool GB_HTTP::get(String path) {
     
     // Call the get method specific to the mcu
-    return _mcu->get(path);
+    bool success = _mcu->get(path);
+    return success;
+}
+
+// Low level POST request + response function
+bool GB_HTTP::post(String path, String data) {
+    
+    // Call the get method specific to the mcu
+    bool success = _mcu->post(path, data);
+    return success;
+}
+
+String GB_HTTP::httpresponse() {
+    return _mcu->httpresponse();
 }
 
 // // Get time from the server

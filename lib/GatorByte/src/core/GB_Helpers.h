@@ -351,3 +351,39 @@ int GB::s2hash(String data) {
 
     return hash;
 }
+
+String GB::rle(String input) {
+
+    // return input;
+
+    String result = "";
+
+    // Declare compression dictionary size and buffer size.
+    const int dict_size = 1024, buffer_size = 256;
+
+    int compressed[dict_size];
+    size_t comp_size = 0;
+
+    char myCharArray[50]; // Make sure the array is large enough to hold your string
+
+    // Convert String to char array
+    input.toCharArray(myCharArray, sizeof(myCharArray));
+
+    // Compress the input string via LZW algorithm
+    mlzw_compress(myCharArray, compressed, &comp_size, dict_size);
+    
+    // Iterate to print all the compression output
+    for(uint8_t i = 0; i < comp_size; ++i) {
+        result += String(compressed[i], HEX);
+    }
+    Serial.println("Compressed: " + result);
+
+    // Decompress the compressed output
+    char decompressed[buffer_size];
+    mlzw_decompress(compressed, comp_size, decompressed, dict_size);
+
+    Serial.print("Decompressed: ");
+    Serial.println(decompressed);
+
+    return result;
+}

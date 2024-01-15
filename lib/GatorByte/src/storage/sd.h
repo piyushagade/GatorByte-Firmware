@@ -37,6 +37,8 @@ class GB_SD : public GB_DEVICE {
             int enable;
         } pins;
 
+        String sn;
+
         GB_SD& configure(PINS);
         GB_SD& initialize();
         GB_SD& initialize(String speed);
@@ -119,10 +121,14 @@ class GB_SD : public GB_DEVICE {
         GB_SD& readcontrol(callback_t_on_control callback);
         GB_SD& updatecontrol(String keyvalue, callback_t_on_control callback);
 
+        GB_SD& updatecontrolstring(String key, String value);
         GB_SD& updatecontrolstring(String key, String value, callback_t_on_control callback);
+        GB_SD& updatecontrolint(String key, int value);
         GB_SD& updatecontrolint(String key, int value, callback_t_on_control callback);
+        GB_SD& updatecontrolbool(String key, bool value);
         GB_SD& updatecontrolbool(String key, bool value, callback_t_on_control callback);
         GB_SD& updatecontrolfloat(String key, double value, callback_t_on_control callback);
+        GB_SD& updatecontrolfloat(String key, double value);
 
     private:
         bool _use_mux = false;
@@ -130,6 +136,7 @@ class GB_SD : public GB_DEVICE {
         void set_file_date_time_callback(uint16_t* date, uint16_t* time);
 
         SdFat _sd;
+        cid_t _cid;
         File _root;
         bool _sd_card_present = false;
         GB *_gb;
@@ -420,6 +427,10 @@ GB_SD& GB_SD::initialize(String speed) {
             _gb->log(result ? " -> Done" : "-> R/W test failed", true);
             this->_initialized = result;
             this->device.detected = result;
+            
+            // Read SD serial number
+            _sd.card()->readCID(&this->_cid);
+            this->sn = String(this->_cid.psn);
             
             if (_gb->globals.GDC_CONNECTED) {
                 if (this->device.detected) Serial.println("##CL-GB-SD-READY##");
@@ -930,7 +941,7 @@ GB_SD& GB_SD::readconfig() {
 
                         if (category == "device") {
                             if (key == "name") _gb->globals.DEVICE_NAME = value;
-                            if (key == "id") _gb->globals.DEVICE_SN = value;
+                            // if (key == "id") _gb->globals.DEVICE_SN = value;
                             if (key == "devices") _gb->globals.DEVICES_LIST = value;
                         }
 
@@ -981,6 +992,7 @@ GB_SD& GB_SD::readconfig() {
         _gb->heading("Configuration extracted from SD");
         _gb->log("Project ID: " + _gb->globals.PROJECT_ID);
         _gb->log("Device SN: " + _gb->globals.DEVICE_SN);
+        _gb->log("SD SN: " + this->sn);
         _gb->log("Device name: " + _gb->globals.DEVICE_NAME);
         _gb->log("Survey date: " + _gb->globals.SURVEY_START_DATE);
         _gb->log("Survey location: " + _gb->globals.SURVEY_LOCATION);
@@ -1736,7 +1748,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
     // Get control data from SD
     this->readcontrol();
 
-    // Update calues in the CONTROLVARIABLES object
+    // Update calues in the gb.controls object
     for (int i = 0; i < MAX_KEYS; i++) {
         String key = keys[i];
         
@@ -1766,6 +1778,16 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
 
 GB_SD& GB_SD::updatecontrolstring(String key, String value, callback_t_on_control callback) {
 
+    // Update control
+    this->updatecontrolstring(key, value);
+
+    // Update variables in runtime memory
+    callback(_gb->controls);
+
+    return *this;
+}
+GB_SD& GB_SD::updatecontrolstring(String key, String value) {
+
     // Get control data from SD
     this->readcontrol();
 
@@ -1783,22 +1805,45 @@ GB_SD& GB_SD::updatecontrolstring(String key, String value, callback_t_on_contro
     // Re-write the control file
     this->_write(filename, keyvalue);
 
+    return *this;
+}
+
+GB_SD& GB_SD::updatecontrolint(String key, int value, callback_t_on_control callback) {
+    
+    // Update control
+    return this->updatecontrolint(key, value);
+
+    // Update variables in runtime memory
+    callback(_gb->controls);
+}
+GB_SD& GB_SD::updatecontrolint(String key, int value) {
+    return this->updatecontrolstring(key, String(value));
+}
+
+GB_SD& GB_SD::updatecontrolbool(String key, bool value) {
+    return this->updatecontrolstring(key, value ? "true" : "false");
+}
+GB_SD& GB_SD::updatecontrolbool(String key, bool value, callback_t_on_control callback) {
+    
+    // Update control
+    this->updatecontrolbool(key, value);
+
     // Update variables in runtime memory
     callback(_gb->controls);
 
     return *this;
 }
 
-GB_SD& GB_SD::updatecontrolint(String key, int value, callback_t_on_control callback) {
-    return this->updatecontrolstring(key, String(value), callback);
-}
-
-GB_SD& GB_SD::updatecontrolbool(String key, bool value, callback_t_on_control callback) {
-    return this->updatecontrolstring(key, value ? "true" : "false", callback);
-}
-
 GB_SD& GB_SD::updatecontrolfloat(String key, double value, callback_t_on_control callback) {
-    return this->updatecontrolstring(key, String(value), callback);
+    
+    // Update control
+    return this->updatecontrolfloat(key, value);
+
+    // Update variables in runtime memory
+    callback(_gb->controls);
+}
+GB_SD& GB_SD::updatecontrolfloat(String key, double value) {
+    return this->updatecontrolstring(key, String(value));
 }
 
 #endif

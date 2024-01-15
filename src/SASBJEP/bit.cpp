@@ -49,6 +49,7 @@
     GB_PIPER wlevpiper;
     GB_PIPER resetvariablespiper;
     GB_PIPER uploaderpiper;
+    GB_PIPER recoverypiper;
     GB_PIPER controlvariablespiper;
     GB_PIPER antifreezepiper;
     GB_PIPER fivedayantifreezepiper;
@@ -99,7 +100,7 @@
             JSONary state; 
             state
                 .set("SNTL", sntl.ping() ? "PONG" : "ERROR")
-                .set("WLEV", uss.read()) ;
+                .set("WLEV", uss.read());
 
             mqtt.publish("state/report", state.get());
         });
@@ -122,6 +123,30 @@
 
         sntl.shield(60, [] {
             mqtt.publish("control/report", gb.controls.get());
+        });
+    }
+
+    void get_control_variable () {
+        
+        sntl.shield(120, [] {
+            
+            //! Connect to network
+            mcu.connect("cellular");
+            
+        });
+
+        sntl.shield(60, [] {
+            JSONary data;
+            data
+                .set("key", "RECOVERY_MODE")
+                .set("simplify", "true")
+                .set("device-sn", gb.globals.DEVICE_SN);
+
+            if(http.post("v3/gatorbyte/control/get/bykey", data.get()) ) {
+                String response = http.httpresponse();
+                gb.controls.set("RECOVERY_MODE", response);
+                sd.updatecontrolbool("RECOVERY_MODE", response);
+            }
         });
     }
 
@@ -354,7 +379,7 @@
 
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
-        
+
         sntl.shield(120, []() {
 
             // Configure SD
@@ -365,7 +390,7 @@
             
             //! Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
-            // http.configure("api.ezbean-lab.com", 80);
+            http.configure("api.ezbean-lab.com", 80);
             
             // Configure other peripherals
             rtc.configure({true, SR0}).initialize();
@@ -379,6 +404,8 @@
         //     // bl.configure({true, SR3, SR11}).initialize().persistent().on();
 
         });
+
+        gb.log("Recovery mode: " + String(gb.controls.getboolean("RECOVERY_MODE")));
         
         gb.log("Setup complete");
         
@@ -401,29 +428,54 @@
         // GatorByte loop function
         gb.loop();
 
-        //! Five-day anti-freeze piper
-        fivedayantifreezepiper.pipe(gb.controls.getint("ANTIFREEZE_REBOOT_DELAY"), false, [] (int counter) {
+        // If recovery mode has been activated
+        if (gb.controls.getboolean("RECOVERY_MODE")) {
 
-            gb.log("Resetting system to prevent millis() rollover/freeze");
-            
-            sntl.shield(120, [] {
-                
-                //! Connect to network
-                mcu.connect("cellular");
-                
-                sntl.kick();
+            while (gb.controls.getboolean("RECOVERY_MODE")) {
+                // buzzer.play("..").wait(200).play("..");
 
-                //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                recoverypiper.pipe(0.5 * 60 * 1000, true, [] (int counter) {
+                    
+                    sntl.shield(90, [] {
                 
-            });
+                        //! Connect to network
+                        gb.log("Connecting to cellular", false);
+                        mcu.connect("cellular"); sntl.kick();
+                        gb.log(" -> Completed");
 
-            sntl.shield(60, [] {
-                mqtt.publish("log/message", "Resetting system to prevent freeze: "  + String(millis()));
-            });
-            delay(5000);
-            sntl.reboot();
-        });
+                        //! Connect to MQTT servver
+                        mqtt.connect("pi", "abe-gb-mqtt");
+                    });
+
+                    sntl.shield(15, [] {
+
+                        // Initialize CSVary object
+                        CSVary csv;
+
+                        int timestamp = rtc.timestamp().toInt(); 
+                        String date = rtc.date("MM/DD/YY");
+                        String time = rtc.time("hh:mm");
+
+                        // Log to SD
+                        csv
+                            .clear()
+                            .setheader("DEVICESN,TIMESTAMP,DATE,TIME,FLTP,BVOLT")
+                            .set(gb.globals.DEVICE_SN)
+                            .set(timestamp)
+                            .set(date)
+                            .set(time)
+                            .set(gb.globals.FAULTS_PRIMARY)
+                            .set(mcu.fuel("voltage"));
+
+                        // Publsih to server
+                        mqtt.publish("data/set", csv.getheader() + BR + csv.getrows());
+
+                    });
+
+                });
+            }
+
+        }
         
         //! Breathing indicator
         breathpiper.pipe(BREATH_INTERVAL, true, [] (int counter) {
@@ -454,12 +506,12 @@
         });
 
         //! Upload control variables state to the server
-        controlvariablespiper.pipe(gb.controls.getint("CV_UPLOAD_INTERVAL"), true, [] (int counter) {
-            send_control_variables();
+        controlvariablespiper.pipe(gb.controls.getint("CV_UPLOAD_INTERVAL"), false, [] (int counter) {
+            // send_control_variables();
+            get_control_variable();
         });
 
         //! Read water level data
-        gb.log("Readings timeout: " + String (gb.controls.getint("WLEV_SAMPLING_INTERVAL")) + " ms");
         wlevpiper.pipe(gb.controls.getint("WLEV_SAMPLING_INTERVAL"), true, [] (int counter) {
 
             sntl.shield(90, [] {
@@ -496,8 +548,7 @@
                 // Log to SD
                 csv
                     .clear()
-                    .setheader("PROJECTID,DEVICESN,TIMESTAMP,DATE,TIME,TEMP,RH,FLTP,FLTS,WLEV,BVOLT,BLEV")
-                    .set(gb.globals.PROJECT_ID)
+                    .setheader("DEVICESN,TIMESTAMP,DATE,TIME,TEMP,RH,FLTP,FLTS,WLEV,BVOLT,BLEV")
                     .set(gb.globals.DEVICE_SN)
                     .set(timestamp)
                     .set(date)

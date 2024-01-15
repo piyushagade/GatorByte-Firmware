@@ -559,19 +559,22 @@ DateTime GB_DS3231:: converttotz(String localtimezone, String targettimezone, Da
 */
 DateTime GB_DS3231::now() {
 
-    DateTime time;
+    DateTime dt;
 
     // Get timestamp from RTC
+    bool valid = false;
     if (this->device.detected) {
         this->_source = "rtc";
         this->on();
         delay(50);
-        time = _rtc.now(); 
+        dt = _rtc.now(); 
         this->off();
+
+        valid = this->valid(dt);
     }
 
-    // If RTC was not detected or not initialized, use MODEM
-    else {
+    // If RTC was not detected or not initialized, fallback to  MODEM
+    if (this->device.detected || !valid) {
         this->_source = "modem";
         int counter = 10;
         while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
@@ -580,14 +583,14 @@ DateTime GB_DS3231::now() {
 
             int year, month, day, hour, minute, second, offset;
             sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
-            time = DateTime(year, month, day, hour, minute, second);
+            dt = DateTime(year, month, day, hour, minute, second);
         }
         else {
             return DateTime(0);
         }
     }
 
-    return time;
+    return dt;
 }
 
 /*
@@ -604,7 +607,6 @@ bool GB_DS3231::valid() {
     Check if the timestamp provided is likely accurate
 */
 bool GB_DS3231::valid(uint32_t timestamp) {
-    bool error = false;
     DateTime dt = DateTime(timestamp);
     return this->valid(dt);
 }
@@ -641,9 +643,7 @@ String GB_DS3231::timestamp() {
         unixtime = this->converttogmt(this->timezone, unixtime);
     }
 
-    bool valid = this->valid(unixtime);
-
-    #ifdef false
+    #ifdef false // Keep for documentation
         // Check if the time is invalid
         DateTime time;
         bool invalid = true;
@@ -679,7 +679,7 @@ String GB_DS3231::date() {
 */
 String GB_DS3231::date(String format) {
     
-    DateTime time = this->now();
+    DateTime dt = this->now();
     
     // Adjust MODEM time to GMT
     if (this->_source == "modem") {
@@ -689,7 +689,7 @@ String GB_DS3231::date(String format) {
                 int offsetminutes = info.offsetMinutes;
                 int offsetsign = info.sign;
                 TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
-                time = time.operator-(span);
+                dt = dt.operator-(span);
                 break;
             }
         }
@@ -700,27 +700,27 @@ String GB_DS3231::date(String format) {
         // Format month
         String monthsshort[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         String monthsfull[] = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-        format.replace("MMMM", monthsfull[time.month() - 1]);
-        format.replace("MMM", monthsshort[time.month() - 1]);
-        format.replace("MM", String(time.month()));
+        format.replace("MMMM", monthsfull[dt.month() - 1]);
+        format.replace("MMM", monthsshort[dt.month() - 1]);
+        format.replace("MM", String(dt.month()));
         
         // Format date
         String dateprefix[] = {"st", "nd", "rd", "th" };
-        format.replace("DD", String(time.day()));
-        format.replace("th", time.day() > 0 && time.day() < 3 ? dateprefix[time.day() - 1] : dateprefix[3]);
+        format.replace("DD", String(dt.day()));
+        format.replace("th", dt.day() > 0 && dt.day() < 3 ? dateprefix[dt.day() - 1] : dateprefix[3]);
 
         // Format year
-        format.replace("YYYY", String(time.year()));
-        format.replace("YY", String(time.year()).substring(String(time.year()).length() - 2, String(time.year()).length()));
+        format.replace("YYYY", String(dt.year()));
+        format.replace("YY", String(dt.year()).substring(String(dt.year()).length() - 2, String(dt.year()).length()));
     #else
-        format = String(time.month()) + "/" + String(time.day()) + "/" + String(time.year());
+        format = String(dt.month()) + "/" + String(dt.day()) + "/" + String(dt.year());
     #endif
 
     return String(format);
 }
 
 /* 
-    Return the source of time
+    Return the source of time (RTC or MODEM)
 */
 String GB_DS3231::getsource() {
     return this->_source;
@@ -776,16 +776,13 @@ GB_DS3231& GB_DS3231::on() {
 }
 
 GB_DS3231& GB_DS3231::off() {
-    
     if (this->_persistent) return *this;
-    
     if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }
 
 GB_DS3231& GB_DS3231::persistent() {
-    
     this->_persistent = true;
     return *this;
 }

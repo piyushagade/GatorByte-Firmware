@@ -9,7 +9,7 @@
 class GB_SNTL : public GB_DEVICE {
     public:
         GB_SNTL(GB &gb);
-        bool debug = true;
+        bool debug = false;
 
         struct PINS {
             bool commux;
@@ -342,7 +342,7 @@ GB_SNTL& GB_SNTL::enable(bool stubborn) {
     if (this->debug) _gb->log(success ? " -> Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : " -> Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
     if (success) {
         if (this->_comm_attempts >= 3) _gb->globals.LOGPREFIX = "\033[1;30;43m \033[0m";
-        else _gb->globals.LOGPREFIX = "\033[1;37;42m \033[0m";
+        else _gb->globals.LOGPREFIX = "\033[1;30;46m \033[0m";
     }
     else _gb->globals.LOGPREFIX = "\033[1;37;41m \033[0m";
 

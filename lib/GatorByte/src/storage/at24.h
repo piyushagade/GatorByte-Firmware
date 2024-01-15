@@ -344,7 +344,7 @@ GB_AT24& GB_AT24::format() {
 GB_AT24&  GB_AT24::on() { 
     if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
-    delay(100);
+    delay(1000);
     return *this;
 }
 

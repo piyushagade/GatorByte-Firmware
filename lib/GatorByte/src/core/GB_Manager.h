@@ -24,12 +24,15 @@
             virtual Client &deletesslclient() {};
             virtual Client &getclient() {};
             virtual Client &getsslclient() {};
-            virtual String get(String) {};
+            virtual bool get(String) { return false; };
+            virtual bool post(String, String) { return false; };
+            virtual String httpresponse() { return ""; };
             virtual String send_at_command(String) { return ""; };
             virtual String getfirmwareinfo() { return ""; };
             virtual String getimei() { return ""; };
             virtual String geticcid() { return ""; };
             virtual String gettime() { return ""; };
+            virtual String getsn() { return ""; };
             virtual int getrssi() { return 0; };
             virtual String getoperator() { return ""; };
             virtual bool begin_modem() { return false; };

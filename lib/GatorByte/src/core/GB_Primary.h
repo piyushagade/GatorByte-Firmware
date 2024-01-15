@@ -54,6 +54,11 @@ struct DEVICE {
 //! Device base class
 #include "./GB_Manager.h"
 
+//! Compression
+#ifndef MICROLZW_H
+    #include "microlzw.h"
+#endif
+
 //! Global structures
 // !TODO: Find a better place for these
 
@@ -223,6 +228,7 @@ class GB {
         String ca2s(char char_array[]);
         float ba2f(byte byte_array[]);
         bool isnumber(String);
+        String rle(String);
 
         typedef void (*callback_t_func)();
         GB& closure(int, callback_t_func);

@@ -27,6 +27,9 @@
 #ifndef Arduino_h
     #include "Arduino.h"
 #endif
+#ifndef _ARDUINO_UNIQUE_ID_H_
+    #include <ArduinoUniqueID.h>
+#endif
 
 #ifndef ArduinoHttpClient_h
     #include "ArduinoHttpClient.h"
@@ -146,8 +149,9 @@ class GB_NB1500 : public GB_MCU {
         bool disconnect(String type);
         bool reconnect(String type);
         bool reconnect();
-        String get(String);
-        String post(String, String);
+        bool get(String);
+        bool post(String, String);
+        String httpresponse();
 
         bool testbattery();
         String batterystatus();
@@ -162,6 +166,7 @@ class GB_NB1500 : public GB_MCU {
         Client& deletesslclient();
         Client& getsslclient();
         String send_at_command(String);
+        String getsn();
 
         int CELL_SIGNAL_LOWER_BOUND = 5;
         int REBOOTCOUNTER = 0;
@@ -205,6 +210,8 @@ class GB_NB1500 : public GB_MCU {
         bool _register_network();
         bool _attach_gprs();
 
+        String _httpresponse = "";
+
 };
 
 GB_NB1500::GB_NB1500(GB &gb) {
@@ -214,6 +221,8 @@ GB_NB1500::GB_NB1500(GB &gb) {
     
     // Set Serial channels
     this->_gb->serial = {&Serial, &Serial1};
+
+    gb.globals.DEVICE_SN = this->getsn();
 }
 
 bool GB_NB1500::testdevice() { 
@@ -962,13 +971,15 @@ bool GB_NB1500::disconnect(String type) {
         //! Set variables
         this->_cellular_connected = false;
 
-        // //! Disconnect from cellular network
-        // _gb->log("Detaching GPRS", false);
-        // if (MODEM_INITIALIZED && CONNECTED_TO_INTERNET) {
-        //     _gprs.detachGPRS();
-        //     _gb->log(" -> Done");
-        // }
-        // else _gb->log(" -> Skipping. MODEM not initialized");
+        //! Disconnect from cellular network
+        _gb->log("Detaching GPRS", false);
+        if (MODEM_INITIALIZED && CONNECTED_TO_INTERNET) {
+            _gprs.detachGPRS();
+            CONNECTED_TO_NETWORK = false;
+            CONNECTED_TO_INTERNET = false;
+            _gb->log(" -> Done");
+        }
+        else _gb->log(" -> Skipping. MODEM not initialized");
 
         //! Shutdown MODEM
         _gb->log("Shutting down MODEM", false);
@@ -1510,7 +1521,7 @@ bool GB_NB1500::reset(String type) {
     return true;
 }
 
-String GB_NB1500::get(String path) { 
+bool GB_NB1500::get(String path) { 
     
     // Connect to network if not connected
     this->connect("cellular");
@@ -1528,75 +1539,96 @@ String GB_NB1500::get(String path) {
     httpclient.endRequest();
 
     // Get response
+    bool error = false;
     if (state == HTTP_SUCCESS) {
-        _gb->log(" -> Done");
+        _gb->arrow().color("green").log("Done");
 
         _gb->log("Getting response", false);
         int code = httpclient.responseStatusCode();
         if (code == 200) {
-            _gb->log(" -> Received: " + String(code));
+            _gb->arrow().log("Received: " + String(code));
             result = httpclient.responseBody();
+            error = false;
         }
         else {
-            _gb->log(" -> Error: " + String(code));
+            _gb->arrow().color("red").log("Error: " + String(code));
             result = "";
+            error = true;
         }
         httpclient.stop();
     }
     else {
-        _gb->log(" -> Failed");
+        _gb->arrow().color("red").log("Failed");
         httpclient.stop();
+        error = true;
     }
 
     int difference = millis() - start;
     _gb->log("Time taken: " + String(difference / 1000) + " seconds");
-    return result;
+
+    // Set response
+    this->_httpresponse = result;
+
+    // Return
+    return !error;
 }
 
-String GB_NB1500::post(String path, String data) { 
+bool GB_NB1500::post(String path, String data) { 
+    
     // Connect to network if not connected
-    this->connect();
+    this->connect("cellular");
+
+    _gb->log("Sending POST: " + path + " to " + this->SERVER_IP + ", " + this->SERVER_PORT, false);
 
     HttpClient httpclient = HttpClient(this->getclient(), this->SERVER_IP, this->SERVER_PORT);
     int start = millis();
     String result = "";
 
     // Send request
-
-    //! Format for the form data is "name=Alice&age=12";
-    // TODO: Check other formats
-
     httpclient.beginRequest();
     int state = httpclient.post((path.indexOf("/") == 0 ? "" : "/") + path, "plain/text", data);
-    httpclient.sendHeader("x-device-id", "mkr-gb-prototype");
+    httpclient.sendHeader("device-sn", _gb->globals.DEVICE_SN);
     httpclient.beginBody();
     httpclient.print(data);
     httpclient.endRequest();
 
     // Get response
+    bool error = false;
     if (state == HTTP_SUCCESS) {
-        _gb->log(" -> Done");
+        _gb->arrow().color("green").log("Done");
 
         _gb->log("Getting response", false);
         int code = httpclient.responseStatusCode();
         if (code == 200) {
-            _gb->log(" -> Received: " + String(code));
+            _gb->arrow().log("Received: " + String(code));
             result = httpclient.responseBody();
+            error = false;
         }
         else {
-            _gb->log(" -> Error: " + String(code));
+            _gb->arrow().color("red").log("Error: " + String(code));
             result = "";
+            error = true;
         }
         httpclient.stop();
     }
     else {
-        _gb->log(" -> Failed");
+        _gb->arrow().color("red").log("Failed");
         httpclient.stop();
+        error = true;
     }
 
     int difference = millis() - start;
     _gb->log("Time taken: " + String(difference / 1000) + " seconds");
-    return result;
+
+    // Set response
+    this->_httpresponse = result;
+
+    // Return
+    return !error;
+}
+
+String GB_NB1500::httpresponse() { 
+    return this->_httpresponse;
 }
 
 String GB_NB1500::help() { 
@@ -1665,6 +1697,30 @@ float GB_NB1500::fuel(String metric) {
 
 bool GB_NB1500::battery_connected() {
     return (float(this->fuel("v")) > float(0.5));
+}
+
+String GB_NB1500::getsn() {
+    ArduinoUniqueID uid;
+    String idstr = "";
+
+    for (size_t i = 0; i < 16; i++) {    
+        int number = uid.id[i];    
+        int counter = 1;
+        
+        while (
+            (number < 65) ||
+            (91 <= number && number < 97) ||
+            (123 <= number)
+        ) {
+            if (number < 65) number += (3 + i) + counter * (i + 1);
+            if (number > 122) number -= 5 + counter * (i + 1);
+            else number -= (3 + i) * (i + 1);
+            counter++;
+            delay(2);
+        } 
+        if ((i) % 2 == 0) idstr += char(number);
+    }     
+    return idstr;                  
 }
 
 #endif
