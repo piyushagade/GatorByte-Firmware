@@ -6,10 +6,7 @@ Please follow the steps below to configure VS Code and PlatformIO extension to e
 VS Code is a code-editor (IDE) that developers use to write code. VS Code offers a range of developer-friendly features and extensions. The original developers of the GatorByte firmware used VS Code for managing and updating the codebase and libraries.
 
 1. Download Visual Studio Code from [here](https://code.visualstudio.com/Download). Select the download for your operating system and follow on-screen instructions to install the software.
-2. Open VS Code.
-3. Open "Extensions" in the left sidebar by either clicking on the "Extensions" button or by pressing ``Ctrl+Shift+X`` on Windows/Linux and ``Cmnd+Shift+X`` on MacOS.
-
-4. In the search box, enter ``PlatformIO``. Install the extension.
+2. Open VS Code from the start menu or launcher.
 
 ## PlatformIO IDE extension
   
