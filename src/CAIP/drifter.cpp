@@ -239,7 +239,7 @@
         gb.loop();
 
         sntl.shield(180, [] {
-        
+
             /*
                 ! Check the current state of the system and take actions accordingly
                 Get latest GPS coordinates

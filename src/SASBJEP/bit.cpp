@@ -429,7 +429,7 @@
         gb.loop();
 
         // If recovery mode has been activated
-        if (gb.controls.getboolean("RECOVERY_MODE")) {
+        if (false && gb.controls.getboolean("RECOVERY_MODE")) {
 
             while (gb.controls.getboolean("RECOVERY_MODE")) {
                 // buzzer.play("..").wait(200).play("..");

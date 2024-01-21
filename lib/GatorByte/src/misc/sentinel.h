@@ -55,10 +55,8 @@ class GB_SNTL : public GB_DEVICE {
         GB_SNTL& fetchfaultcounters();
         uint16_t resetfaultcounters();
         bool ping();
-
         float fwversion();
-
-
+        
     private:
         GB *_gb;
         int _address = 0x9;
