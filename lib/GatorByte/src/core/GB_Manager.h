@@ -116,7 +116,6 @@
             virtual String read_at_command_response() { return ""; };
             virtual String send_at_command(String) { return ""; };
 
-            
             //! RTC functions
             virtual GB_DEVICE& sync(char[], char[]) { return *this; };
             virtual GB_DEVICE& sync() { return *this; };
@@ -177,7 +176,7 @@
             virtual GB_DEVICE& detect() {  Serial.println("GDC detect from Base class"); return *this; };
             virtual GB_DEVICE& detect(bool) { Serial.println("GDC detect from Base class"); return *this; };
             virtual GB_DEVICE& loop() { Serial.println("GDC loop from Base class"); return *this; };
-            virtual void send(String category, String data) { return; }
+            virtual bool send(String category, String data) { return false; }
             
             //! GatorByte Sentinel (SNTL)
             virtual void tell(String command) { return; };
@@ -214,6 +213,9 @@ struct DEVICES {
     GB_DEVICE *configurator;
     GB_DEVICE *eadc;
     GB_DEVICE *gdc;
+
+    // Dashboards
+    GB_DEVICE *gwdb;
     
     // Peripherals
     GB_DEVICE *sd;

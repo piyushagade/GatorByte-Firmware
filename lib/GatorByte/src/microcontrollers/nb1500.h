@@ -241,7 +241,6 @@ Client& GB_NB1500::deleteclient() {
 }
 
 bool GB_NB1500::stopclient() {
-    Serial.println("H 1");
     this->_client.stop();
     return true;
 }
@@ -411,6 +410,8 @@ GB_NB1500& GB_NB1500::configure(String pin, String apn, int sleep_duration) {
     _gb->globals.SLEEP_DURATION = sleep_duration;
 
     this->device.detected = true;
+
+    _gb->log("Device SN: " + _gb->globals.DEVICE_SN);
 
     return *this;
 }
@@ -1719,7 +1720,8 @@ String GB_NB1500::getsn() {
             delay(2);
         } 
         if ((i) % 2 == 0) idstr += char(number);
-    }     
+    }
+
     return idstr;                  
 }
 

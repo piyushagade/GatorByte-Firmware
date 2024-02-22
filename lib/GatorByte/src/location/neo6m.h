@@ -21,7 +21,7 @@ struct GPS_DATA {
     uint8_t age;
     uint8_t id;
     uint8_t attempts;
-    double speed;
+    float speed;
 };
 
 
@@ -143,7 +143,7 @@ GB_NEO_6M& GB_NEO_6M::initialize() {
     this->reset();
     this->device.detected = false;
 
-    for (unsigned long start = millis(); millis() - start < 3000;){ 
+    for (unsigned long start = millis(); millis() - start < 6000;){ 
         while (_gb->serial.hardware->available() && !this->device.detected) {
             String c = _gb->serial.hardware->readStringUntil('\n');
             
@@ -246,7 +246,6 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
 
         // Return if the devices file on SD does not contain gps
         if (_gb->hasdevice("sd") && _gb->globals.DEVICES_LIST.indexOf("gps") == -1) {
-            _gb->log(_gb->globals.DEVICES_LIST);
             _gb->arrow().log("Not found in config.");
             return this->data; 
         };
@@ -273,7 +272,7 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
         if (_gb->hasdevice("rgb") && this->fix()) _gb->getdevice("rgb").on("blue"); else _gb->getdevice("rgb").on("red");
         
         // Indicate on the buzzer led if or not GPS fix was achieved
-        if (_gb->hasdevice("rgb") && this->fix()) _gb->getdevice("buzzer").play(".."); else _gb->getdevice("buzzer").play("--");
+        if (_gb->hasdevice("buzzer") && this->fix()) _gb->getdevice("buzzer").play(".."); else _gb->getdevice("buzzer").play("--");
 
         // Send data to GDC
         _gb->getdevice("gdc").send("gdc-db", "gps=" + String(this->data.has_fix) + "," + String(this->data.lat) + "," + String(this->data.lng) + "," + String(this->data.attempts));
@@ -298,6 +297,8 @@ float GB_NEO_6M::speed() {
     if (_neo.speed.isValid()) {
         return _neo.speed.mph();
     }
+    
+    return 0;
 }
 
 // Read the GPS data
@@ -310,7 +311,7 @@ void GB_NEO_6M::_read_nmea() {
     for (unsigned long start = millis(); millis() - start < 2000;) {
         while (_gb->serial.hardware->available()) {
             char c = _gb->serial.hardware->read();
-            _gb->log(c, false);
+            // _gb->log(c, false);
             // _gb->log("|*gps*|" + String(c), false);
             _neo.encode(c);
         }
@@ -326,15 +327,17 @@ bool GB_NEO_6M::_update() {
 
     this->on();
 
+
     // Set the baud rate
     _gb->serial.hardware->begin(this->_baud);
     
     // Start watchdog timer
     _gb->getmcu().watchdog("enable");
+    
 
     // Read the serial data
     this->_read_nmea();
-
+    
     // Allow more attempts if the device just started collecting data.
     if (_gb->globals.ITERATION < 5) this->MAX_ATTEMPTS = 40;
     else this->MAX_ATTEMPTS = 20;
@@ -359,15 +362,16 @@ bool GB_NEO_6M::_update() {
                     )
             )
 
-    ) {
+    ) 
+    {
         
         // Reset watchdog timer
         _gb->getmcu().watchdog("reset");
         
         _gb->log("  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
         
-        // Log to SD card
-        if (_gb->hasdevice("sd")) _gb->getdevice("sd").debug("operations", "  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
+        // // Log to SD card
+        // if (_gb->hasdevice("sd")) _gb->getdevice("sd").debug("operations", "  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
 
         // Read the serial data
         this->_read_nmea();
@@ -379,49 +383,53 @@ bool GB_NEO_6M::_update() {
             ledstate = !ledstate;
         }
         
-        // GB breathe
-        _gb->breathe("bl");
-
         // Increment the counter
         counter++;
     }
 
+
     // Log to console
     _gb->log("Looped out, Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
+
 
     // If we have a valid GPS location set data
     if (_neo.location.isValid() && _neo.location.isUpdated()){
         this->_last_fix_timestamp = millis();
 
         this->data.has_fix = true;
-        this->data.lat = _neo.location.lat();
-        this->data.lng = _neo.location.lng();
-        this->data.age = _neo.location.age();
         this->data.valid = _neo.location.isValid();
         this->data.updated = _neo.location.isUpdated();
-
+        this->data.lat = _neo.location.lat();
+        this->data.lng = _neo.location.lng();
         this->data.satellites = (_neo.satellites.isValid() ? _neo.satellites.value() : 0);
         this->data.hdop = _neo.hdop.value();
         this->data.accuracy = (_neo.hdop.isValid() ? (this->data.hdop < 2 ? "accurate" : (this->data.hdop < 5 ? "moderate" : "poor")) : "unknown");
+        this->data.age = _neo.location.age();
+        this->data.date = 0;
+        this->data.time = 0;
+        this->data.id = 0;
         this->data.attempts = counter;
-        
         this->data.speed = _neo.speed.mph();
 
-        // Calculate distance moved
-        float distancemoved = TinyGPSPlus::distanceBetween(this->_prev_lat, this->_prev_lng, this->data.lat, this->data.lng);
+        // INFO:
+        // The following code causes the FLASH memory to overflow
+        
+        // // Calculate distance moved
+        // float distancemoved = _neo.distanceBetween(this->_prev_lat, this->_prev_lng, this->data.lat, this->data.lng);
 
-        // Check if distance moved is greater than the threshold
-        if (distancemoved > MOVEMENT_THRESHOLD) {
-          this->_prev_lat = this->data.lat;
-          this->_prev_lng = this->data.lng;
-        }
+        // // Check if distance moved is greater than the threshold
+        // if (distancemoved > MOVEMENT_THRESHOLD) {
+        //     this->_prev_lat = this->data.lat;
+        //     this->_prev_lng = this->data.lng;
+        // }
 
-        // Check if 5 minutes have passed without movement
-        if (millis() - this->_last_fix_timestamp > MOVEMENT_CHECK_INTERVAL) {
-          Serial.println("No movement detected in 5 minutes.");
-        }
+        // // Check if 5 minutes have passed without movement
+        // if (millis() - this->_last_fix_timestamp > MOVEMENT_CHECK_INTERVAL) {
+        //     Serial.println("No movement detected in 5 minutes.");
+        // }
     }
     else this->reset();
+    
     
     // Disable watchdog timer
     _gb->getmcu().watchdog("disable");

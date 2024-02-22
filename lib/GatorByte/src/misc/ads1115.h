@@ -26,7 +26,7 @@ class GB_EADC : public GB_DEVICE {
         GB_EADC& configure(PINS);
         uint16_t readchannel(uint8_t);
         uint16_t getreading(uint8_t);
-        uint16_t getdepth(uint8_t);
+        float getdepth(uint8_t);
 
         GB_EADC& on();
         GB_EADC& off();
@@ -202,7 +202,7 @@ uint16_t GB_EADC::getreading(uint8_t channel) {
     return value;
 }
 
-uint16_t GB_EADC::getdepth(uint8_t channel) {
+float GB_EADC::getdepth(uint8_t channel) {
 
     // _gb->log("Reading depth (" + String(channel) + ")", false);
 

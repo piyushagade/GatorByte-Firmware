@@ -1,6 +1,6 @@
 #include "../platform.h"
 
-#if GB_PLATFORM_IS_LRY_DRIFTER
+#if GB_PLATFORM_IS_LRY_DRIFTER_V1
     
     bool nwflag = true;
     bool gpsdummyflag = false;

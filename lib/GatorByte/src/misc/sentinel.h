@@ -43,7 +43,6 @@ class GB_SNTL : public GB_DEVICE {
         
         bool testdevice();
         String status();
-
         
         typedef void (*callback_t_func)();
         GB_SNTL& shield(int, callback_t_func);

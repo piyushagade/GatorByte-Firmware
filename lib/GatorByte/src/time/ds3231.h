@@ -191,7 +191,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                     return *this;
                 }
                 
-                _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss"), false);
+                _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss") + ", source: " + this->getsource(), false);
                 
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("...");
                 if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
@@ -564,6 +564,7 @@ DateTime GB_DS3231::now() {
     // Get timestamp from RTC
     bool valid = false;
     if (this->device.detected) {
+                
         this->_source = "rtc";
         this->on();
         delay(50);
@@ -573,10 +574,11 @@ DateTime GB_DS3231::now() {
         valid = this->valid(dt);
     }
 
-    // If RTC was not detected or not initialized, fallback to  MODEM
-    if (this->device.detected || !valid) {
+    // If RTC was not detected, not initialized or provides an invalid timestamp, fallback to  MODEM
+    if (!this->device.detected || !valid) {
+                
         this->_source = "modem";
-        int counter = 10;
+        int counter = 20;
         while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
         if(MODEM_INITIALIZED) {
             String nwtimestr = _gb->getmcu().gettime();
@@ -638,10 +640,10 @@ String GB_DS3231::timestamp() {
     DateTime time = this->now();
     uint32_t unixtime = time.unixtime();
 
-    // Convert the MODEM's timestamp to GMT
-    if (this->_source == "modem") {
-        unixtime = this->converttogmt(this->timezone, unixtime);
-    }
+    // // Convert the MODEM's timestamp to GMT
+    // if (this->_source == "modem") {
+    //     unixtime = this->converttogmt(this->timezone, unixtime);
+    // }
 
     #ifdef false // Keep for documentation
         // Check if the time is invalid
@@ -678,22 +680,22 @@ String GB_DS3231::date() {
     Returns date string in specified format.
 */
 String GB_DS3231::date(String format) {
-    
+
     DateTime dt = this->now();
     
-    // Adjust MODEM time to GMT
-    if (this->_source == "modem") {
-        for (const auto& info : this->tzoffsets) {
-            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
-                int offsethour = info.offsetHours;
-                int offsetminutes = info.offsetMinutes;
-                int offsetsign = info.sign;
-                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
-                dt = dt.operator-(span);
-                break;
-            }
-        }
-    }
+    // // Adjust MODEM time to GMT
+    // if (this->_source == "modem") {
+    //     for (const auto& info : this->tzoffsets) {
+    //         if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+    //             int offsethour = info.offsetHours;
+    //             int offsetminutes = info.offsetMinutes;
+    //             int offsetsign = info.sign;
+    //             TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+    //             dt = dt.operator-(span);
+    //             break;
+    //         }
+    //     }
+    // }
 
     #if not defined (LOW_MEMORY_MODE)
 
@@ -741,19 +743,19 @@ String GB_DS3231::time(String format) {
     
     DateTime time = this->now();
 
-    // Adjust MODEM time to GMT
-    if (this->_source == "modem") {
-        for (const auto& info : this->tzoffsets) {
-            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
-                int offsethour = info.offsetHours;
-                int offsetminutes = info.offsetMinutes;
-                int offsetsign = info.sign;
-                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
-                time = time.operator-(span);
-                break;
-            }
-        }
-    }
+    // // Adjust MODEM time to GMT
+    // if (this->_source == "modem") {
+    //     for (const auto& info : this->tzoffsets) {
+    //         if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+    //             int offsethour = info.offsetHours;
+    //             int offsetminutes = info.offsetMinutes;
+    //             int offsetsign = info.sign;
+    //             TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+    //             time = time.operator-(span);
+    //             break;
+    //         }
+    //     }
+    // }
 
     // Convert to requested string format
     bool hr12 = format.indexOf("a") > -1; int hour;

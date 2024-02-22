@@ -90,7 +90,7 @@ GB_AT_09& GB_AT_09::initialize() {
     _gb->init();
 
     this->on();
-    _gb->log("Initializing AT-09 BL module", false);
+    _gb->log("Initializing AT-09 BL module ", false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -103,11 +103,17 @@ GB_AT_09& GB_AT_09::initialize() {
 
     // Clear buffer
     this->_purge_buffer();
+
     // Test connection
     bool error = this->send_at_command("AT") != "OK";
     
     this->device.detected = !error;
     this->_initialized = !error;
+
+    // Serial.println("Role: " + this->send_at_command("AT+ROLE0")); delay(100);
+    // Serial.println("Service: " + this->send_at_command("AT+UUID")); delay(100);
+    // Serial.println("Characteristic: " + this->send_at_command("AT+CHAR")); delay(200);
+    
 
     if (this->device.detected) {
         

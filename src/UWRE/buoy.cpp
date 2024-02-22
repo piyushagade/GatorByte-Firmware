@@ -197,29 +197,29 @@
         // Detect GDC
         gdc.detect(false);
         
-        sntl.configure({true, 4}, 9).initialize().ack(true).disablebeacon();
+        // sntl.configure({true, 4}, 9).initialize().ack(true).disablebeacon();
 
         sntl.shield(75, []() { 
 
             //! Initialize other peripherals
-            bl.configure({true, SR3, SR11}).initialize();
-            gps.configure({true, SR2, SR10}).initialize();
+            bl.configure({true, SR3, SR11}).initialize().persistent().on();
+            // gps.configure({true, SR2, SR10}).initialize();
             
-            booster.configure({true, SR1}).on();
-            sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter").readconfig();
-            mem.configure({true, SR0}).initialize();
-            aht.configure({true, SR0}).initialize();
-            rtc.configure({true, SR0}).initialize().sync();
-            // acc.configure({true, SR5}).initialize();
+            // booster.configure({true, SR1}).on();
+            // sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter").readconfig();
+            // mem.configure({true, SR0}).initialize();
+            // aht.configure({true, SR0}).initialize();
+            // rtc.configure({true, SR0}).initialize().sync();
+            // // acc.configure({true, SR5}).initialize();
 
-            //! Configure MQTT broker and connect 
-            mqtt.configure("mqtt.ezbean-lab.com", 1883, gb.globals.DEVICE_SN, mqtt_message_handler, mqtt_on_connect);
+            // //! Configure MQTT broker and connect 
+            // mqtt.configure("mqtt.ezbean-lab.com", 1883, gb.globals.DEVICE_SN, mqtt_message_handler, mqtt_on_connect);
 
-            //! Configure sensors
-            rtd.configure({true, SR6, true, 0}).initialize(true);
-            dox.configure({true, SR8, true, 2}).initialize(true);
-            ec.configure({true, SR9, true, 3}).initialize(true);
-            ph.configure({true, SR7, true, 1}).initialize(true);
+            // //! Configure sensors
+            // rtd.configure({true, SR6, true, 0}).initialize(true);
+            // dox.configure({true, SR8, true, 2}).initialize(true);
+            // ec.configure({true, SR9, true, 3}).initialize(true);
+            // ph.configure({true, SR7, true, 1}).initialize(true);
         });
 
         // Detect GDC
@@ -238,6 +238,23 @@
         delay(1000);
     }
 
+    void preloop () {
+
+        /*
+            This is a hack to eliminate the delay introduced by the DS3231 RTC.
+        */
+        gb.globals.INIT_SECONDS = rtc.timestamp().toDouble();
+
+        gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
+        gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
+
+        gb.log(gb.globals.SLEEP_DURATION / 1000);
+        gb.log(gb.globals.LOOPTIMESTAMP - gb.globals.LAST_READING_TIMESTAMP);
+        gb.log(gb.globals.READINGS_DUE);
+
+    }
+
+    int counter = 0;
     void loop () {
 
         bool DUMMY_GPS = false;
@@ -246,9 +263,18 @@
         //! Call GatorByte's loop procedure
         gb.loop();
         
-        gb.log(gb.globals.SLEEP_DURATION / 1000);
-        gb.log(gb.globals.LOOPTIMESTAMP - gb.globals.LAST_READING_TIMESTAMP);
-        gb.log(gb.globals.READINGS_DUE);
+        gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
+        gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
+
+        gb.log("Hello! " + String(counter++));
+
+        bl.listen([] (String command) {
+            Serial.println("Received command: " + command);
+
+            if (command.contains("ping")) bl.print("pong");
+        });
+
+        return delay(500);
 
         // Take readings if due
         if (gb.globals.READINGS_DUE) {
@@ -259,59 +285,59 @@
             float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
 
             //! Get GPS data
-            GPS_DATA gps_data = gps.read(DUMMY_GPS);
-            String gps_lat = String(gps_data.lat, 5), gps_lng = String(gps_data.lng, 5), gps_attempts = String(gps_data.last_fix_attempts);
-            gps.fix() ? rgb.on("blue") : rgb.on("red");
-            gps.off();
-            bl.on();
+            GPS_DATA gps_data = gps.read();
+            // String gps_lat = String(gps_data.lat, 5), gps_lng = String(gps_data.lng, 5), gps_attempts = String(gps_data.attempts);
+            // gps.fix() ? rgb.on("blue") : rgb.on("red");
+            // gps.off();
+            // bl.on();
 
-            //! Log GPS data to console
-            gb.log("GPS: " + String(gps.fix() ? "Located" : "Failed") + ": " + gps_lat + ", " + gps_lng);
+            // //! Log GPS data to console
+            // gb.log("GPS: " + String(gps.fix() ? "Located" : "Failed") + ": " + gps_lat + ", " + gps_lng);
 
-            gb.log("Constructing CSV object", false);
+            // gb.log("Constructing CSV object", false);
 
-            //! Construct CSV data object
-            CSVary csv;
-            csv
-                .clear()
-                .setheader("SURVEYID,RTD,PH,DO,EC,LAT,LNG,TIMESTAMP,TEMP,RH,GPSATTEMPTS,CELLSIGSTR")
-                .set(gb.globals.MODE == "dummy" ? gb.globals.MODE : gb.globals.PROJECT_ID)
-                .set(read_rtd_value)
-                .set(read_ph_value)
-                .set(read_dox_value)
-                .set(read_ec_value)
-                .set(gps_lat)
-                .set(gps_lng)
-                .set(rtc.timestamp())
-                .set(aht.temperature())
-                .set(aht.humidity())
-                .set(gps_attempts)
-                .set(String(mcu.RSSI));
+            // //! Construct CSV data object
+            // CSVary csv;
+            // csv
+            //     .clear()
+            //     .setheader("SURVEYID,RTD,PH,DO,EC,LAT,LNG,TIMESTAMP,TEMP,RH,GPSATTEMPTS,CELLSIGSTR")
+            //     .set(gb.globals.MODE == "dummy" ? gb.globals.MODE : gb.globals.PROJECT_ID)
+            //     .set(read_rtd_value)
+            //     .set(read_ph_value)
+            //     .set(read_dox_value)
+            //     .set(read_ec_value)
+            //     .set(gps_lat)
+            //     .set(gps_lng)
+            //     .set(rtc.timestamp())
+            //     .set(aht.temperature())
+            //     .set(aht.humidity())
+            //     .set(gps_attempts)
+            //     .set(String(mcu.RSSI));
             
-            gb.log(" -> Done");
+            // gb.log(" -> Done");
             
-            gb.br().log("Current data point: ");
-            gb.log(csv.getheader());
-            gb.log(csv.getrows());
+            // gb.br().log("Current data point: ");
+            // gb.log(csv.getheader());
+            // gb.log(csv.getrows());
 
-            //! Write current data to SD card
-            sd.writeCSV(csv);
-            gb.log("Readings written to SD card");
+            // //! Write current data to SD card
+            // sd.writeCSV(csv);
+            // gb.log("Readings written to SD card");
         
-            //! Upload current data to desktop client_test
-            gdc.send("data", csv.getheader() + BR + csv.getrows());
+            // //! Upload current data to desktop client_test
+            // gdc.send("data", csv.getheader() + BR + csv.getrows());
             
-            /*
-                ! Prepare a queue file (with current iteration's data)
-                The queue file will be read and data uploaded once the network is established.
-                The file gets deleted if the upload is successful. 
-            */
+            // /*
+            //     ! Prepare a queue file (with current iteration's data)
+            //     The queue file will be read and data uploaded once the network is established.
+            //     The file gets deleted if the upload is successful. 
+            // */
 
-            String currentdataqueuefile = sd.getavailablequeuefilename();
-            sd.writeString(currentdataqueuefile, csv.get());
+            // String currentdataqueuefile = sd.getavailablequeuefilename();
+            // sd.writeString(currentdataqueuefile, csv.get());
 
-            gb.globals.LAST_READING_TIMESTAMP = rtc.timestamp().toInt();
-            mem.write(12, String(gb.globals.LAST_READING_TIMESTAMP));
+            // gb.globals.LAST_READING_TIMESTAMP = rtc.timestamp().toInt();
+            // mem.write(12, String(gb.globals.LAST_READING_TIMESTAMP));
         }
         else {
             gb.log("Readings not due this iteration.");

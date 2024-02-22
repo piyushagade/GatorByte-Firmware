@@ -388,6 +388,9 @@
             // Read SD config and control files
             sd.readconfig().readcontrol(set_control_variables);
             
+            // Detect GDC
+            gdc.detect(false);
+            
             //! Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
             http.configure("api.ezbean-lab.com", 80);
@@ -421,6 +424,9 @@
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
         gb.log("Water level sensing timeout: " + String(gb.controls.getint("WLEV_SAMPLING_INTERVAL")));
+        
+        // Detect GDC
+        gdc.detect(true);
     }
 
     void loop () {
@@ -471,10 +477,8 @@
                         mqtt.publish("data/set", csv.getheader() + BR + csv.getrows());
 
                     });
-
                 });
             }
-
         }
         
         //! Breathing indicator

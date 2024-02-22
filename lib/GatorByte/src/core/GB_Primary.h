@@ -122,7 +122,9 @@ class GB {
             String SENSOR_MODE = "iterations";
             String SLEEP_MODE = "shallow";
             
+            String SERVER_METHOD = "mqtt";
             String SERVER_URL = "/";
+            String SERVER_API_VERSION = "v3";
             int SERVER_PORT = 80;
             String APN = "";
             String RAT = "catm";
@@ -184,6 +186,8 @@ class GB {
         GB& setup();
         GB& loop();
         GB& loop(int delay);
+        String env();
+        String env(String environment);
         GB& init();
         GB& breathe();
         GB& breathe(String);
@@ -262,6 +266,7 @@ class GB {
         int _loop_counter = 0;
         int _loop_execute_timestamp = 0;
         bool _concat_print = false;
+        String _env = "prodution";
         
 };
 
@@ -339,6 +344,13 @@ bool GB::hasdevice(String device_name) {
     
         // If the requested device is not SD, and SD module is initialized
         else {
+
+            if (device_name == "bl") {
+                // Check if the device's constructor has been called (object has been initialized)
+                if (this->_all_included_gb_libraries.indexOf(device_name + ":") > -1) {
+                    return true;
+                }
+            }
             
             // Look for the device in the config file
             if (this->globals.DEVICES_LIST.indexOf(device_name) > -1) {
@@ -406,8 +418,17 @@ GB& GB::setup() {
     return *this;
 }
 
+String GB::env() {
+    return this->_env;
+}
+
+String GB::env(String environment) {
+    this->_env = environment;
+    return this->_env;
+}
+
 GB& GB::init() {
-     
+    
     // Detect GDC without lock
     if (this->hasdevice("gdc")) this->getdevice("gdc").detect(false);
 
@@ -419,6 +440,7 @@ GB& GB::loop(int wait) {
     bool LOG = false;
 
     // Send message to GDC
+    
     if (this->hasdevice("gdc")) {
         this->globals.GDC_SETUP_READY = true;
 

@@ -27,8 +27,8 @@ class GB_DESKTOP : public GB_DEVICE {
         void cfset(String message);
         void cfprint(String message);
         
-        void send(String data);
-        void send(String category, String data);
+        bool send(String data);
+        bool send(String category, String data);
         void sendfile(String category, String data);
         
         bool testdevice();
@@ -752,54 +752,6 @@ void GB_DESKTOP::process(string command) {
             command.replace("##GB##cfg", "");
             command.replace("#EOF#", "");
 
-            // if (command.contains("cfgdl:")) {
-            //     _gb->log("A request for config file has been received. File: ", false);
-
-            //     String filename = "/config/" + command.substring(command.indexOf("dl:") + 3, command.indexOf(","));
-            //     _gb->log(filename);
-
-            //     int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
-            //     int charsatatime = 30;
-
-            //     String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
-            //     this->sendfile("gdc-cfg", "fdl:" + data);
-            // }
-            
-            // else if (command.contains("cfgupl:")) {
-            
-            //     String filename = "/config/config.ini";
-            //     string data = command.substring(command.indexOf("upl:") + 4, command.indexOf("^"));
-            //     int initialcharindex = command.substring(command.indexOf("^") + 1, command.length()).toInt();
-
-            //     while(data.contains("~")) {
-            //         data.replace("~", "\n");
-            //     }
-
-            //     while(data.contains("`")) {
-            //         data.replace("`", " ");
-            //     }
-
-            //     // Delete preexisting file if the upload has just started.
-            //     if (initialcharindex == 0) _gb->getdevice("sd").rm(filename);
-
-            //     // Append data to the file
-            //     _gb->getdevice("sd").writeLinesToSD(filename, data);
-
-            //     // Pause
-            //     delay(10);
-
-            //     // Send acknowledgement
-            //     this->send("gdc-cfg", "fupl:ack");
-            // }
-
-            // // Post config upload tasks
-            // else if (command.contains("upd:")) {
-            
-            //     // Update config in the memory
-            //     _gb->getdevice("sd").readconfig();
-
-            // }
-            
             //! RTC action
             if (command.contains("rtc:")) {
 
@@ -848,7 +800,9 @@ void GB_DESKTOP::process(string command) {
                     else data = "not-detected";
 
                     // Send RTC time
-                    this->send("gdc-cfg", "rtc:" + data);
+                    this->send("gdc-cfg", "rtc:" + data + "-" + _gb->getdevice("rtc").getsource());
+
+                    Serial.println("rtc:" + data + "::" + _gb->getdevice("rtc").getsource()); 
                 }
             }
 
@@ -1193,9 +1147,9 @@ void GB_DESKTOP::cfset(String key) {
 /*
     ! Send a response to GatorByte Desktop Client
 */
-void GB_DESKTOP::send(String data) { return this->send("", data); } 
-void GB_DESKTOP::send(String category, String data) { 
-    if (!_gb->globals.GDC_CONNECTED) return;
+bool GB_DESKTOP::send(String data) { return this->send("", data); } 
+bool GB_DESKTOP::send(String category, String data) { 
+    if (!_gb->globals.GDC_CONNECTED) return true;
 
     String prefix = "##CL##", suffix = "#EOF#";
 
@@ -1212,6 +1166,8 @@ void GB_DESKTOP::send(String category, String data) {
 
     // this->_gb->serial.debug->flush();
     delay(10);
+
+    return true;
 }
 
 void GB_DESKTOP::sendfile(String category, String data) { 
