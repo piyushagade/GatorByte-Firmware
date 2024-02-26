@@ -1692,7 +1692,16 @@ String GB_NB1500::batterystatus() {
 float GB_NB1500::fuel(String metric) {
     metric.toLowerCase();
     if (metric == "voltage" || metric == "v") return analogRead(ADC_BATTERY) * 3.3 / 1023.0 * 1.275;
-    else if (metric == "level") return analogRead(ADC_BATTERY) * (100 / 1023.0);
+    else if (metric == "level") {
+        float sum = 0, avg;
+        int counter = 6;
+        while (counter-- > 0) {
+            sum += analogRead(ADC_BATTERY) * (100 / 1023.0);
+            delay(10);
+        }
+        avg = sum / 6;
+        return avg;
+    }
     else return this->fuel("v");
 }
 

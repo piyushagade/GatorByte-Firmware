@@ -253,7 +253,7 @@ void GB_DESKTOP::process(string command) {
         // Set as busy
         this->_busy(true);
 
-        // _gb->log("Received GDC command: " + command);
+        _gb->log("Received GDC command: " + command);
 
         /*
             ! Check command validity
@@ -350,6 +350,18 @@ void GB_DESKTOP::process(string command) {
 
                 // Send acknowledgement
                 this->send("gdc-cfg", "cfghash:" + String(hash)); delay(10);
+
+            }
+
+            // Battery status
+            else if (command.contains("batt")) {
+
+                _gb->log("Battery level requested.");
+            
+                float level = _gb->getmcu().fuel("level");
+
+                // Send acknowledgement
+                this->send("gdc-cfg", "cfgbatt:" + String(level)); delay(10);
 
             }
         }
@@ -1129,6 +1141,78 @@ void GB_DESKTOP::process(string command) {
                 
                 // Send response
                 this->send("gdc-dgn", "lipo:" + String(success ? "true" : "false") + ":..:" + _gb->getmcu().batterystatus());
+            }
+            
+            if (command.contains("comm:all")) {
+                NBModem _nbModem;
+
+                // Check MODEM status
+                MODEM_INITIALIZED = _nbModem.begin();
+                this->send("gdc-dgn", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
+                
+                // MODEM firmware
+                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu().getfirmwareinfo());
+                
+                // MODEM IMEI
+                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu().getimei());
+                
+                // SIM ICCID
+                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu().geticcid());
+
+                // Network strength
+                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu().getrssi()));
+
+                // Operator
+                String cops = _gb->getmcu().getoperator();
+                cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
+                this->send("gdc-dgn", "cops=" + String(cops));
+            }
+
+            if (command.endsWith("comm:modem")) {
+                NBModem _nbModem;
+
+                // Check MODEM status
+                MODEM_INITIALIZED = _nbModem.begin();
+                this->send("gdc-dgn", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
+                
+                // MODEM firmware
+                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu().getfirmwareinfo());
+                
+                // MODEM IMEI
+                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu().getimei());
+            }
+
+            if (command.endsWith("comm:modem:rb")) {
+                _gb->log("Rebooting MODEM");
+                
+                NB _nb;
+                NBModem _nbModem;
+
+                // Turn off MODEM
+                _nb.secureShutdown();
+
+                // Turn MODEM on
+                int counter = 0;
+                bool result = false;
+                while (!(result = _nb.begin()) && counter++ < 5) { delay(2000); }
+                MODEM_INITIALIZED = result;
+            }
+
+            if (command.contains("comm:sim")) {
+                
+                // SIM ICCID
+                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu().geticcid());
+            }
+
+            if (command.contains("comm:nw")) {
+                
+                // Network strength
+                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu().getrssi()));
+
+                // Operator
+                String cops = _gb->getmcu().getoperator();
+                cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
+                this->send("gdc-dgn", "cops=" + String(cops));
             }
         }
     

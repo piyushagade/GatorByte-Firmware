@@ -21,6 +21,7 @@ class GB_SNTL : public GB_DEVICE {
             "Sentinel"
         };
 
+        GB_SNTL& timer(uint8_t);
         GB_SNTL& enable();
         GB_SNTL& enable(bool);
         GB_SNTL& disable();
@@ -44,6 +45,8 @@ class GB_SNTL : public GB_DEVICE {
         bool testdevice();
         String status();
         
+        GB_SNTL& sauron();
+
         typedef void (*callback_t_func)();
         GB_SNTL& shield(int, callback_t_func);
         GB_SNTL& shield(int, callback_t_func, bool);
@@ -149,7 +152,8 @@ GB_SNTL& GB_SNTL::initialize() {
         // _gb->log(" -> Fault counters: " + String(_gb->globals.FAULTS_PRIMARY) + ", " + String(_gb->globals.FAULTS_SECONDARY));
 
         // Get ACK status
-        this->_no_ack = this->readmemory(11) == 0;
+        uint8_t ackstatuslocation = 0x0D;
+        this->_no_ack = this->readmemory(ackstatuslocation) == 0;
 
         _gb->log("Sentinel ACK status: " + String(this->_no_ack ? " Disabled" : " Enabled"));
         
@@ -300,6 +304,40 @@ GB_SNTL& GB_SNTL::fetchfaultcounters() {
 
     return *this;
 }
+
+/*
+    Select timer
+*/
+GB_SNTL& GB_SNTL::timer(uint8_t timerid) { 
+    if (timerid < 0 || timerid > 2) _gb->log("Invalid timer ID: " + String(timerid));
+    if (this->debug) _gb->log("Selecting timer ID: " + String(timerid), false);
+    if (!this->device.detected) { if (this->debug) _gb->log(" -> Not initialized"); return *this; }
+    
+    uint16_t response;
+    bool success = false;
+    uint8_t code = 33 + timerid;
+    response = this->tell(code, 10); 
+    success = response == 0;
+
+    int counter = 5;
+    while (!success && counter-- >= 0) {
+        delay(2000);
+        
+        if (this->debug) _gb->color("yellow").log(" . ", false).color();
+        response = this->tell(code, 5);
+        success = response == 0 || response == 6;
+    }
+
+    if (this->debug) _gb->log(success ? " -> Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : " -> Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
+    if (success) {
+        if (this->_comm_attempts >= 3) _gb->globals.LOGPREFIX = "\033[1;30;43m \033[0m";
+        else _gb->globals.LOGPREFIX = "\033[1;30;46m \033[0m";
+    }
+    else _gb->globals.LOGPREFIX = "\033[1;37;41m \033[0m";
+
+    return *this;
+}
+
 
 /*
     Enable sentinence
@@ -546,6 +584,13 @@ uint16_t GB_SNTL::ask() {
     return response;
 }
 
+
+/*
+    Enable the Eye of Sauron
+*/
+GB_SNTL& GB_SNTL::sauron() { 
+    return this->timer(2).interval("sentinence", 86400).enable().timer(0);
+}
 
 /*
     Monitor function/scope

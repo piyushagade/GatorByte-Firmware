@@ -37,6 +37,7 @@
             virtual String getoperator() { return ""; };
             virtual bool begin_modem() { return false; };
             virtual void watchdog(String) {};
+            virtual float fuel(String) { return 0; };
             virtual void watchdog(String, int) {};
             virtual GB_MCU& startbreathtimer() { return *this; };
             virtual GB_MCU& stopbreathtimer() { return *this; };

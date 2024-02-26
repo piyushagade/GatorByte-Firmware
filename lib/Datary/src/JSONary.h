@@ -141,6 +141,8 @@ bool JSONary::isnumber (String str) {
 
 String JSONary::getstring(String key){
 
+	bool log = key == "RECOVERY_MODE";
+
 	String state = "key";
 	String jsonstr = this->_data;
 	jsonstr.replace("{", "");
@@ -148,6 +150,9 @@ String JSONary::getstring(String key){
 
 	String currkey = "";
 	String currvalue = "";
+
+	if (this->_data == "{}") return "-1";
+
 	for (int i = 0; i < this->_data.length(); i++) {
 		char c = this->_data.charAt(i);
 
@@ -183,6 +188,7 @@ String JSONary::getstring(String key){
 		if (currkey == key) return currvalue;
 		currkey = "";
 	} 
+	
 	return "-1";
 }
 

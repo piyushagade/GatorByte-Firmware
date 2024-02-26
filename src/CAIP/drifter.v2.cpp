@@ -315,7 +315,7 @@
         gb.setup();
 
         //! Set environment
-        gb.env("development");
+        gb.env("production");
         
         //! Initialize GatorByte and device configurator
         gb.configure(false, "gb-lry-test-drifter");
@@ -336,6 +336,9 @@
         
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
+        
+        // Enable the Eye of Sauron
+        sntl.sauron();
 
         sntl.shield(120, []() {
             
@@ -437,7 +440,7 @@
         }
 
         // Take readings
-        readpiper.pipe(SAMPLING_INTERVAL, false, [] (int counter) {
+        readpiper.pipe(SAMPLING_INTERVAL, true, [] (int counter) {
 
             sntl.shield(180, [] {
 

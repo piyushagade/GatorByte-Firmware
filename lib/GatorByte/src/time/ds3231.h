@@ -578,7 +578,7 @@ DateTime GB_DS3231::now() {
     if (!this->device.detected || !valid) {
                 
         this->_source = "modem";
-        int counter = 20;
+        int counter = 50;
         while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
         if(MODEM_INITIALIZED) {
             String nwtimestr = _gb->getmcu().gettime();
