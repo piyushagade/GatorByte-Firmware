@@ -45,7 +45,7 @@ class GB_SNTL : public GB_DEVICE {
         bool testdevice();
         String status();
         
-        GB_SNTL& sauron();
+        GB_SNTL& sauron(bool enable);
 
         typedef void (*callback_t_func)();
         GB_SNTL& shield(int, callback_t_func);
@@ -151,8 +151,8 @@ GB_SNTL& GB_SNTL::initialize() {
 
         // _gb->log(" -> Fault counters: " + String(_gb->globals.FAULTS_PRIMARY) + ", " + String(_gb->globals.FAULTS_SECONDARY));
 
-        // Get ACK status
-        uint8_t ackstatuslocation = 0x0D;
+        // Get ACK status (for the location refer to Sentinel's F/W)
+        uint8_t ackstatuslocation = 0x0E;
         this->_no_ack = this->readmemory(ackstatuslocation) == 0;
 
         _gb->log("Sentinel ACK status: " + String(this->_no_ack ? " Disabled" : " Enabled"));
@@ -588,8 +588,8 @@ uint16_t GB_SNTL::ask() {
 /*
     Enable the Eye of Sauron
 */
-GB_SNTL& GB_SNTL::sauron() { 
-    return this->timer(2).interval("sentinence", 86400).enable().timer(0);
+GB_SNTL& GB_SNTL::sauron(bool enable) { 
+    return enable ? this->timer(3).enable().timer(0) : this->timer(3).disable().timer(0);
 }
 
 /*

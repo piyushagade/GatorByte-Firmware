@@ -931,8 +931,6 @@ GB_SD& GB_SD::readconfig() {
                         if (category == "survey") {
                             if (key == "mode") _gb->globals.SURVEY_MODE = value;
                             if (key == "id") _gb->globals.PROJECT_ID = value;
-                            if (key == "date") _gb->globals.SURVEY_START_DATE = value;
-                            if (key == "location") _gb->globals.SURVEY_LOCATION = value;
                             if (key == "tz") _gb->globals.TIMEZONE = value;
                             if (key == "realtime") {}
                         }
@@ -997,8 +995,6 @@ GB_SD& GB_SD::readconfig() {
         _gb->log("Device SN: " + _gb->globals.DEVICE_SN);
         _gb->log("SD SN: " + this->sn);
         _gb->log("Device name: " + _gb->globals.DEVICE_NAME);
-        _gb->log("Survey date: " + _gb->globals.SURVEY_START_DATE);
-        _gb->log("Survey location: " + _gb->globals.SURVEY_LOCATION);
         _gb->log("Survey mode: " + _gb->globals.SURVEY_MODE);
         _gb->log("Local timezone: " + _gb->globals.TIMEZONE);
         _gb->log("Server URL: " + _gb->globals.SERVER_URL + ":" + _gb->globals.SERVER_PORT);

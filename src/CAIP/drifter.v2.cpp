@@ -241,9 +241,11 @@
         The file gets deleted if the upload is successful. 
     */
     void writetoqueue(CSVary csv) {
+        gb.log("Writing to queue file: ", false);
         String currentdataqueuefile = sd.getavailablequeuefilename();
-        gb.log("Wrote to queue file: " + currentdataqueuefile);
+        gb.log(currentdataqueuefile, false);
         sd.writequeuefile(currentdataqueuefile, csv.get());
+        gb.arrow().color().log("Done");
     }
 
     /*
@@ -256,11 +258,9 @@
         if (sd.getqueuecount() > 0) {
             gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
             
-            //! Publish first ten queued-data with MQTT
+            //! Connect to the network
             sntl.shield(120, [] {
-
-                sntl.shield(120, [] {
-                
+            
                 //! Connect to network
                 mcu.connect("cellular");
                 
@@ -270,14 +270,16 @@
                 mqtt.connect("pi", "abe-gb-mqtt");
                 
             });
-
-                if (CONNECTED_TO_MQTT_BROKER) {
-                    int counter = 10;
+                
+            //! Publish first ten queued-data with MQTT
+            if (CONNECTED_TO_MQTT_BROKER) {
+                int counter = 50;
+                
+                while (!sd.isqueueempty() && counter-- > 0) {
                     
-                    while (!sd.isqueueempty() && counter-- > 0) {
+                    sntl.shield(10, [] {
 
                         String queuefilename = sd.getfirstqueuefilename();
-
                         gb.log("Sending queue file: " + queuefilename);
 
                         // Attempt publishing queue-data
@@ -290,9 +292,9 @@
                         else {
                             gb.log("Queue file not deleted.");
                         }
-                    }
+                    });
                 }
-            });
+            }
 
         }
         else {
@@ -336,9 +338,9 @@
         
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
-        
-        // Enable the Eye of Sauron
-        sntl.sauron();
+
+        // // Enable the Eye of Sauron
+        // sntl.sauron(true);
 
         sntl.shield(120, []() {
             
@@ -439,6 +441,20 @@
             };
         }
 
+        if (uploaderpiper.ishot()) {
+            gb.log("Uploader piper is hot");
+        }
+
+        if (readpiper.ishot()) {
+            gb.log("Readings piper is hot");
+            gps.on();
+        }
+
+        uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
+            uploadtoserver();
+        });
+
+
         // Take readings
         readpiper.pipe(SAMPLING_INTERVAL, true, [] (int counter) {
 
@@ -478,8 +494,8 @@
                 gb.log(csv.getheader());
                 gb.log(csv.getrows());
 
-                //! Upload current data to desktop client
-                gdc.send("data", csv.getheader() + BR + csv.getrows());
+                // //! Upload current data to desktop client
+                // gdc.send("data", csv.getheader() + BR + csv.getrows());
                 
                 /*
                     ! Prepare a queue file (with current iteration's data)
@@ -502,10 +518,6 @@
                 sd.updatecontrolbool("RECOVERY_MODE", true);
             }
 
-        });
-
-        uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), false, [] (int counter) {
-            uploadtoserver();
         });
 
         //! Sleep
