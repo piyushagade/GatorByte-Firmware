@@ -336,7 +336,7 @@
         
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
-
+        
         // while(true) mcu.connect("cellular");
 
         sntl.shield(120, []() {
@@ -462,7 +462,7 @@
                 */
                 GPS_DATA gpsdata = gps.read(gb.env() == "development");
                 String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
-                gps.fix() ? rgb.on("blue") : rgb.on("red");
+                gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 
 
                 // Initialize CSVary object
                 CSVary csv;
