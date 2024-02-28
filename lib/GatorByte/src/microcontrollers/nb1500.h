@@ -88,6 +88,7 @@ class GB_NB1500 : public GB_MCU {
             "MKR NB1500"
         };
 
+        GB_NB1500& configure();
         GB_NB1500& configure(String, String);
         GB_NB1500& configure(String, String, int);
         GB_NB1500& i2c();
@@ -189,8 +190,6 @@ class GB_NB1500 : public GB_MCU {
         
         bool _cellular_connected = false;
         String _modem_fw = "";
-        String _PIN = "";
-        String _APN = "";
 
         // HTTPS Client
         NBClient _client;
@@ -394,26 +393,46 @@ bool GB_NB1500::_wait_for_at_response(unsigned long timeout) {
 }
 
 GB_NB1500& GB_NB1500::configure(String pin, String apn) {
-    
-    // SIM PIN
-    this->_PIN = pin;
-    this->_APN = apn;
-
-    return *this;
-}
-
-GB_NB1500& GB_NB1500::configure(String pin, String apn, int sleep_duration) {
-
-    // SIM PIN
-    this->_PIN = pin;
-    this->_APN = apn;
-    _gb->globals.SLEEP_DURATION = sleep_duration;
 
     this->device.detected = true;
+    
+    // SIM configuration
+    _gb->globals.PIN = pin;
+    _gb->globals.APN = apn;
 
-    _gb->log("Device SN: " + _gb->globals.DEVICE_SN);
-
+    // Get device SN from memory
+    if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
+        String savedsn = _gb->getdevice("mem").get(2);
+        if (savedsn.length() > 0 && savedsn != _gb->globals.DEVICE_SN) {
+            _gb->color("yellow").log("New microcontroller detected. Please update the configuration using the desktop client.");
+            _gb->log("Old SN: " + savedsn);
+            _gb->log("New SN: " + _gb->globals.DEVICE_SN);
+        }
+        if (savedsn.length() == 0) {
+            _gb->getdevice("mem").write(2, savedsn);
+        }
+    } 
+    
+    // Get device environment from memory
+    if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
+        String savedenv = _gb->getdevice("mem").get(1);
+        if (savedenv.length() > 0) {
+            _gb->env(savedenv);
+            _gb->log("Saved environment: " + savedenv);
+        }
+        else {
+            _gb->getdevice("mem").write(1, savedenv);
+        }
+    } 
+    
     return *this;
+}
+GB_NB1500& GB_NB1500::configure(String pin, String apn, int sleep_duration) {
+    _gb->globals.SLEEP_DURATION = sleep_duration;
+    return this->configure(pin, apn);
+}
+GB_NB1500& GB_NB1500::configure() {
+    return this->configure("", "");
 }
 
 GB_NB1500& GB_NB1500::i2c() {
@@ -671,7 +690,7 @@ String GB_NB1500::geticcid() {
     Set PIN
 */
 GB_NB1500& GB_NB1500::pin(String pin) { 
-    this->_PIN = pin;
+    _gb->globals.PIN = pin;
     return *this; 
 }
 
@@ -680,8 +699,8 @@ GB_NB1500& GB_NB1500::pin(String pin) {
 */
 GB_NB1500& GB_NB1500::apn(String apn) { 
     apn.trim();
-    this->_APN = apn;
-    if (this->_APN.length() > 0) _gb->log("Setting APN -> " + this->_APN);
+    _gb->globals.APN = apn;
+    if (_gb->globals.APN.length() > 0) _gb->log("Setting APN -> " + _gb->globals.APN);
     return *this; 
 }
 
@@ -934,12 +953,9 @@ bool GB_NB1500::_register_network() {
     bool nbstatus = false;
     // this->watchdog("enable");
 
-    // Get APN from config on SD
-    this->_APN = _gb->globals.APN;
-
     int count = 0;
     while (!nbstatus && count++ < _attempts) {
-        if (this->_APN.length() > 0) nbstatus = _nbAccess.begin(_gb->s2c(this->_PIN), _gb->s2c(this->_APN), false, true) == NB_READY;
+        if (_gb->globals.APN.length() > 0) nbstatus = _nbAccess.begin(_gb->s2c(_gb->globals.PIN), _gb->s2c(_gb->globals.APN), false, true) == NB_READY;
         else nbstatus = _nbAccess.begin("", false, true) == NB_READY;
 
         this->watchdog("reset");

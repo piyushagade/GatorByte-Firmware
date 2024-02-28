@@ -316,9 +316,6 @@
         //! Mandatory GB setup function
         gb.setup();
 
-        //! Set environment
-        gb.env("production");
-        
         //! Initialize GatorByte and device configurator
         gb.configure(false, "gb-lry-test-drifter");
         gb.globals.ENFORCE_CONFIG = true;
@@ -326,12 +323,13 @@
         //! Configure peripherals
         ioe.configure({3, 4, 5}, 2).initialize();
 
-        //! Configure microcontroller
-        mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
-
         //! Configure peripherals
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
         buzzer.configure({6}).initialize().play("...");
+        mem.configure({true, SR0}).initialize();
+
+        //! Configure microcontroller
+        mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
         //! Detect GDC
         gdc.detect(false);
@@ -339,8 +337,7 @@
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
 
-        // // Enable the Eye of Sauron
-        // sntl.sauron(true);
+        // while(true) mcu.connect("cellular");
 
         sntl.shield(120, []() {
             
@@ -361,7 +358,6 @@
             gps.configure({true, SR2, SR10}).initialize();
             // bl.configure({true, SR3, SR11}).initialize().on().persistent();
 
-            mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
             rtc.configure({true, SR0}).initialize();
         });

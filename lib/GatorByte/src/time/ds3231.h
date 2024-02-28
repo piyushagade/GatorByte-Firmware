@@ -582,6 +582,8 @@ DateTime GB_DS3231::now() {
         while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
         if(MODEM_INITIALIZED) {
             String nwtimestr = _gb->getmcu().gettime();
+            int counter = 50;
+            while (nwtimestr.contains("2080") && counter-- >= 0) { nwtimestr = _gb->getmcu().gettime(); delay(250); }
 
             int year, month, day, hour, minute, second, offset;
             sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
@@ -640,10 +642,10 @@ String GB_DS3231::timestamp() {
     DateTime time = this->now();
     uint32_t unixtime = time.unixtime();
 
-    // // Convert the MODEM's timestamp to GMT
-    // if (this->_source == "modem") {
-    //     unixtime = this->converttogmt(this->timezone, unixtime);
-    // }
+    // Adjust MODEM time to GMT (for non-KORE Super SIM cards)
+    if (_gb->globals.APN == "super" && this->_source == "modem") {
+        unixtime = this->converttogmt(this->timezone, unixtime);
+    }
 
     #ifdef false // Keep for documentation
         // Check if the time is invalid
@@ -683,19 +685,19 @@ String GB_DS3231::date(String format) {
 
     DateTime dt = this->now();
     
-    // // Adjust MODEM time to GMT
-    // if (this->_source == "modem") {
-    //     for (const auto& info : this->tzoffsets) {
-    //         if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
-    //             int offsethour = info.offsetHours;
-    //             int offsetminutes = info.offsetMinutes;
-    //             int offsetsign = info.sign;
-    //             TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
-    //             dt = dt.operator-(span);
-    //             break;
-    //         }
-    //     }
-    // }
+    // Adjust MODEM time to GMT (for non-KORE Super SIM cards)
+    if (_gb->globals.APN == "super" && this->_source == "modem") {
+        for (const auto& info : this->tzoffsets) {
+            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+                int offsethour = info.offsetHours;
+                int offsetminutes = info.offsetMinutes;
+                int offsetsign = info.sign;
+                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+                dt = dt.operator-(span);
+                break;
+            }
+        }
+    }
 
     #if not defined (LOW_MEMORY_MODE)
 
@@ -743,19 +745,19 @@ String GB_DS3231::time(String format) {
     
     DateTime time = this->now();
 
-    // // Adjust MODEM time to GMT
-    // if (this->_source == "modem") {
-    //     for (const auto& info : this->tzoffsets) {
-    //         if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
-    //             int offsethour = info.offsetHours;
-    //             int offsetminutes = info.offsetMinutes;
-    //             int offsetsign = info.sign;
-    //             TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
-    //             time = time.operator-(span);
-    //             break;
-    //         }
-    //     }
-    // }
+    // Adjust MODEM time to GMT (for non-KORE Super SIM cards)
+    if (_gb->globals.APN == "super" && this->_source == "modem") {
+        for (const auto& info : this->tzoffsets) {
+            if (strcmp(this->timezone.c_str(), info.timezone) == 0) {
+                int offsethour = info.offsetHours;
+                int offsetminutes = info.offsetMinutes;
+                int offsetsign = info.sign;
+                TimeSpan span(offsetsign * (offsethour * 3600 + offsetminutes * 60));
+                time = time.operator-(span);
+                break;
+            }
+        }
+    }
 
     // Convert to requested string format
     bool hr12 = format.indexOf("a") > -1; int hour;

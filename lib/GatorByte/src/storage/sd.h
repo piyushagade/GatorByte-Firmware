@@ -872,20 +872,6 @@ GB_SD& GB_SD::readconfig() {
     File file = this->openFile("read", filename);
     delay(100);
 
-    /*
-        ! Sample config.ini file
-
-        device
-         id: gb-lab-buoy
-         devices: mcu,gps,bl,acc,mem,ph,dox,ec,rtd,booster,rgb,aht
-        data
-         dummy: gps,ph,dox,ec,rtd,temp,humidity
-        survey
-         id: santa-fe-river
-         location: Santa Fe River
-
-    */
-
     // If the file opened successfully
     if(file){
         char char_code;
@@ -942,6 +928,15 @@ GB_SD& GB_SD::readconfig() {
 
                         if (category == "device") {
                             if (key == "name") _gb->globals.DEVICE_NAME = value;
+                            if (key == "env") {
+                                _gb->env(value);
+                                if (_gb->hasdevice("mem")) _gb->getdevice("mem").write(1, value);
+
+                                if (_gb->globals.GDC_SETUP_READY) {
+                                    Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
+                                }
+                            }
+
                             // if (key == "id") _gb->globals.DEVICE_SN = value;
                             if (key == "devices") _gb->globals.DEVICES_LIST = value;
                         }
@@ -991,6 +986,7 @@ GB_SD& GB_SD::readconfig() {
         
         _gb->br();
         _gb->heading("Configuration extracted from SD");
+        _gb->log("Environment: " + _gb->env());
         _gb->log("Project ID: " + _gb->globals.PROJECT_ID);
         _gb->log("Device SN: " + _gb->globals.DEVICE_SN);
         _gb->log("SD SN: " + this->sn);

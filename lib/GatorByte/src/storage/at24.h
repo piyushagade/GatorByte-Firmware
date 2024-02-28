@@ -11,24 +11,24 @@
                     |   that indicates that the device has been
                     |   initialized.
     ----------------------------------------------------------------
-        1           |  Device type. 
+        1           |  Environment
                     |   E.g. gatorbyte
     ----------------------------------------------------------------
-        2           |  Device unique ID. 
-                    |   E.g. swb-luna
+        2           |  Device unique ID/SN. 
+                    |   E.g. cV0XdX9
     ----------------------------------------------------------------
         3           |  Survey ID. 
-                    |   E.g. fall-stormwater-survey
+                    |   E.g. gb-lry
     ----------------------------------------------------------------
         4           |  Bluetooth name. 
                     |  E.g. gb-swb-luna
     ----------------------------------------------------------------
-        5           | Bluetooth PIN
-                    | E.g. 5555
+        5           |  Bluetooth PIN
+                    |   E.g. 5555
     ----------------------------------------------------------------
-        6           | Failure count
-                    | E.g. 3
-                    | Should reset to 0 after a successful loop() execution 
+        6           |  Failure count
+                    |   E.g. 3
+                    |  Should reset to 0 after a successful loop() execution 
     ----------------------------------------------------------------
         7           | Last failure type
                     | E.g. Cellular
@@ -187,7 +187,7 @@ String GB_AT24::status() {
 
 // Initialize the module
 GB_AT24& GB_AT24::initialize() { 
-    this->initialize(false);
+    return this->initialize(false);
 }
 GB_AT24& GB_AT24::initialize(bool test) { 
     _gb->init();
@@ -195,7 +195,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
     this->on();
 
     _gb->log("Initializing EEPROM module", false);
-    
+
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
     
@@ -246,45 +246,6 @@ GB_AT24& GB_AT24::initialize(bool test) {
             _gb->log(readdata == writtendata ? "Passed" : "Failed");
         }
         
-        if (false) {
-            // Get stored configuration from EEPROM
-            _gb->log("Fetching device configuration from EEPROM");
-
-            if (this->get(1).length() == 0) _gb->log(" > Device type not set.");
-            else {
-                _gb->globals.DEVICE_TYPE = this->get(1);
-                _gb->log(" > Device type: " + _gb->globals.DEVICE_TYPE);
-            }
-
-            if (this->get(2).length() == 0) _gb->log(" > Device ID not set.");
-            else {
-                _gb->globals.DEVICE_NAME = this->get(2);
-                _gb->log(" > Device name: " + _gb->globals.DEVICE_NAME);
-            }
-
-            if (this->get(3).length() == 0) _gb->log(" > Project ID not set.");
-            else _gb->globals.PROJECT_ID = this->get(1);
-
-            if (this->get(4).length() == 0) {
-                _gb->log(" > Bluetooth name not set.");
-            }
-
-            if (this->get(5).length() == 0) {
-                _gb->log(" > Bluetooth PIN not set.");
-            }
-
-            if (this->get(6).length() == 0) _gb->log(" > Device SN not set.");
-            else {
-                _gb->globals.DEVICE_SN = this->get(6);
-                _gb->log(" > Device SN: " + _gb->globals.DEVICE_SN);
-            }
-
-            // Get last attempted action
-            if (this->get(9).length() > 0) {
-                _gb->log("Last action attempted: " + this->get(9));
-            }
-        }
-
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--").wait(250).play("...");
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
     }
@@ -321,8 +282,11 @@ GB_AT24& GB_AT24::format() {
         return *this;
     }
 
-    // Insert 'formatted' flag in location 0
+    // Insert 'formatted' flag at location 0
     this->write(0, "formatted");
+
+    // Insert 'env' information
+    this->write(1, "development");
 
     for(int i = 1; i < this->_chunkscount; i++) {
         this->write(i, "");

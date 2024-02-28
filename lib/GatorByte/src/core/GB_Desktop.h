@@ -91,8 +91,17 @@ GB_DESKTOP& GB_DESKTOP::detect(bool lock) {
             _gb->globals.GDC_CONNECTED = true;
             Serial.println("##CL-GDC-PONG##"); delay(50);
             Serial.println("##CL-GDC-SN::" + _gb->getmcu().getsn() + "##"); delay(50);
-            
-            if (_gb->globals.GDC_SETUP_READY) Serial.println("##CL-GB-READY##");
+
+            if (_gb->globals.GDC_SETUP_READY) {
+                Serial.println("##CL-GB-READY##");
+                
+                // Get device environment from memory
+                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
+                    String savedenv = _gb->getdevice("mem").get(1);
+                    _gb->env(savedenv);
+                    Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
+                }
+            }
 
             this->send("gdc-db", "power=awake");
 
@@ -128,7 +137,7 @@ GB_DESKTOP& GB_DESKTOP::enter() {
     while (_gb->globals.GDC_CONNECTED) {
         
         // Look for new commands
-        this->loop();
+        this->loop(); 
 
         if (millis() - last_led_act_ts >= 1000) {
             last_led_act_ts = millis();
@@ -238,10 +247,20 @@ void GB_DESKTOP::process(string command) {
     if (command.contains("gdc-ping")) {
         Serial.println("##CL-GDC-PONG##"); delay(50);
         Serial.println("##CL-GDC-SN::" + _gb->getmcu().getsn() + "##"); delay(50);
+        
 
         if (_gb->hasdevice("sd")) {
             if (!_gb->getdevice("sd").testdevice()) Serial.println("##CL-GB-SD-UINT##");
-            if (_gb->globals.GDC_SETUP_READY) Serial.println("##CL-GB-READY##");
+            if (_gb->globals.GDC_SETUP_READY) {
+                Serial.println("##CL-GB-READY##");
+                
+                // Get device environment from memory
+                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
+                    String savedenv = _gb->getdevice("mem").get(1);
+                    _gb->env(savedenv);
+                    Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
+                }
+            }
         }
         else if (!_gb->hasdevice("sd")) {
             Serial.println("##CL-GB-SD-UINT##");

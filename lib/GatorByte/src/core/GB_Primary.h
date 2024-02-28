@@ -126,6 +126,7 @@ class GB {
             String SERVER_URL = "/";
             String SERVER_API_VERSION = "v3";
             int SERVER_PORT = 80;
+            String PIN = "";
             String APN = "";
             String RAT = "catm";
 
@@ -266,7 +267,7 @@ class GB {
         int _loop_counter = 0;
         int _loop_execute_timestamp = 0;
         bool _concat_print = false;
-        String _env = "prodution";
+        String _env = "";
         
 };
 
@@ -326,7 +327,7 @@ bool GB::hasdevice(String device_name) {
         }
         
         // If the requested device is RGB, Buzzer just check if it is constructed and initialized
-        if (device_name == "rgb" || device_name == "buzzer") {
+        if (device_name == "rgb" || device_name == "buzzer" || device_name == "mem") {
             return this->_all_included_gb_libraries.indexOf(device_name + ":") && this->_all_included_gb_devices.indexOf(device_name + ":");
         }
         
@@ -415,6 +416,10 @@ bool GB::hasdevice(String device_name) {
 
 GB& GB::setup() {
     this->_boot_timestamp = millis();
+    if (this->hasdevice("mem")) {
+        // bool initialized = this->getdevice("mem").get
+        // this->getdevice("mem").detect(false);
+    }
     return *this;
 }
 
@@ -447,6 +452,14 @@ GB& GB::loop(int wait) {
         if (this->globals.GDC_CONNECTED) {
             Serial.println("Setup complete.");
             Serial.println("##CL-GB-READY##");
+            
+            // Get device environment from memory
+            if (this->hasdevice("mem") &&  this->getdevice("mem").get(0) == "formatted") {
+                String savedenv = this->getdevice("mem").get(1);
+                this->env(savedenv);
+                Serial.println("##CL-GDC-ENV::" + this->env() + "##"); delay(50);
+            }
+            
             if (this->hasdevice("buzzer")) this->getdevice("buzzer").play("-").wait(100).play("-");
         }
 

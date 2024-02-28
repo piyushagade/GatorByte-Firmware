@@ -1,6 +1,10 @@
 #ifndef GB_PIPER_h
 #define GB_PIPER_h
 
+#ifndef GB_h
+    #include "../GB.h"
+#endif
+
 class GB_PIPER {
     public:
         GB_PIPER();
@@ -13,7 +17,7 @@ class GB_PIPER {
         bool ishot();
 
         typedef void (*callback_t_func)(int);
-        GB_PIPER& pipe(int interval, bool runatinit, callback_t_func function);
+        int pipe(int interval, bool runatinit, callback_t_func function);
 
     private:
         unsigned long _executed_at = 0;
@@ -27,15 +31,16 @@ GB_PIPER::GB_PIPER() { }
 /* 
     Process the incoming command
     Interval is in milliseconds
+
+    Returns seconds until the piper becomes hot
 */
-GB_PIPER& GB_PIPER::pipe(int interval, bool runatinit, callback_t_func function) {
+int GB_PIPER::pipe(int interval, bool runatinit, callback_t_func function) {
     this->_interval = interval;
     this->_runatinit = runatinit;
+    unsigned long secondsuntilhot;
 
-    if (
-        this->ishot()
-    ) 
-    {
+    if (this->ishot()) {
+        secondsuntilhot = 0;
         this->_execution_counter++;
         this->_executed_at = millis();
         
@@ -43,10 +48,10 @@ GB_PIPER& GB_PIPER::pipe(int interval, bool runatinit, callback_t_func function)
         function(this->_execution_counter);
     }
     else {
-        Serial.println ("Piper is cold for the next " + String((this-> _interval - millis() + this->_executed_at) / 1000) + " seconds.");
+        secondsuntilhot = (this-> _interval - millis() + this->_executed_at) / 1000;
     }
 
-    return *this;
+    return secondsuntilhot;
 }
 
 bool GB_PIPER::ishot() {
