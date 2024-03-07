@@ -104,7 +104,6 @@ private:
    boolean readByte(uint8_t * result, uint16_t * index);
    boolean write(uint8_t header, uint8_t* buf, uint16_t length);
    uint16_t writeString(const char* string, uint8_t* buf, uint16_t pos);
-
    // Build up the header ready to send
    // Returns the size of the header
    // Note: the header is built at the end of the first MQTT_MAX_HEADER_SIZE bytes, so will start
@@ -181,6 +180,10 @@ public:
    boolean loop();
    boolean connected();
    int state();
+   
+   bool waiting_for_response_flag = false;
+   String waiting_for_response_topic = "";
+
 
 };
 

@@ -1696,10 +1696,20 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
     return *this; 
 }
 
+/*
+    ! This function updates the control file and the global JSONary object.
+
+    'keyvalue' should have the following format:
+    ----------------
+    key1=value1
+    key2=value2
+    key3=value3
+    ...
+*/
 GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
     if(keyvalue.length() == 0) return *this;
 
-    _gb->log("Updating control variables -> Done");
+    _gb->log("Updating control variables on SD", false);
         
     int MAX_KEYS = 20;
     String keys[MAX_KEYS];
@@ -1740,10 +1750,12 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
 
     } while (String(keyvalue.charAt(cursor++)).length() > 0);
 
+    _gb->arrow().color("green").log("Done");
+
     // Get control data from SD
     this->readcontrol();
 
-    // Update calues in the gb.controls object
+    // Update values in the gb.controls object
     for (int i = 0; i < MAX_KEYS; i++) {
         String key = keys[i];
         
@@ -1752,6 +1764,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
         }
     }
 
+    // Update the controls file on SD
     String filename = "/control/variables.ini";
     
     // Delete previous control file

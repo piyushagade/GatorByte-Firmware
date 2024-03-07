@@ -91,6 +91,8 @@ GB_NEO_6M::GB_NEO_6M(GB &gb) {
 GB_NEO_6M& GB_NEO_6M::configure(PINS pins) {
     this->pins = pins;
 
+    pinMode(A6, INPUT);
+
     // Set pin modes of the device
     if(!this->pins.mux) pinMode(this->pins.enable, OUTPUT);
     
@@ -235,6 +237,8 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
 
     // Dummy data requested?
     dummy = dummy || _gb->globals.MODE == "dummy";
+
+    // if (digitalRead(A6) == HIGH) _gb->arrow().color("yellow").log("Dummy mode override detected");
 
     if (dummy) {
         _gb->arrow().log("Sending dummy data");

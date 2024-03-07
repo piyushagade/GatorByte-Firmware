@@ -176,7 +176,7 @@ bool GB_AT24::memtest() {
 }
 
 // Test the device
-bool GB_AT24::testdevice() { 
+bool GB_AT24::testdevice() {
     
     _gb->log("Testing " + device.id + ": " + String(this->device.detected));
     return this->device.detected;
@@ -213,9 +213,9 @@ GB_AT24& GB_AT24::initialize(bool test) {
         _gb->log(" -> Done", !test);
         this->device.detected = true;
 
-        // Increment the boot counter
-        String bootcounter = String(this->get(this->MEMLOC_BOOT_COUNTER).toInt() + 1);
-        this->write(this->MEMLOC_BOOT_COUNTER, bootcounter);
+        // // Increment the boot counter
+        // String bootcounter = String(this->get(this->MEMLOC_BOOT_COUNTER).toInt() + 1);
+        // this->write(this->MEMLOC_BOOT_COUNTER, bootcounter);
 
         // Disable stray watchdog timers
         this->_gb->getmcu().watchdog("disable");
@@ -230,6 +230,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
         }
         
         if (test) {
+            
             //! Speed test
             int start = millis();
             String readdata = _gb->s2c(this->get(0));
@@ -245,6 +246,37 @@ GB_AT24& GB_AT24::initialize(bool test) {
             _gb->log(" -> R/W test: ", false);
             _gb->log(readdata == writtendata ? "Passed" : "Failed");
         }
+
+
+        // Get device SN from memory
+        if (this->get(0) == "formatted") {
+            _gb->log("Fetching SN", false);
+            String savedsn = this->get(2);
+            if (savedsn.length() == 0) {
+                this->write(2, _gb->globals.DEVICE_SN);
+                _gb->arrow().color("yellow").log("SN written to EEPROM.");
+            }
+            else _gb->arrow().color("white").log(savedsn);
+            
+            if (savedsn.length() > 0 && savedsn != _gb->globals.DEVICE_SN) {
+                this->write(2, _gb->globals.DEVICE_SN);
+                _gb->color("yellow").log("New microcontroller detected. Updating the SN in EEPROM.");
+                _gb->log("Old SN: " + savedsn);
+                _gb->log("New SN: " + _gb->globals.DEVICE_SN);
+            }
+        
+            // Get device environment from memory
+            _gb->log("Fetching environment", false);
+            String savedenv = this->get(1);
+            if (savedenv.length() > 0) {
+                _gb->env(savedenv);
+                _gb->arrow().color("white").log(_gb->env());
+            }
+            else {
+                this->write(1, savedenv);
+                _gb->arrow().color("yellow").log("Environment written to EEPROM.");
+            }
+        } 
         
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--").wait(250).play("...");
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
@@ -269,6 +301,8 @@ GB_AT24& GB_AT24::initialize(bool test) {
 // Format the contents in the EEPROM
 GB_AT24& GB_AT24::format() { 
     this->on();
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("yellow");
+
     
     // Start watchdog timer
     this->_gb->getmcu().watchdog("enable");
@@ -299,6 +333,8 @@ GB_AT24& GB_AT24::format() {
     
     // Disable watchdog timer
     this->_gb->getmcu().watchdog("disable");
+    
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").revert();
 
     this->off();
     return *this;
@@ -364,6 +400,9 @@ GB_AT24& GB_AT24::write(int id, String data){
     this->_gb->getmcu().watchdog("enable");
 
     String data_to_write = data;
+
+    // _gb->log("Writing location: " + String(id));
+    // _gb->log("Writing: " + data);
 
     // Reserve memory
     char writebuffer[this->_chunksize];

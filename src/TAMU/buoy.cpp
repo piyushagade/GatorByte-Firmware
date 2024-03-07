@@ -1,21 +1,15 @@
 #include "../platform.h"
 
-#if GB_PLATFORM_IS_LRY_DRIFTER_V2
+#if GB_PLATFORM_IS_TAMU_BUOY
 
     /*
-        Drifter goals
+        Buoy goals
         -------------`
-        1. Long-term deployment
+        1. Short-term deployment
             a. Sampling frequency - 5 minutes.
             b. Upload strategies
                 i.  Once every hour; Recovery mode implementation required
-                ii. As soon as reading is taken; Recovery mode not required
-        2. Only monitor GPS location
-            a. GPS not always ON
-                i. For sampling interval < 5 minutes, GPS can be turned off
-                    and a cold start fix will be under a minute.
-                ii. If sampling interval > 5 minutes, a cold start may requ-
-                    -ire significant amount of time.
+                ii. As soon as reading is taken; Recovery mode not required (This one)
     */
     
     /* 
@@ -45,6 +39,7 @@
     GB_MQTT mqtt(gb);
     GB_HTTP http(gb);
     GB_74HC595 ioe(gb);
+    GB_TCA9548A tca(gb);
 
     // Peripherals and devices
     GB_RGB rgb(gb);
@@ -57,6 +52,12 @@
     GB_BUZZER buzzer(gb);
     GB_NEO_6M gps(gb);
 
+    // Atlas Scientific sensors
+    GB_AT_SCI_DO dox(gb);
+    GB_AT_SCI_RTD rtd(gb);
+    GB_AT_SCI_EC ec(gb);
+    GB_AT_SCI_PH ph(gb);
+
     GB_AHT10 aht(gb);
     GB_DESKTOP gdc(gb);
     GB_SNTL sntl(gb);
@@ -66,7 +67,6 @@
     GB_PIPER readpiper;
     GB_PIPER uploaderpiper;
     GB_PIPER fetchcontrolpiper;
-    GB_PIPER recoverypiper;
 
     /*
         Control variables
@@ -113,23 +113,16 @@
         sntl.reboot();
     }
 
-    void parse_mqtt_message(String topic, String str){
+    void parse_mqtt_message(String str){
 
-        if (topic.endsWith("control/response/single")) {
+        // Update the variables in SD card and in runtime memory
+        sd.updatecontrol(str, set_control_variables);
+        
+        mqtt.publish("log/message", "Control variables updated.");
 
-            /* 
-                * Here, the str should be a keyvalue string
-            */
-            
-            // Update the variables in SD card and in runtime memory
-            sd.updatecontrol(str, set_control_variables);
-            
-            mqtt.publish("log/message", "Control variables received.");
-
-            if (REBOOT_FLAG) {
-                devicereboot();
-                REBOOT_FLAG = 0;
-            }
+        if (REBOOT_FLAG) {
+            devicereboot();
+            REBOOT_FLAG = 0;
         }
     }
 
@@ -138,16 +131,20 @@
         It is mandatory to define this function if GB_MQTT library is instantiated above
     */
 
-    void mqtt_message_handler(String topic, String payload) {
+    void mqtt_message_handler(String topic, String message) {
 
-        // // If broker sends an acknowledgement
-        // if (topic == "gatorbyte/ack" && payload == "success") {
-        //     mqtt.ACK_RECEIVED = true;
-        //     return;
-        // }
+        gb.br(2).log("Incoming topic: " + topic);
+        gb.log("Incoming message: " + message);
+        gb.br(2);
 
-        // Parse response
-        parse_mqtt_message(topic, payload);
+        // If broker sends an acknowledgement
+        if (topic == "gatorbyte/ack" && message == "success") {
+            mqtt.ACK_RECEIVED = true;
+            return;
+        }
+
+        // Parse message
+        parse_mqtt_message(message);
     }
 
     
@@ -159,7 +156,6 @@
     void mqtt_on_connect() {
 
         mqtt.subscribe("gb-lab/test");
-        mqtt.subscribe("control/response/single");
     }
 
     /* 
@@ -326,6 +322,7 @@
         
         //! Configure peripherals
         ioe.configure({3, 4, 5}, 2).initialize();
+        tca.configure({A2}).initialize(); 
 
         //! Configure peripherals
         rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
@@ -338,7 +335,9 @@
         gdc.detect(false);
         
         //! Initialize Sentinel
-        sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
+        sntl.configure({true, 4}, 9).initialize().ack(true).enablebeacon(0);
+        
+        // while(true) mcu.connect("cellular");
 
         sntl.shield(120, []() {
             
@@ -353,23 +352,27 @@
 
             // Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
-            // // http.configure("api.ezbean-lab.com", 80);
             
             // Initialize remaining peripherals
+            rtc.configure({true, SR0}).initialize();
             gps.configure({true, SR2, SR10}).initialize();
-            // bl.configure({true, SR3, SR11}).initialize().on().persistent();
-
+            bl.configure({true, SR3, SR11}).initialize().on().persistent();
             mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
-            rtc.configure({true, SR0}).initialize();
+
+
+            //! Configure sensors
+            rtd.configure({true, SR6, true, 0}).initialize(true);
+            dox.configure({true, SR8, true, 2}).initialize(true);
+            ec.configure({true, SR9, true, 3}).initialize(true);
+            ph.configure({true, SR7, true, 1}).initialize(true).on();
+
         });
 
         gb.log("Setup complete");
     }
 
     void preloop () {
-
-        if (gb.env() == "development") gb.controls.set("RECOVERY_MODE", "false");
 
         /*
             This is a hack to eliminate the delay introduced by the DS3231 RTC.
@@ -379,79 +382,21 @@
         gb.br().log("Environment: " + gb.env());
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
-        gb.log("Sampling interval: " + String(SAMPLING_INTERVAL));
-
-        gb.log("Recovery mode: " + String(gb.controls.getboolean("RECOVERY_MODE") ? "active" : "inactive"));
-        gb.log("Recovery mode threshold: " + String(gb.controls.getint("LOW_BATT_THRESHOLD")) + " %");
 
         // Detect GDC
         gdc.detect(false);
-
-        mcu.connect("cellular");
-        mqtt.connect("pi", "abe-gb-mqtt");
     }
 
     void loop () {
 
         // GatorByte loop function
         gb.loop();
-
-        fetchcontrolpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
-            
-            // Send request
-            mqtt.publish("control/get", "RECOVERY_MODE_FLAG");
-
-            // Wait for broker response
-            mqtt.waituntilresponse("control/response/single", 5000);
-        });
-
         
         bl.listen([] (String command) {
             Serial.println("Received command: " + command);
 
             if (command.contains("ping")) bl.print("pong");
         });
-
-        // Check if the device needs to enter recovery mode
-        if (gb.controls.getboolean("RECOVERY_MODE_FLAG")) {
-            gb.color("white").log("Recovery mode active");
-            
-            while (gb.controls.getboolean("RECOVERY_MODE_FLAG")) {
-                GPS_DATA gpsdata = gps.read(gb.env() == "development");
-                String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
-                gps.fix() ? rgb.on("blue") : rgb.on("red"); 
-                
-                // Initialize CSVary object
-                CSVary csv;
-                int timestamp = rtc.timestamp().toInt();
-                String date = rtc.date("MM/DD/YY");
-                String time = rtc.time("hh:mm");
-
-                // Construct CSV object
-                csv
-                    .clear()
-                    .setheader("DEVICESN,TIMESTAMP,LAT,LNG,BVOLT,BLEV,MODE")
-                    .set(gb.globals.DEVICE_SN)
-                    .set(timestamp)
-                    .set(gps_lat)
-                    .set(gps_lng)
-                    .set(mcu.fuel("voltage"))
-                    .set(mcu.fuel("level"))
-                    .set("recovery");
-
-                gb.br().log("Recovery mode data point: ");
-                gb.log(csv.getheader());
-                gb.log(csv.getrows());
-                
-                // Write to queue
-                writetoqueue(csv);
-
-                // Upload queue files to server
-                uploadtoserver();
-
-                delay(gb.controls.getint("RECOVERY_MODE_INTERVAL"));
-            };
-        }
 
         if (uploaderpiper.ishot()) {
             gb.log("Uploader piper is hot");
@@ -462,85 +407,60 @@
             gps.on();
         }
 
-        uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
-            uploadtoserver();
+        sntl.shield(300, [] {
+
+            /*
+                ! Check the current state of the system and take actions accordingly
+                Get latest GPS coordinates
+            */
+            GPS_DATA gpsdata = gps.read(gb.env() == "development");
+
+            String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
+            gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 
+
+            //! Get sensor readings
+            float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
+
+            // Initialize CSVary object
+            CSVary csv;
+            int timestamp = rtc.timestamp().toInt();
+            String date = rtc.date("MM/DD/YY");
+            String time = rtc.time("hh:mm");
+
+            // Construct CSV object
+            csv
+                .clear()
+                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
+                .set(gb.globals.DEVICE_SN)
+                .set(timestamp)
+                .set(date)
+                .set(time)
+                .set(read_rtd_value)
+                .set(read_ph_value)
+                .set(read_dox_value)
+                .set(read_ec_value)
+                .set(aht.temperature())
+                .set(aht.humidity())
+                .set(gb.globals.FAULTS_PRIMARY)
+                .set(gps_lat)
+                .set(gps_lng)
+                .set(mcu.fuel("voltage"))
+                .set(mcu.fuel("level"));
+
+            gb.br().log("Current data point: ");
+            gb.log(csv.getheader());
+            gb.log(csv.getrows());
+
+            /*
+                ! Prepare a queue file (with current iteration's data)
+                The queue file will be read and data uploaded once the network is established.
+                The file gets deleted if the upload is successful. 
+            */
+            writetoqueue(csv);
         });
 
-        fetchcontrolpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
-            
-            // Send request
-            mqtt.publish("control/fetch", gb.controls.get());
-
-            // Wait for broker response
-            mqtt.waituntilresponse("control/push", 7000);
-        });
-
-        // Take readings
-        readpiper.pipe(SAMPLING_INTERVAL, true, [] (int counter) {
-
-            
-            sntl.shield(200, [] {
-
-                /*
-                    ! Check the current state of the system and take actions accordingly
-                    Get latest GPS coordinates
-                */
-                GPS_DATA gpsdata = gps.read(gb.env() == "development");
-
-                String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
-                gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 
-
-                // Initialize CSVary object
-                CSVary csv;
-                int timestamp = rtc.timestamp().toInt();
-                String date = rtc.date("MM/DD/YY");
-                String time = rtc.time("hh:mm");
-
-                // Construct CSV object
-                csv
-                    .clear()
-                    .setheader("DEVICESN,TIMESTAMP,DATE,TIME,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
-                    .set(gb.globals.DEVICE_SN)
-                    .set(timestamp)
-                    .set(date)
-                    .set(time)
-                    .set(aht.temperature())
-                    .set(aht.humidity())
-                    .set(gb.globals.FAULTS_PRIMARY)
-                    .set(gps_lat)
-                    .set(gps_lng)
-                    .set(mcu.fuel("voltage"))
-                    .set(mcu.fuel("level"));
-
-                gb.br().log("Current data point: ");
-                gb.log(csv.getheader());
-                gb.log(csv.getrows());
-
-                // //! Upload current data to desktop client
-                // gdc.send("data", csv.getheader() + BR + csv.getrows());
-                
-                /*
-                    ! Prepare a queue file (with current iteration's data)
-                    The queue file will be read and data uploaded once the network is established.
-                    The file gets deleted if the upload is successful. 
-                */
-                writetoqueue(csv);
-            });
-        });
-
-        recoverypiper.pipe(30000, true, [] (int counter) {
-            // get_control_variable();
-
-            float battlevel = mcu.fuel("level");
-            gb.log("Current battery level: " + String(battlevel), false);
-
-            if (battlevel < gb.controls.getint("LOW_BATT_THRESHOLD")) {
-                gb.arrow().color("yellow").log("Enabling recovery mode.");
-                gb.controls.set("RECOVERY_MODE", "true");
-                sd.updatecontrolbool("RECOVERY_MODE", true);
-            }
-
-        });
+        //! Upload data to server
+        uploadtoserver();
 
         //! Sleep
         mcu.sleep(on_sleep, on_wakeup);

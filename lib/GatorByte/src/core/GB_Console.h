@@ -376,9 +376,9 @@ void GB_CONSOLE::process(String command) {
                 bool confirm = this->confirm_discard_changes();
                 if (confirm) {
                     this->_gb->globals.DEVICE_TYPE = "gatorbyte";
-                    _gb->getdevice("mem").write(1, _gb->globals.DEVICE_TYPE);
+                    // _gb->getdevice("mem").write(1, _gb->globals.DEVICE_TYPE);
                     this->_gb->globals.DEVICE_NAME = devicename;
-                    _gb->getdevice("mem").write(2, _gb->globals.DEVICE_NAME);
+                    // _gb->getdevice("mem").write(2, _gb->globals.DEVICE_NAME);
                 }
             }
             else if (selection.indexOf("3") == 0) {

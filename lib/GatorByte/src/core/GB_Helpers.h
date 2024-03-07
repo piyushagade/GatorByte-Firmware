@@ -299,7 +299,7 @@ GB& GB::br(int count){
     }
     else {
         this->log("", true);
-        this->br(count--);
+        this->br(--count);
     }
     return *this;
 }

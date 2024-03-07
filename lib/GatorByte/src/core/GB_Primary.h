@@ -175,6 +175,7 @@ class GB {
         bool haslibrary(String device);
         bool hasdevice(String device);
 
+        void configure();
         void configure(bool debug);
         void configure(bool debug, String device_id);
 
@@ -271,6 +272,9 @@ class GB {
         
 };
 
+void GB::configure() {
+    return this->configure(false);
+}
 void GB::configure(bool debug) {
     this->configure(debug, "");
 }

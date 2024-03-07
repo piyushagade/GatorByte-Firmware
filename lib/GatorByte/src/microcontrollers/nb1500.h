@@ -395,35 +395,11 @@ bool GB_NB1500::_wait_for_at_response(unsigned long timeout) {
 GB_NB1500& GB_NB1500::configure(String pin, String apn) {
 
     this->device.detected = true;
-    
+
     // SIM configuration
     _gb->globals.PIN = pin;
     _gb->globals.APN = apn;
 
-    bool memready = _gb->hasdevice("mem") && _gb->getdevice("mem").get(0) == "formatted";
-
-    // Get device SN from memory
-    if (memready) {
-        String savedsn = _gb->getdevice("mem").get(2);
-        if (savedsn.length() > 0 && savedsn != _gb->globals.DEVICE_SN) {
-            _gb->color("yellow").log("New microcontroller detected. Please update the configuration using the desktop client.");
-            _gb->log("Old SN: " + savedsn);
-            _gb->log("New SN: " + _gb->globals.DEVICE_SN);
-        }
-        if (savedsn.length() == 0) {
-            _gb->getdevice("mem").write(2, savedsn);
-        }
-    
-        // Get device environment from memory
-        String savedenv = _gb->getdevice("mem").get(1);
-        if (savedenv.length() > 0) {
-            _gb->env(savedenv);
-        }
-        else {
-            _gb->getdevice("mem").write(1, savedenv);
-        }
-    } 
-    
     return *this;
 }
 GB_NB1500& GB_NB1500::configure(String pin, String apn, int sleep_duration) {

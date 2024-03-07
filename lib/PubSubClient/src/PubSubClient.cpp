@@ -416,6 +416,13 @@ boolean PubSubClient::loop() {
                             int length = len-llen-3-tl-2;
                             String payload_str = "";
                             for (int i = 0; i < length; i++) payload_str += (char) payload[i];
+
+                            //! AG: Added
+                            if (this->waiting_for_response_topic == ((String) topic)) {
+                                this->waiting_for_response_flag = false;
+                                this->waiting_for_response_topic = "";
+                            }
+                            
                             callback((String) topic, payload_str);
 
                             this->buffer[0] = MQTTPUBACK;
@@ -434,6 +441,13 @@ boolean PubSubClient::loop() {
                             int length = len-llen-3-tl;
                             String payload_str = "";
                             for (int i = 0; i < length; i++) payload_str += (char) payload[i];
+                            
+                            //! AG: Added
+                            if (this->waiting_for_response_topic == ((String) topic)) {
+                                this->waiting_for_response_flag = false;
+                                this->waiting_for_response_topic = "";
+                            }
+
                             callback((String) topic, payload_str);
                         }
                     }

@@ -59,6 +59,7 @@ class GB_MQTT : public GB_DEVICE {
 
         bool connected();
         bool connected(bool);
+        bool waituntilresponse(String, unsigned long);
         bool publish(String, String, String);
         bool publish(String, String);
         void subscribe(String);
@@ -73,6 +74,8 @@ class GB_MQTT : public GB_DEVICE {
         int _reconnection_attempt_count = 0;
         int _last_pinged_at = 0;
         bool _wait_for_ack = false;
+        String _waiting_for_response_topic = "";
+        bool _waiting_for_response_flag = false;
         String _ack_id = "";
 };
 
@@ -84,7 +87,7 @@ GB_MQTT::GB_MQTT(GB &gb) {
 }
 
 GB_MQTT& GB_MQTT::configure(callback_t_on_message on_message_ptr, callback_t_on_connect on_connect_ptr) {
-    this->configure(_gb->globals.SERVER_URL, _gb->globals.SERVER_PORT, _gb->globals.DEVICE_SN, on_message_ptr, on_connect_ptr);
+    return this->configure(_gb->globals.SERVER_URL, _gb->globals.SERVER_PORT, _gb->globals.DEVICE_SN, on_message_ptr, on_connect_ptr);
 }
 GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback_t_on_message on_message_ptr, callback_t_on_connect on_connect_ptr) {
     _gb->includedevice(this->device.id, this->device.name);
@@ -270,8 +273,8 @@ GB_MQTT& GB_MQTT::update() {
     CONNECTED_TO_MQTT_BROKER = this->_mqttclient.connected();
     
     if (!CONNECTED_TO_MQTT_BROKER) {
-       
-        _gb->log("MQTT disconnected.", false);
+        
+        _gb->arrow().color("yellow").log("MQTT disconnected", false).arrow();
         
         //! Attempt reconnection with the broker
         this->connect(this->USER, this->PASS);
@@ -280,11 +283,11 @@ GB_MQTT& GB_MQTT::update() {
         if(this->_mqttclient.connected()) {
             CONNECTED_TO_MQTT_BROKER = 1;
             this->_reconnection_attempt_count = 0;
-            _gb->log("Reconnected.");
+            _gb->color("green").log("Reconnected.", false);
         }
         else {
             CONNECTED_TO_MQTT_BROKER = 0;
-            _gb->log("Reconnection failed. Attempt: " + String(this->_reconnection_attempt_count));
+            _gb->color("red").log("Reconnection failed. Attempt: " + String(this->_reconnection_attempt_count), false);
 
             /* 
                 ! Reset MCU if max reattempts of connection to broker
@@ -384,8 +387,8 @@ bool GB_MQTT::publish(String topic, String data) {
     // };
 
     // Report the result of the action
-    if (log && success) _gb->arrow().log("Done");
-    else if (log) _gb->arrow().log("Failed");
+    if (log && success) _gb->arrow().color("green").log("Done");
+    else if (log) _gb->arrow().color("red").log("Failed");
     delay(5);
 
     // Return false if waiting for acknowledgment, else return success booelan
@@ -394,8 +397,26 @@ bool GB_MQTT::publish(String topic, String data) {
 
 // Subscribe to a topic
 void GB_MQTT::subscribe(String topic) {
+    // _gb->log("Subscribing to topic: " + String(_gb->s2c(_gb->globals.DEVICE_SN + "::" + topic)));
     bool success = _mqttclient.subscribe(_gb->s2c(_gb->globals.DEVICE_SN + "::" + topic), this->SUBQOS);
     delay(20);
+}
+
+bool GB_MQTT::waituntilresponse(String topic, unsigned long timeout_ms) {
+    
+    // Raise the flag
+    _mqttclient.waiting_for_response_flag = true;
+    _mqttclient.waiting_for_response_topic = _gb->globals.DEVICE_SN + "::" + topic;
+
+    // Wait for the flag to dispense
+    unsigned long start = millis();
+    while (_mqttclient.waiting_for_response_flag && millis() - start <= timeout_ms) {
+        this->update();
+        delay(500);
+    }
+
+    // Check if a response was received
+    return !_mqttclient.waiting_for_response_flag;
 }
 
 // Get broker connection status
@@ -406,11 +427,12 @@ bool GB_MQTT::connected() {
 bool GB_MQTT::connected(bool log) {
     if(log) _gb->log("Broker connection: ", false);
     bool result = _mqttclient.connected();
-    if (result) if(log) _gb->log(" -> Done");
-    else if(log) _gb->log(" -> Failed");
+    if (log) {
+        if(result) _gb->log(" -> Done");
+        else _gb->log(" -> Failed");
+    }
     return result;
 }
-
 
 GB_MQTT& GB_MQTT::ack(String filename) {
     this->_wait_for_ack = true;
@@ -424,5 +446,7 @@ GB_MQTT& GB_MQTT::noack() {
     this->_wait_for_ack = false;
     return *this;
 }
+
+void mqtt_response_handler(GB gb, String topic, String payload) { }
 
 #endif
