@@ -48,8 +48,8 @@ class GB_SNTL : public GB_DEVICE {
         GB_SNTL& sauron(bool enable);
 
         typedef void (*callback_t_func)();
-        GB_SNTL& shield(int, callback_t_func);
-        GB_SNTL& shield(int, callback_t_func, bool);
+        GB_SNTL& watch(int, callback_t_func);
+        GB_SNTL& watch(int, callback_t_func, bool);
         GB_SNTL& kick();
         
         uint16_t reboot();
@@ -596,16 +596,16 @@ GB_SNTL& GB_SNTL::sauron(bool enable) {
     Monitor function/scope
     Duration in seconds
 */
-GB_SNTL& GB_SNTL::shield(int duration, callback_t_func function) { 
-    return this->shield(duration, function, true);
+GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function) { 
+    return this->watch(duration_sec, function, true);
 }
-GB_SNTL& GB_SNTL::shield(int duration, callback_t_func function, bool stubborn) { 
+GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function, bool stubborn) { 
     delay(100);
     
     // Set sentinence interval and enable sentinel
     // this->disable(); delay(20);
     
-    this->interval("sentinence", duration); delay(100);
+    this->interval("sentinence", duration_sec); delay(100);
     this->enable(stubborn); delay(100);
 
     // Call the function/scope/block

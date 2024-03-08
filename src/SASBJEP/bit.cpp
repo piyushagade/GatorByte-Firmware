@@ -83,7 +83,7 @@
 
     void send_state () {
 
-        sntl.shield(120, [] {
+        sntl.watch(120, [] {
             gb.log("Uploading state");
             
             //! Connect to network
@@ -96,7 +96,7 @@
             
         });
 
-        sntl.shield(60, [] {
+        sntl.watch(60, [] {
             JSONary state; 
             state
                 .set("SNTL", sntl.ping() ? "PONG" : "ERROR")
@@ -108,7 +108,7 @@
 
     void send_control_variables () {
         
-        sntl.shield(120, [] {
+        sntl.watch(120, [] {
             gb.log("Uploading state");
             
             //! Connect to network
@@ -121,21 +121,21 @@
             
         });
 
-        sntl.shield(60, [] {
+        sntl.watch(60, [] {
             mqtt.publish("control/report", gb.controls.get());
         });
     }
 
     void get_control_variable () {
         
-        sntl.shield(120, [] {
+        sntl.watch(120, [] {
             
             //! Connect to network
             mcu.connect("cellular");
             
         });
 
-        sntl.shield(60, [] {
+        sntl.watch(60, [] {
             JSONary data;
             data
                 .set("key", "RECOVERY_MODE")
@@ -300,7 +300,7 @@
 
         if (sd.getqueuecount() > 0) {
 
-            sntl.shield(120, [] {
+            sntl.watch(120, [] {
                 gb.log("Found " + String(sd.getqueuecount()) + " queue files.");
                 
                 //! Connect to network
@@ -316,7 +316,7 @@
             gb.log("MQTT connection attempted");
             
             //! Publish first ten queued-data with MQTT
-            sntl.shield(120, [] {
+            sntl.watch(120, [] {
 
                 if (CONNECTED_TO_MQTT_BROKER) {
                     int counter = 10;
@@ -380,7 +380,7 @@
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
 
-        sntl.shield(120, []() {
+        sntl.watch(120, []() {
 
             // Configure SD
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
@@ -442,7 +442,7 @@
 
                 recoverypiper.pipe(0.5 * 60 * 1000, true, [] (int counter) {
                     
-                    sntl.shield(90, [] {
+                    sntl.watch(90, [] {
                 
                         //! Connect to network
                         gb.log("Connecting to cellular", false);
@@ -453,7 +453,7 @@
                         mqtt.connect("pi", "abe-gb-mqtt");
                     });
 
-                    sntl.shield(15, [] {
+                    sntl.watch(15, [] {
 
                         // Initialize CSVary object
                         CSVary csv;
@@ -518,7 +518,7 @@
         //! Read water level data
         wlevpiper.pipe(gb.controls.getint("WLEV_SAMPLING_INTERVAL"), true, [] (int counter) {
 
-            sntl.shield(90, [] {
+            sntl.watch(90, [] {
                 
                 //! Connect to network
                 mcu.connect("cellular");
@@ -530,7 +530,7 @@
                 
             });
 
-            sntl.shield(30, [] {
+            sntl.watch(30, [] {
                 gb.br().log("Reading water level at " + rtc.time("hh:mm:ss"));
 
                 WLEV = uss.read();
@@ -540,7 +540,7 @@
                 mqtt.update();
             });
             
-            sntl.shield(15, [] {
+            sntl.watch(15, [] {
 
                 // Initialize CSVary object
                 CSVary csv;
@@ -595,7 +595,7 @@
                 gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
                 
                 //! Publish first ten queued-data with MQTT
-                sntl.shield(120, [] {
+                sntl.watch(120, [] {
 
                     if (CONNECTED_TO_MQTT_BROKER) {
                         

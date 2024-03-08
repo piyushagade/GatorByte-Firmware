@@ -116,7 +116,7 @@
     void parse_mqtt_message(String str){
 
         // Update the variables in SD card and in runtime memory
-        sd.updatecontrol(str, set_control_variables);
+        sd.updateallcontrol(str, set_control_variables);
         
         mqtt.publish("log/message", "Control variables updated.");
 
@@ -199,7 +199,7 @@
     */
     void get_control_variable () {
         
-        sntl.shield(120, [] {
+        sntl.watch(120, [] {
 
             // //! Disconnect from the network
             // mcu.disconnect("cellular");
@@ -208,7 +208,7 @@
             mcu.connect("cellular");
         });
 
-        sntl.shield(30, [] {
+        sntl.watch(30, [] {
             JSONary data;
             data
 
@@ -260,7 +260,7 @@
             gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
             
             //! Connect to the network
-            sntl.shield(120, [] {
+            sntl.watch(120, [] {
             
                 //! Connect to network
                 mcu.connect("cellular");
@@ -278,7 +278,7 @@
                 
                 while (!sd.isqueueempty() && counter-- > 0) {
                     
-                    sntl.shield(10, [] {
+                    sntl.watch(10, [] {
 
                         String queuefilename = sd.getfirstqueuefilename();
                         gb.log("Sending queue file: " + queuefilename);
@@ -339,7 +339,7 @@
         
         // while(true) mcu.connect("cellular");
 
-        sntl.shield(120, []() {
+        sntl.watch(120, []() {
             
             // Check battery level
             gb.log("Current battery level: " + String(mcu.fuel("level")) + " %");
@@ -385,6 +385,7 @@
 
         // Detect GDC
         gdc.detect(false);
+
     }
 
     void loop () {
@@ -407,7 +408,7 @@
             gps.on();
         }
 
-        sntl.shield(300, [] {
+        sntl.watch(300, [] {
 
             /*
                 ! Check the current state of the system and take actions accordingly

@@ -59,7 +59,7 @@ class GB_MQTT : public GB_DEVICE {
 
         bool connected();
         bool connected(bool);
-        bool waituntilresponse(String, unsigned long);
+        bool waituntilresponse(String, unsigned long, bool);
         bool publish(String, String, String);
         bool publish(String, String);
         void subscribe(String);
@@ -402,11 +402,11 @@ void GB_MQTT::subscribe(String topic) {
     delay(20);
 }
 
-bool GB_MQTT::waituntilresponse(String topic, unsigned long timeout_ms) {
+bool GB_MQTT::waituntilresponse(String topic, unsigned long timeout_ms, bool isBroadcast) {
     
     // Raise the flag
     _mqttclient.waiting_for_response_flag = true;
-    _mqttclient.waiting_for_response_topic = _gb->globals.DEVICE_SN + "::" + topic;
+    _mqttclient.waiting_for_response_topic = isBroadcast ? "" : (_gb->globals.DEVICE_SN + "::") + topic;
 
     // Wait for the flag to dispense
     unsigned long start = millis();

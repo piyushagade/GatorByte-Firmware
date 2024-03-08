@@ -199,7 +199,7 @@
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
 
-        sntl.shield(120, []() {
+        sntl.watch(120, []() {
 
             // Initialize SD first to read the config file
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
@@ -238,7 +238,7 @@
         // GatorByte loop function
         gb.loop();
 
-        sntl.shield(180, [] {
+        sntl.watch(180, [] {
 
             /*
                 ! Check the current state of the system and take actions accordingly
@@ -298,9 +298,9 @@
             gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
             
             //! Publish first ten queued-data with MQTT
-            sntl.shield(120, [] {
+            sntl.watch(120, [] {
 
-                sntl.shield(120, [] {
+                sntl.watch(120, [] {
                 
                 //! Connect to network
                 mcu.connect("cellular");

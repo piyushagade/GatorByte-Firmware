@@ -66,7 +66,7 @@
     GB_PIPER readpiper;
     GB_PIPER uploaderpiper;
     GB_PIPER fetchcontrolpiper;
-    GB_PIPER recoverypiper;
+    GB_PIPER psmpiper;
 
     /*
         Control variables
@@ -121,15 +121,22 @@
                 * Here, the str should be a keyvalue string
             */
             
-            // Update the variables in SD card and in runtime memory
-            sd.updatecontrol(str, set_control_variables);
+            // Update the variable in SD card and in runtime memory
+            sd.updatesinglecontrol(str, set_control_variables);
+            
+            mqtt.publish("log/message", "Control variable received.");
+        }
+
+        else if (topic.endsWith("control/response/all")) {
+
+            /* 
+                * Here, the str should contain keyvalues
+            */
+            
+            // Update the variable in SD card and in runtime memory
+            sd.updateallcontrol(str, set_control_variables);
             
             mqtt.publish("log/message", "Control variables received.");
-
-            if (REBOOT_FLAG) {
-                devicereboot();
-                REBOOT_FLAG = 0;
-            }
         }
     }
 
@@ -203,7 +210,7 @@
     */
     void get_control_variable () {
         
-        sntl.shield(120, [] {
+        sntl.watch(120, [] {
 
             // //! Disconnect from the network
             // mcu.disconnect("cellular");
@@ -212,7 +219,7 @@
             mcu.connect("cellular");
         });
 
-        sntl.shield(30, [] {
+        sntl.watch(30, [] {
             JSONary data;
             data
 
@@ -264,7 +271,7 @@
             gb.br().log("Found " + String(sd.getqueuecount()) + " outstanding queue files.");
             
             //! Connect to the network
-            sntl.shield(120, [] {
+            sntl.watch(120, [] {
             
                 //! Connect to network
                 mcu.connect("cellular");
@@ -282,7 +289,7 @@
                 
                 while (!sd.isqueueempty() && counter-- > 0) {
                     
-                    sntl.shield(10, [] {
+                    sntl.watch(10, [] {
 
                         String queuefilename = sd.getfirstqueuefilename();
                         gb.log("Sending queue file: " + queuefilename);
@@ -340,7 +347,7 @@
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
 
-        sntl.shield(120, []() {
+        sntl.watch(120, []() {
             
             // Check battery level
             gb.log("Current battery level: " + String(mcu.fuel("level")) + " %");
@@ -369,8 +376,6 @@
 
     void preloop () {
 
-        if (gb.env() == "development") gb.controls.set("RECOVERY_MODE", "false");
-
         /*
             This is a hack to eliminate the delay introduced by the DS3231 RTC.
         */
@@ -379,16 +384,13 @@
         gb.br().log("Environment: " + gb.env());
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
-        gb.log("Sampling interval: " + String(SAMPLING_INTERVAL));
 
-        gb.log("Recovery mode: " + String(gb.controls.getboolean("RECOVERY_MODE") ? "active" : "inactive"));
+        gb.log("Recovery mode: " + String(gb.controls.getboolean("RECOVERY_MODE_FLAG") ? "active" : "inactive"));
         gb.log("Recovery mode threshold: " + String(gb.controls.getint("LOW_BATT_THRESHOLD")) + " %");
 
         // Detect GDC
         gdc.detect(false);
 
-        mcu.connect("cellular");
-        mqtt.connect("pi", "abe-gb-mqtt");
     }
 
     void loop () {
@@ -402,7 +404,7 @@
             mqtt.publish("control/get", "RECOVERY_MODE_FLAG");
 
             // Wait for broker response
-            mqtt.waituntilresponse("control/response/single", 5000);
+            mqtt.waituntilresponse("control/response/single", 5000, false);
         });
 
         
@@ -414,8 +416,8 @@
 
         // Check if the device needs to enter recovery mode
         if (gb.controls.getboolean("RECOVERY_MODE_FLAG")) {
-            gb.color("white").log("Recovery mode active");
-            
+            gb.color("white").log("Recovery mode active").br();
+
             while (gb.controls.getboolean("RECOVERY_MODE_FLAG")) {
                 GPS_DATA gpsdata = gps.read(gb.env() == "development");
                 String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
@@ -449,6 +451,16 @@
                 // Upload queue files to server
                 uploadtoserver();
 
+                // Fetch updated recovery mode flag
+                sntl.watch(120, [] () {
+
+                    // Send request
+                    mqtt.publish("control/get", "RECOVERY_MODE_FLAG");
+
+                    // Wait for broker response
+                    mqtt.waituntilresponse("control/response/single", 5000, false);
+                });
+
                 delay(gb.controls.getint("RECOVERY_MODE_INTERVAL"));
             };
         }
@@ -462,24 +474,42 @@
             gps.on();
         }
 
-        uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
-            uploadtoserver();
-        });
-
         fetchcontrolpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
             
             // Send request
             mqtt.publish("control/fetch", gb.controls.get());
 
-            // Wait for broker response
-            mqtt.waituntilresponse("control/push", 7000);
+            // // Wait for broker response
+            // mqtt.waituntilresponse("control/push", 7000, false);
         });
 
         // Take readings
-        readpiper.pipe(SAMPLING_INTERVAL, true, [] (int counter) {
+        int secondsuntilread = readpiper.pipe(gb.controls.getint("SAMPLING_INTERVAL"), true, [] (int counter) {
 
-            
-            sntl.shield(200, [] {
+            // Check if SD card is working
+            sntl.watch(60, [] {
+                if (!sd.rwtest()) {
+
+                    // Log error to console
+                    gb.color("red").log("SD card R/W error.");
+
+                    //! Connect to network
+                    mcu.connect("cellular");
+
+                    //! Connect to MQTT servver
+                    mqtt.connect("pi", "abe-gb-mqtt");
+                        
+                    // Send notification
+                    mqtt.publish("fault/report", "sd/rw/failed");
+
+                    // Send GPS coordinates
+                    GPS_DATA gpsdata = gps.read(gb.env() == "development");
+                    String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
+                    mqtt.publish("mode/panic", "Panic mode on: " + gps_lat + "," + gps_lng);
+                }
+            });
+
+            sntl.watch(200, [] {
 
                 /*
                     ! Check the current state of the system and take actions accordingly
@@ -528,16 +558,23 @@
             });
         });
 
-        recoverypiper.pipe(30000, true, [] (int counter) {
-            // get_control_variable();
+        gb.color("white").log("Readings piper will be hot in " + String(secondsuntilread) + " seconds");
+
+        int secondsuntilupload = uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
+            uploadtoserver();
+        });
+        
+        gb.color("white").log("Uploader piper will be hot in " + String(secondsuntilupload) + " seconds");
+
+        psmpiper.pipe(30000, true, [] (int counter) {
 
             float battlevel = mcu.fuel("level");
             gb.log("Current battery level: " + String(battlevel), false);
 
             if (battlevel < gb.controls.getint("LOW_BATT_THRESHOLD")) {
                 gb.arrow().color("yellow").log("Enabling recovery mode.");
-                gb.controls.set("RECOVERY_MODE", "true");
-                sd.updatecontrolbool("RECOVERY_MODE", true);
+                gb.controls.set("PSM_MODE_FLAG", "true");
+                sd.updatecontrolbool("PSM_MODE_FLAG", true);
             }
 
         });

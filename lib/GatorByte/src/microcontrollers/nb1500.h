@@ -39,6 +39,10 @@
     #include "../GB.h"
 #endif
 
+#ifndef GB_PIPER
+    #include "../core/GB_Piper.h"
+#endif
+
 #ifndef _MKRNB_H_INCLUDED
     #include "MKRNB.h"
 #endif
@@ -123,10 +127,12 @@ class GB_NB1500 : public GB_MCU {
         void sleep(String level, int milliseconds);
         
         void sleep(callback_t_on_sleep callback);
+        void sleep(callback_t_on_sleep callback, GB_PIPER piper);
         void sleep(String level, callback_t_on_sleep callback);
         void sleep(String level, int milliseconds, callback_t_on_sleep callback);
         
         void sleep(callback_t_on_sleep, callback_t_on_wakeup callback);
+        void sleep(callback_t_on_sleep, callback_t_on_wakeup callback, GB_PIPER piper);
         void sleep(String level, callback_t_on_sleep, callback_t_on_wakeup callback);
         void sleep(String level, int milliseconds, callback_t_on_sleep, callback_t_on_wakeup callback);
         
@@ -1016,6 +1022,10 @@ bool GB_NB1500::reconnect(String type) {
 }
 
 void GB_NB1500::sleep(callback_t_on_sleep callback) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); }
+void GB_NB1500::sleep(callback_t_on_sleep callback, GB_PIPER piper) { 
+    // if (piper.)
+    this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); 
+    }
 void GB_NB1500::sleep(String level, callback_t_on_sleep callback) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback); }
 void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback) {
     this->_HAS_WAKE_CALLBACK = false;

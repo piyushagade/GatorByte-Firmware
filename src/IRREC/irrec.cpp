@@ -123,7 +123,7 @@
 
     void nwdiagnostics () {
         
-        sntl.shield(45, [] {
+        sntl.watch(45, [] {
             
             //! Connect to network
             mcu.connect("cellular");

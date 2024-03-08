@@ -135,7 +135,7 @@
 
             gb.br().log("Found " + String(sd.getqueuecount()) + " queue files");
 
-            sntl.shield(45, [] {
+            sntl.watch(45, [] {
                 
                 //! Connect to network
                 mcu.connect("cellular");
@@ -151,7 +151,7 @@
             // mqtt.publish("log/message", "SD write complete");
 
             //! Publish first ten queued-data with MQTT
-            sntl.shield(10, [] {
+            sntl.watch(10, [] {
                 if (CONNECTED_TO_MQTT_BROKER) {
                     int counter = 10;
                     while (!sd.isqueueempty() && counter-- > 0) {
@@ -175,7 +175,7 @@
     
     void nwdiagnostics () {
         
-        sntl.shield(45, [] {
+        sntl.watch(45, [] {
             //! Connect to network
             mcu.connect("cellular");
 
@@ -250,7 +250,7 @@
         // //! Initialize Sentinel
         // sntl.configure(9).initialize();
 
-        // sntl.shield(75, [] {
+        // sntl.watch(75, [] {
 
             //! Initialize SD first to read the config file
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter").readconfig();
@@ -344,7 +344,7 @@
         //! Call GatorByte's loop procedure
         gb.loop();
 
-        // sntl.shield(180 + 120, [] {
+        // sntl.watch(180 + 120, [] {
         
             /*
                 ! Check the current state of the system and take actions accordingly

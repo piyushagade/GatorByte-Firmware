@@ -374,7 +374,7 @@
 
             gb.br().log("Found " + String(sd.getqueuecount()) + " queue files.");
 
-            sntl.shield(45, [] {
+            sntl.watch(45, [] {
                 
                 //! Connect to network
                 mcu.connect("cellular");
@@ -389,7 +389,7 @@
             gb.log("MQTT connection attempted");
             
             //! Publish first ten queued-data with MQTT
-            sntl.shield(60, [] {
+            sntl.watch(60, [] {
 
                 if (CONNECTED_TO_MQTT_BROKER) {
                     int counter = 10;
@@ -425,7 +425,7 @@
 
     void write_data_to_sd_and_upload () {
 
-        sntl.shield(15, [] {
+        sntl.watch(15, [] {
         
             // Initialize CSVary object
             CSVary csv;
@@ -496,7 +496,7 @@
 
     void nwdiagnostics () {
         
-        sntl.shield(45, [] {
+        sntl.watch(45, [] {
             
             //! Connect to network
             mcu.connect("cellular");
@@ -552,7 +552,7 @@
         //! Initialize Sentinel
         sntl.configure({false}, 9).initialize().ack(true).disablebeacon();
         
-        sntl.shield(60, []() { 
+        sntl.watch(60, []() { 
 
             // Detect GDC
             gdc.detect(false);
@@ -598,7 +598,7 @@
         /*
             ! Network stuff
         */
-        sntl.shield(90, [] {
+        sntl.watch(90, [] {
             
             //! Connect to network
             mcu.connect("cellular");
@@ -712,7 +712,7 @@
 
             }
             if (command == "cell") {
-                sntl.shield(45, [] {
+                sntl.watch(45, [] {
                 
                     //! Connect to network
                     mcu.connect("cellular");
@@ -733,7 +733,7 @@
                 rgb.off();
             }
             if (command == "water") {
-                sntl.shield(4, [] {
+                sntl.watch(4, [] {
                     WLEV = eadc.getdepth(0);
                     bl.print("Water level: " + String(WLEV));
                 });
@@ -856,7 +856,7 @@
                 bl.print(" -> Done");
                 delay(5000);
 
-                sntl.shield(45, [] {
+                sntl.watch(45, [] {
             
                     //! Connect to network
                     mcu.connect("cellular");
@@ -1017,7 +1017,7 @@
         //! Read water level data
         wlevpiper.pipe(WLEV_SAMPLING_INTERVAL, true, [] (int counter) {
 
-            sntl.shield(4, [] {
+            sntl.watch(4, [] {
                 WLEV = eadc.getdepth(0);
                 gb.log("Water level: " + String(WLEV));
             });

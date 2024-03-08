@@ -119,7 +119,8 @@ class GB_SD : public GB_DEVICE {
         typedef void (*callback_t_on_control)(JSONary data);
         GB_SD& readcontrol();
         GB_SD& readcontrol(callback_t_on_control callback);
-        GB_SD& updatecontrol(String keyvalue, callback_t_on_control callback);
+        GB_SD& updateallcontrol(String keyvalue, callback_t_on_control callback);
+        GB_SD& updatesinglecontrol(String keyvalue, callback_t_on_control callback);
 
         GB_SD& updatecontrolstring(String key, String value);
         GB_SD& updatecontrolstring(String key, String value, callback_t_on_control callback);
@@ -1697,19 +1698,75 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
 }
 
 /*
+    ! This function updates one control variable on the SD and the global JSONary object.
+
+    'keyvalue' string should have the following format:
+    ----------------
+    key1=value1
+    ...
+*/
+GB_SD& GB_SD::updatesinglecontrol(String keyvalue, callback_t_on_control callback) {
+    if(keyvalue.length() == 0) return *this;
+    
+    _gb->log("Updating single control variables on SD: ", false);
+
+    int cursor = 0;
+    String state = "key";
+    String key = "";
+    String value = "";
+    do { 
+        String newchar = String(keyvalue.charAt(cursor));
+
+        if (state == "key") {
+            if (newchar == "=") {
+                state = "value";
+                value = "";
+            }
+            else {
+                key += newchar;
+            }
+        }
+
+        if (state == "value") {
+            if (newchar != "=") { 
+                if (newchar == "," || newchar == "") {
+                    state = "key";
+                }
+                else {
+                    value += newchar;
+                }
+            }
+        }
+
+    } while (String(keyvalue.charAt(cursor++)).length() > 0);
+    
+    _gb->log(key + " = " + value, false);
+    
+    _gb->arrow().color("green").log("Done");
+
+    // Update the variable on the SD and the global variable
+    updatecontrolstring(key, value);
+
+    // Update variables in runtime memory
+    callback(_gb->controls);
+
+    return *this;
+}
+
+/*
     ! This function updates the control file and the global JSONary object.
 
-    'keyvalue' should have the following format:
+    'keyvalues' should have the following format:
     ----------------
     key1=value1
     key2=value2
     key3=value3
     ...
 */
-GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
-    if(keyvalue.length() == 0) return *this;
+GB_SD& GB_SD::updateallcontrol(String keyvalues, callback_t_on_control callback) {
+    if(keyvalues.length() == 0) return *this;
 
-    _gb->log("Updating control variables on SD", false);
+    _gb->log("Updating all control variables on SD", false);
         
     int MAX_KEYS = 20;
     String keys[MAX_KEYS];
@@ -1721,7 +1778,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
     String key = "";
     String value = "";
     do { 
-        String newchar = String(keyvalue.charAt(cursor));
+        String newchar = String(keyvalues.charAt(cursor));
 
         if (state == "key") {
             if (newchar == "=") {
@@ -1748,7 +1805,7 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
             }
         }
 
-    } while (String(keyvalue.charAt(cursor++)).length() > 0);
+    } while (String(keyvalues.charAt(cursor++)).length() > 0);
 
     _gb->arrow().color("green").log("Done");
 
@@ -1771,12 +1828,12 @@ GB_SD& GB_SD::updatecontrol(String keyvalue, callback_t_on_control callback) {
     this->rm(filename);
 
     // Replace '=' with ':'
-    keyvalue.replace("=", ":");
-    keyvalue.replace(",", "\n");
-    keyvalue = keyvalue.substring(0, keyvalue.length());
+    keyvalues.replace("=", ":");
+    keyvalues.replace(",", "\n");
+    keyvalues = keyvalues.substring(0, keyvalues.length());
     
     // Re-write the control file
-    this->_write(filename, keyvalue);
+    this->_write(filename, keyvalues);
 
     // Update variables in runtime memory
     callback(_gb->controls);

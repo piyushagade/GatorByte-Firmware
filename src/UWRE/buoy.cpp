@@ -199,7 +199,7 @@
         
         // sntl.configure({true, 4}, 9).initialize().ack(true).disablebeacon();
 
-        sntl.shield(75, []() { 
+        sntl.watch(75, []() { 
 
             //! Initialize other peripherals
             bl.configure({true, SR3, SR11}).initialize().persistent().on();
