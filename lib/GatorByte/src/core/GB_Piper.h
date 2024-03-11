@@ -75,6 +75,9 @@ bool GB_PIPER::ishot() {
 }
 
 int GB_PIPER::secondsuntilhot() {
+    // Serial.println(this->_interval / 1000);
+    // Serial.println(millis() / 1000);
+    // Serial.println(this->_executed_at / 1000);
     return (this->_interval - millis() + this->_executed_at) / 1000;
 }
 #endif

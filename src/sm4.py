@@ -92,7 +92,7 @@ def connect(first):
 			for port in ports:
 				try:
 					ser = serial.Serial(port, baud, timeout=1)
-					clear()
+					# clear()
 					print("\nWaiting for device -> \033[1;37;42mConnected\033[0m on " + port + "\n")
 					save("\n*****************************************************")
 					save("\n" + str(datetime.now().date()) + ", " + str(datetime.now().time()) + "\n")
@@ -113,7 +113,7 @@ def connect(first):
 						if ("NB 1500" in p.description and "bootloader" not in p.description):
 							try:
 								ser = serial.Serial(p.name, baud, timeout=1)
-								clear()
+								# clear()
 								print("\nWaiting for device -> \033[1;37;42mConnected\033[0m on " + str(p) + "\n")
 								save("\n*****************************************************")
 								save("\n" + str(datetime.now().date()) + ", " + str(datetime.now().time()) + "\n")

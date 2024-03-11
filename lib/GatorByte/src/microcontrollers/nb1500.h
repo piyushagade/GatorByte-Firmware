@@ -121,13 +121,21 @@ class GB_NB1500 : public GB_MCU {
         GB_NB1500& apn(String);
         GB_NB1500& pin(String pin);
 
+        callback_t_on_sleep _sleep_callback;
+        callback_t_on_wakeup _wake_callback;
+        callback_t_on_timer_interrupt _timer_callback;
+
         // Power management
+        void set_sleep_callback(callback_t_on_sleep);
+        void set_wakeup_callback(callback_t_on_wakeup);
+        void set_primary_piper(GB_PIPER);
+
         void sleep();
         void sleep(String level);
         void sleep(String level, int milliseconds);
         
         void sleep(callback_t_on_sleep callback);
-        void sleep(callback_t_on_sleep callback, GB_PIPER piper);
+        void sleep(GB_PIPER piper);
         void sleep(String level, callback_t_on_sleep callback);
         void sleep(String level, int milliseconds, callback_t_on_sleep callback);
         
@@ -183,9 +191,10 @@ class GB_NB1500 : public GB_MCU {
     private:
         GB *_gb;
         bool _ASLEEP = false;
+        bool _HAS_SLEEP_CALLBACK = false;
         bool _HAS_WAKE_CALLBACK = false;
-        callback_t_on_wakeup _wake_callback;
-        callback_t_on_timer_interrupt _timer_callback;
+        bool _HAS_PRIMARY_PIPER = false;
+        GB_PIPER _primary_piper;
 
         int _breath_timer_id;
 
@@ -1021,11 +1030,25 @@ bool GB_NB1500::reconnect(String type) {
     return false;
 }
 
+void GB_NB1500::set_sleep_callback(callback_t_on_sleep callback) { 
+    this->_HAS_SLEEP_CALLBACK = true;
+    this->_sleep_callback = callback;
+
+}
+
+void GB_NB1500::set_wakeup_callback(callback_t_on_wakeup callback) { 
+    this->_HAS_WAKE_CALLBACK = true;
+    this->_wake_callback = callback;
+
+}
+
+void GB_NB1500::set_primary_piper(GB_PIPER piper) { 
+    this->_HAS_PRIMARY_PIPER = true;
+    this->_primary_piper = piper;
+
+}
+
 void GB_NB1500::sleep(callback_t_on_sleep callback) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); }
-void GB_NB1500::sleep(callback_t_on_sleep callback, GB_PIPER piper) { 
-    // if (piper.)
-    this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); 
-    }
 void GB_NB1500::sleep(String level, callback_t_on_sleep callback) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback); }
 void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback) {
     this->_HAS_WAKE_CALLBACK = false;
@@ -1044,6 +1067,10 @@ void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callba
     // Set wake up callback
     this->_HAS_WAKE_CALLBACK = true;
     this->_wake_callback = callback_on_wakeup;
+    
+    // Set sleep callback
+    this->_HAS_SLEEP_CALLBACK = true;
+    this->_sleep_callback = callback_on_sleep;
 
     // Call user defined pre-sleep operations
     callback_on_sleep();
@@ -1064,7 +1091,7 @@ void GB_NB1500::sleep(String level, int milliseconds) {
 void GB_NB1500::_sleep(String level, int milliseconds) {
     
     // //! Turn off all the peripherals
-    // TODO Exclude BL, GPS?
+    // // TODO Exclude BL, GPS?
     // if (_gb->hasdevice("ioe")) {
     //     _gb->log("Turning off peripherals", false);
     //     for(int i = 0; i < 15; i++) {
@@ -1076,11 +1103,15 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     //! Conclude watchdog operations
     this->watchdog("disable");
 
+    // Call pre-sleep callback
+    if (this->_HAS_SLEEP_CALLBACK) this->_sleep_callback();
+
     //! RGB rainbow
     if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").rainbow(5000).off();
     
     // Deduce sleep duration from the last timestamp when readings were taken
     _gb->br().log("Seconds since last reading: " + String(_gb->globals.SECONDS_SINCE_LAST_READING) + " seconds");
+    
     milliseconds = _gb->globals.SLEEP_DURATION - _gb->globals.SECONDS_SINCE_LAST_READING * 1000;
 
     // Deduct setup from the sleep time
@@ -1093,25 +1124,32 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
         If sleep duration is negative. This might happen if the sleep duration set is smaller than
         the sum of setup delay and loop delay. In this case, the device sleeps for 3 seconds.
     */
-    if (milliseconds <= 0) { 
-        _gb->br().log("Iteration delay is more than the sleep duration. Setting sleep duration to 3 seconds.");    
+    if (milliseconds <= 0) {
+        _gb->br().log("Iteration delay is more than the sleep duration. Setting sleep duration to 3 seconds.");
         milliseconds = 3000;
     }
     
     /*
-        If sleep duration is too big. 
+        If sleep duration is too big.
     */
-    if (milliseconds > 1000000000) { 
-        _gb->br().log("Sleep duration is too big. Setting sleep duration to as specified in the config file.");    
+    if (milliseconds > 1000000000) {
+        _gb->br().log("Sleep duration is too large. Setting sleep duration to as specified in the config file.");
         milliseconds = _gb->globals.SLEEP_DURATION;
     }
 
     this->LAST_SLEEP_DURATION = milliseconds;
+
+    if (this->_HAS_PRIMARY_PIPER) _gb->log("Primary piper milliseconds before hot: " + String(this->_primary_piper.secondsuntilhot()) + " seconds.");
+    if (this->_primary_piper.secondsuntilhot() * 1000 < milliseconds) {
+        _gb->color("yellow").log("Overriding sleep duration to piper duration.");
+        milliseconds = this->_primary_piper.secondsuntilhot() * 1000;
+    }
     
     _gb->br().color("white").log("Entering low-power mode for " + String(milliseconds / 60 / 1000) + " min " + String(milliseconds / 1000 % 60) + " seconds. (" + String(milliseconds / 1000) + " seconds)", true);
     _gb->log("Setup delay: " + String(_gb->globals.SETUPDELAY) + " seconds");
     _gb->log("Loop delay: " + String(_gb->globals.LOOPDELAY) + " seconds");
     _gb->log("Low-power mode", false).arrow().color("yellow").log(level);
+    delay(1000);
 
     this->_ASLEEP = true;
 
@@ -1163,7 +1201,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
         * Concerns:
             1. When the device is sleeping, MQTT messages cannot be received.
             2. Needs reconnection to the cellular network and MQTT broker 
-               (and subscriptions) on wake up.
+                (and subscriptions) on wake up.
 
         * Issues:
             1. The implementation of LowPower.sleep() and LowPower.deepSleep() is
@@ -1186,7 +1224,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
         * Concerns:
             1. When the device is sleeping, MQTT messages cannot be received.
             2. Needs reconnection to the cellular network and MQTT broker 
-               (and subscriptions) on wake up.
+                (and subscriptions) on wake up.
     */
     else if (level == "shallow") {
 
