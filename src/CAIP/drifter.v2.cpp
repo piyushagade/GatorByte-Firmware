@@ -358,17 +358,17 @@
             // Read SD config and control files
             sd.readconfig().readcontrol(set_control_variables);
 
-            // Configure MQTT broker and connect 
-            mqtt.configure(mqtt_message_handler, mqtt_on_connect);
-            // // http.configure("api.ezbean-lab.com", 80);
+            // // Configure MQTT broker and connect 
+            // mqtt.configure(mqtt_message_handler, mqtt_on_connect);
+            // // // http.configure("api.ezbean-lab.com", 80);
             
-            // Initialize remaining peripherals
-            gps.configure({true, SR2, SR10}).initialize();
-            // bl.configure({true, SR3, SR11}).initialize().on().persistent();
+            // // Initialize remaining peripherals
+            // gps.configure({true, SR2, SR10}).initialize();
+            // // bl.configure({true, SR3, SR11}).initialize().on().persistent();
 
-            mem.configure({true, SR0}).initialize();
+            // mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
-            rtc.configure({true, SR0}).initialize();
+            // rtc.configure({true, SR0}).initialize();
         });
 
         gb.log("Setup complete");
@@ -394,6 +394,12 @@
     }
 
     void loop () {
+
+        Serial.println(aht.temperature());
+        Serial.println(aht.humidity());
+        Serial.println();
+
+        return;
 
         // GatorByte loop function
         gb.loop();

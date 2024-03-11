@@ -617,6 +617,8 @@ bool GB_DS3231::valid(uint32_t timestamp) {
 
 /*
     Check if the DateTime provided is likely accurate
+    This functions checks if the timestamp is valid
+    TODO: Make a new function to check if h/w issue or a s/w issue
 */
 bool GB_DS3231::valid(DateTime dt) {
     
@@ -625,8 +627,13 @@ bool GB_DS3231::valid(DateTime dt) {
     uint16_t month = dt.month();
     uint16_t year = dt.year();
 
+    /*
+        1078769026
+        1709920787
+    */
+
     if (unixtime >= 2000000000) error = true;
-    else if (unixtime <= 946684800) error = true;
+    else if (unixtime <= 946684800) error = true; // Likely a hardware/connection/battery issue
     else if (unixtime > 946684800) error = false; // Likely a calibration issue
     else if (month == 165) error = true;
     else if (unixtime > 1700000000) error = false;

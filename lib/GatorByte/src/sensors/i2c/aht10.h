@@ -150,14 +150,16 @@ float GB_AHT10::temperature() {
     // Get the latest values
     float value = _aht.readTemperature();
     int count = 0;
-    if (value == 255) delay(3000);
-    while (value == 255 && count++ <= 5) {
-        if ((count + 1) % 2 == 0) { _aht.softReset(); delay(50); }
+    bool invalid = value <= -20 || value >= 200 || floor(value) == 255;
+    if (invalid) delay(250);
+    while (invalid && count++ <= 5) {
         value = _aht.readTemperature();
+        invalid = value <= -20 || value >= 200 || floor(value) == 255;
+        if (invalid && (count + 1) % 2 == 0) { _aht.softReset(); delay(50); }
         delay(40 * count);
     }
 
-    if (value <= -20 || value >= 200 || value == 255) value = 255;
+    if (invalid) value = 255;
     
     this->off();
 
@@ -169,15 +171,16 @@ float GB_AHT10::humidity() {
     
     // Get the latest values
     float value = _aht.readHumidity();
-    if (value == 255) delay(3000);
+    bool invalid = value <= 0 || value >= 100 || value == 255;
     int count = 0;
-    while ((value <= 0 || value >= 100 || value == 255) && count++ <= 5) {
-        if (count % 2 == 0) { _aht.softReset(); delay(50); }
+    while (invalid && count++ <= 5) {
         value = _aht.readHumidity();
+        invalid = value <= 0 || value >= 100 || value == 255;
+        if (invalid && count % 2 == 0) { _aht.softReset(); delay(50); }
         delay(40 * count);
     }
     
-    if (value <= 0 || value >= 100 || value == 255) value = 255;
+    if (invalid) value = 255;
     
     this->off();
 
