@@ -187,12 +187,12 @@ GB_RGB& GB_RGB::off() {
 
 GB_RGB& GB_RGB::blink(String color, int count, int on_duration, int off_duration) {
 
-    _gb->getdevice("rgb").off(); delay(200);
+    _gb->getdevice("rgb")->off(); delay(200);
     for (int i = 0; i < count; i++) {
-        _gb->getdevice("rgb").on(color); delay(on_duration);
-       if (i < count - 1) _gb->getdevice("rgb").off(); delay(off_duration);
+        _gb->getdevice("rgb")->on(color); delay(on_duration);
+       if (i < count - 1) _gb->getdevice("rgb")->off(); delay(off_duration);
     }
-    _gb->getdevice("rgb").off(); delay(100);
+    _gb->getdevice("rgb")->off(); delay(100);
     return *this;
 }
 

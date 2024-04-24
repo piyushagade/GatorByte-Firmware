@@ -164,7 +164,7 @@ GB_FRAM& GB_FRAM::configure(PINS pins) {
 
 GB_FRAM& GB_FRAM::on() {
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     return *this;
@@ -175,7 +175,7 @@ GB_FRAM& GB_FRAM::off() {
     // Safety delay
     delay(250);
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
 
     return *this;
@@ -222,8 +222,8 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
                 return *this;
             }
 
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(500).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
         }
         else {
             // Open root folder
@@ -241,8 +241,8 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             //     return *this;
             // }
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(500).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("blue").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(100).revert();
         }
     }
     else _gb->log(" -> Disabled", true);

@@ -16,7 +16,7 @@ class GB_HTTP : public GB_DEVICE {
         GB_HTTP(GB &gb);
         
         // TODO: Add logic for when sd is not available
-        // GB_HTTP(GB &gb, GB_MCU &mcu, GB_SD &sd);
+        // GB_HTTP(GB &gb, GB_gb->getmcu() &mcu, GB_SD &sd);
 
         DEVICE device = {
             "http",
@@ -36,7 +36,7 @@ class GB_HTTP : public GB_DEVICE {
 
     private:
         GB *_gb;
-        GB_MCU *_mcu;
+        // GB_gb->getmcu() *_gb->getmcu();
 
         void _save_data_queue(String, String);
         void _upload_data_queue();
@@ -48,7 +48,7 @@ class GB_HTTP : public GB_DEVICE {
 
 GB_HTTP::GB_HTTP(GB &gb) {
     _gb = &gb;
-    _mcu = &_gb->getmcu();
+    // _gb->getmcu() = _gb->getmcu();
 
     _gb->includelibrary(this->device.id, this->device.name);
 }
@@ -59,9 +59,9 @@ GB_HTTP& GB_HTTP::configure(String ip, int port) {
     
     _gb->log("Configuring server: " + ip + ":" + port, false);
     this->SERVER_IP = ip;
-    _mcu->SERVER_IP = ip;
+    _gb->getmcu()->SERVER_IP = ip;
     this->SERVER_PORT = port;
-    _mcu->SERVER_PORT = port;
+    _gb->getmcu()->SERVER_PORT = port;
 
     if(ip.length() == 0) _gb->log(" -> Failed. Invalid Server IP");
     else if(port <= 0) _gb->log(" -> Failed. Invalid port");
@@ -74,7 +74,7 @@ GB_HTTP& GB_HTTP::configure(String ip, int port) {
 bool GB_HTTP::get(String path) {
     
     // Call the get method specific to the mcu
-    bool success = _mcu->get(path);
+    bool success = _gb->getmcu()->get(path);
     return success;
 }
 
@@ -82,12 +82,12 @@ bool GB_HTTP::get(String path) {
 bool GB_HTTP::post(String path, String data) {
     
     // Call the get method specific to the mcu
-    bool success = _mcu->post(path, data);
+    bool success = _gb->getmcu()->post(path, data);
     return success;
 }
 
 String GB_HTTP::httpresponse() {
-    return _mcu->httpresponse();
+    return _gb->getmcu()->httpresponse();
 }
 
 // // Get time from the server

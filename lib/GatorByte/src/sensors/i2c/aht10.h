@@ -61,7 +61,7 @@ GB_AHT10& GB_AHT10::configure(PINS pins) {
 // Turn on the module
 GB_AHT10& GB_AHT10::on() {
     delay(10);
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     return *this;
 }
@@ -72,7 +72,7 @@ GB_AHT10& GB_AHT10::off() {
     if (this->_persistent) return *this;
     
     delay(50);
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     delay(10);
     return *this;
@@ -121,8 +121,8 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
 
             delay(2000); _gb->arrow().log(String(this->temperature()) + " Celcius and " + String(this->humidity()) + " % R.H."); 
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("---").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("---").wait(250).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
         }
         else {
             _gb->arrow().log("Not detected"); 
@@ -132,8 +132,8 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
                 return *this;
             }
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("---").wait(250).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(250).revert(); 
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("---").wait(250).play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert(); 
         }
     }
     else {

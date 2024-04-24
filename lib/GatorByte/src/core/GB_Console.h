@@ -84,7 +84,7 @@ GB_CONSOLE& GB_CONSOLE::exit() {
 GB_CONSOLE& GB_CONSOLE::loop() {
 
     //! Set RGB color
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("yellow");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("yellow");
 
     // // Clear the serial buffer
     // while (_gb->serial.debug->available()) char c = _gb->serial.debug->read();
@@ -123,7 +123,7 @@ GB_CONSOLE& GB_CONSOLE::loop() {
 //             this->_gb->globals.MODE = "command";
     
 //             //! Set RGB color
-//             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green");
+//             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green");
 
 //             // Clear the serial buffer
 //             while (_gb->serial.debug->available()) char c = _gb->serial.debug->read();
@@ -320,12 +320,12 @@ void GB_CONSOLE::process(String command) {
         if (command == "##GB##files-list:/#EOF#") {
             String root = command.substring(command.indexOf(":") + 1, command.indexOf("#EOF#"));
             _gb->log("File list requested in folder: " + root);
-            String list = _gb->getdevice("sd").getfilelist("/");
+            String list = _gb->getdevice("sd")->getfilelist("/");
 
             _gb->log(list);
 
-            // _gb->getdevice("gdc").send("highlight-yellow", list);
-            // _gb->getdevice("gdc").send("gdc-dfl", list);
+            // _gb->getdevice("gdc")->send("highlight-yellow", list);
+            // _gb->getdevice("gdc")->send("gdc-dfl", list);
         }
 
         //! Quit mode
@@ -366,7 +366,7 @@ void GB_CONSOLE::process(String command) {
 
             if (selection.indexOf("1") == 0) {
                 _gb->log("Restarting the microcontroller. Please wait..."); delay(3000);
-                _gb->getmcu().reset("mcu");
+                _gb->getmcu()->reset("mcu");
             }
             else if (selection.indexOf("2") == 0) {
                 _gb->log("\nThe device's name will identify this device on the web dashboard. A device can have multiple surveys associated with it.");
@@ -376,9 +376,9 @@ void GB_CONSOLE::process(String command) {
                 bool confirm = this->confirm_discard_changes();
                 if (confirm) {
                     this->_gb->globals.DEVICE_TYPE = "gatorbyte";
-                    // _gb->getdevice("mem").write(1, _gb->globals.DEVICE_TYPE);
+                    // _gb->getdevice("mem")->write(1, _gb->globals.DEVICE_TYPE);
                     this->_gb->globals.DEVICE_NAME = devicename;
-                    // _gb->getdevice("mem").write(2, _gb->globals.DEVICE_NAME);
+                    // _gb->getdevice("mem")->write(2, _gb->globals.DEVICE_NAME);
                 }
             }
             else if (selection.indexOf("3") == 0) {
@@ -389,7 +389,7 @@ void GB_CONSOLE::process(String command) {
                 bool confirm = this->confirm_discard_changes();
                 if (confirm) {
                     this->_gb->globals.PROJECT_ID = surveyname;
-                    _gb->getdevice("mem").write(3, _gb->globals.PROJECT_ID);
+                    _gb->getdevice("mem")->write(3, _gb->globals.PROJECT_ID);
                 }
             }
             else if (selection.indexOf("4") == 0) {
@@ -417,15 +417,15 @@ void GB_CONSOLE::process(String command) {
 
                         if (_gb->hasdevice("rtc")) {
                             if (subsuboption.indexOf("1") == 0) {
-                                _gb->getdevice("rtc").sync(__DATE__,  __TIME__);
+                                _gb->getdevice("rtc")->sync(__DATE__,  __TIME__);
                             }
                             else if (subsuboption.indexOf("2") == 0) {
 
                             }
                             else if (subsuboption.indexOf("3") == 0) {
-                                _gb->log("Current date: " + _gb->getdevice("rtc").date("MMM DDth, YYYY"));
-                                _gb->log("Current time: " + _gb->getdevice("rtc").time("hh:mm:ss a"));
-                                _gb->log("Current timestamp: " + String(_gb->getdevice("rtc").timestamp()));
+                                _gb->log("Current date: " + _gb->getdevice("rtc")->date("MMM DDth, YYYY"));
+                                _gb->log("Current time: " + _gb->getdevice("rtc")->time("hh:mm:ss a"));
+                                _gb->log("Current timestamp: " + String(_gb->getdevice("rtc")->timestamp()));
                             }
                         }
                         else _gb->log("RTC not initialized");
@@ -437,10 +437,10 @@ void GB_CONSOLE::process(String command) {
 
                         if (_gb->hasdevice("sd")) {
                             if (subsuboption.indexOf("1") == 0) {
-                                _gb->getdevice("sd").sdformat();
+                                _gb->getdevice("sd")->sdformat();
                             }
                             else if (subsuboption.indexOf("2") == 0) {
-                                _gb->getdevice("sd").sderase();
+                                _gb->getdevice("sd")->sderase();
                             }
                         }
                         else _gb->log("SD not initialized");
@@ -454,7 +454,7 @@ void GB_CONSOLE::process(String command) {
                                 
                                 bool confirm = this->confirm_discard_changes();
                                 if (confirm) {
-                                    this->_gb->getdevice("bl").setname(name);
+                                    this->_gb->getdevice("bl")->setname(name);
                                 }
                             }
                             else if (subsuboption.indexOf("2") == 0) {
@@ -463,7 +463,7 @@ void GB_CONSOLE::process(String command) {
                                 
                                 bool confirm = this->confirm_discard_changes();
                                 if (confirm) {
-                                    this->_gb->getdevice("bl").setname(pin);
+                                    this->_gb->getdevice("bl")->setname(pin);
                                 }
                             }
                         }
@@ -494,12 +494,12 @@ void GB_CONSOLE::process(String command) {
         else if (_gb->hasdevice("rtc") && command.startsWith("rtc.")) {
         
             if (command.indexOf(".sync") > -1) {
-                _gb->getdevice("rtc").sync(__DATE__,  __TIME__);
+                _gb->getdevice("rtc")->sync(__DATE__,  __TIME__);
             }
             else {
-                _gb->log("Current date: " + _gb->getdevice("rtc").date("MMM DDth, YYYY"));
-                _gb->log("Current time: " + _gb->getdevice("rtc").time("hh:mm:ss a"));
-                _gb->log("Current timestamp: " + String(_gb->getdevice("rtc").timestamp()));
+                _gb->log("Current date: " + _gb->getdevice("rtc")->date("MMM DDth, YYYY"));
+                _gb->log("Current time: " + _gb->getdevice("rtc")->time("hh:mm:ss a"));
+                _gb->log("Current timestamp: " + String(_gb->getdevice("rtc")->timestamp()));
             }
         }
         
@@ -507,13 +507,13 @@ void GB_CONSOLE::process(String command) {
         else if (_gb->hasdevice("sd") && command.startsWith("sd.")) {
         
             if (command.indexOf(".format") > -1) {
-                _gb->getdevice("sd").sdformat();
+                _gb->getdevice("sd")->sdformat();
             }
             else if (command.indexOf(".erase") > -1) {
-                _gb->getdevice("sd").sderase();
+                _gb->getdevice("sd")->sderase();
             }
             else if (command.indexOf(".test") > -1) {
-                _gb->getdevice("sd").rwtest();
+                _gb->getdevice("sd")->rwtest();
             }
         }
 
@@ -522,7 +522,7 @@ void GB_CONSOLE::process(String command) {
             _gb->log("Invalid command: " + command);
             
             //! Revert RGB color
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
 
             this->loop();
         }

@@ -3,6 +3,10 @@
 #ifndef GB_Devices_h
 #define GB_Devices_h
 
+/*
+    ! Including modules doesn't increase flash memory usage unless its object is instantiated
+*/
+
 //! Datary library
 #include "CSVary.h"
 #include "JSONary.h"
@@ -40,9 +44,9 @@
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_MQTT) 
     #include "../communication/mqttserver.h"
 #endif
-#if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_HC05) 
-    #include "../communication/hc_05.h"
-#endif
+// #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_HC05) 
+//     #include "../communication/hc_05.h"
+// #endif
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_AT09) 
     #include "../communication/at_09.h"
 #endif
@@ -68,9 +72,9 @@
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_DS3231) 
     #include "../time/ds3231.h"
 #endif
-#if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_DS1307) 
-    #include "../time/ds1307.h"
-#endif
+// #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_DS1307) 
+//     #include "../time/ds1307.h"
+// #endif
 
 //! Actuators
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_RELAY) 
@@ -142,12 +146,12 @@
 #endif
 
 // Console mode
-#if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_CONSOLE) 
-    #include "./GB_CONSOLE.h"
-#endif
-#if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_CONFIGURATOR) 
-    #include "./GB_CONFIGURATOR.h"
-#endif
+// #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_CONSOLE) 
+//     #include "./GB_CONSOLE.h"
+// #endif
+// #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_CONFIGURATOR) 
+//     #include "./GB_CONFIGURATOR.h"
+// #endif
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_DESKTOP_CLIENT) 
     #include "./GB_DESKTOP.h"
 #endif

@@ -2,7 +2,6 @@
 #define GB_EADC_h
 
 #include "ADS1115-Driver.h"
-// #include "ADS1X15.h"
 
 #ifndef GB_h
     #include "../GB.h"
@@ -110,7 +109,7 @@ GB_EADC& GB_EADC::initialize() {
         _gb->space(1).log("(" + String(this->readchannel(0)) + ", " + String(this->readchannel(1)) + ", " + String(this->readchannel(2)) + ", " + String(this->readchannel(3)) + ")", false);
         _gb->log(" -> Done", true);
         
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--..").wait(500).play("...");
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--..").wait(500).play("...");
     }
     else {
         this->device.detected = false;
@@ -120,7 +119,7 @@ GB_EADC& GB_EADC::initialize() {
             this->off();
             return *this;
         }
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--..").wait(500).play("---");
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--..").wait(500).play("---");
     }
 
     return *this;
@@ -130,7 +129,7 @@ GB_EADC& GB_EADC::initialize() {
 
 // Turn on the module
 GB_EADC&  GB_EADC::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     this->_ison = true;
     delay(100);
@@ -140,7 +139,7 @@ GB_EADC&  GB_EADC::on() {
 // Turn off the module
 GB_EADC&  GB_EADC::off() { 
     if (this->_persistent) return *this;
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     this->_ison = false;
     return *this;
@@ -169,7 +168,7 @@ uint16_t GB_EADC::readchannel(uint8_t input) {
     // Convert to real channel number
     input += 4;
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     // _gb->log(".");

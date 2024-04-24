@@ -109,7 +109,7 @@ GB_SNTL& GB_SNTL::initialize() {
     Wire.begin();
 
     // Disable stray watchdogs
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
 
     //! Send ping to Sentinel
     int counter = 1; 
@@ -129,8 +129,8 @@ GB_SNTL& GB_SNTL::initialize() {
         return *this;
     }
     
-    if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer").play(success ? "x.x.." : "xx");
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(success ? "green" : "red").wait(250).revert(); 
+    if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer")->play(success ? "x.x.." : "xx");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(success ? "green" : "red").wait(250).revert(); 
 
     //! Get Sentinel firmware version, and fault counts
     if (success) {
@@ -432,7 +432,7 @@ GB_SNTL& GB_SNTL::interval(String type, int seconds) {
     for (int i = 0; i < 20; i++) multipliers[i] = i + 1;
     
     if (seconds > bases[sizeof (bases) / sizeof (bases[0]) - 1] * multipliers[sizeof (multipliers) / sizeof (multipliers[0]) - 1]) {
-        _gb->log("Requested Sentinel interval should be smaller than " + String(bases[sizeof (bases) / sizeof (bases[0]) - 1] * multipliers[sizeof (multipliers) / sizeof (multipliers[0]) - 1]) + " seconds", true);
+        _gb->log("Interval should be smaller than " + String(bases[sizeof (bases) / sizeof (bases[0]) - 1] * multipliers[sizeof (multipliers) / sizeof (multipliers[0]) - 1]) + " seconds", true);
     }
 
     bool found = false;
@@ -463,16 +463,16 @@ GB_SNTL& GB_SNTL::interval(String type, int seconds) {
     this->_unlockconfig();
     
     if (type == "sentinence") {
-        if (this->debug) _gb->log("Setting sentinence interval to " + String(seconds) + " seconds", false);
+        if (this->debug) _gb->log("Sentinence interval set to " + String(seconds) + " seconds", false);
 
         // Set interval setting to sentinence
-        uint8_t response = this->tell(0x0B); delay(200);
+        this->tell(0x0B); delay(200);
     }
     else if (type == "sleep") {
-        if (this->debug) _gb->log("Setting sleep interval to " + String(seconds) + " seconds", false);
+        if (this->debug) _gb->log("Sleep interval set to " + String(seconds) + " seconds", false);
         
         // Set interval setting to power saving mode (sleep)
-        uint8_t response = this->tell(0x0C); delay(200);
+        this->tell(0x0C); delay(200);
     }
 
     // Set commands to send
@@ -513,7 +513,7 @@ uint16_t GB_SNTL::readmemory(int location) {
     uint16_t baseindex = 70;
     uint16_t code = baseindex + location;
 
-    _gb->log("Reading EEPROM location: " + String(location) + ", Code: " + String(code), false);
+    _gb->log("EEPROM read: " + String(location) + ", Code: " + String(code), false);
 
     // Make 3 attempts to send the request
     uint16_t response = this->tell(code, 1);
@@ -528,7 +528,7 @@ uint16_t GB_SNTL::readmemory(int location) {
 GB_SNTL& GB_SNTL::ack(bool state) { 
     
     uint8_t code = state ? 0x13 : 0x14;
-    uint16_t response = this->tell(code, 2); 
+    this->tell(code, 2); 
     this->_no_ack = !state;
     delay(500);
     return *this;
@@ -561,10 +561,10 @@ uint16_t GB_SNTL::tell(int data, int attempts) {
 uint16_t GB_SNTL::ask() { 
 
     // Reset mux
-    if (this->pins.commux) _gb->getdevice("tca").resetmux();
+    if (this->pins.commux) _gb->getdevice("tca")->resetmux();
     
     // Select I2C mux channel
-    if (this->pins.commux) _gb->getdevice("tca").selectexclusive(pins.muxchannel);
+    if (this->pins.commux) _gb->getdevice("tca")->selectexclusive(pins.muxchannel);
 
     // Request first byte from Sentinel
     Wire.requestFrom(this->_address, 1);
@@ -600,7 +600,7 @@ GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function) {
     return this->watch(duration_sec, function, true);
 }
 GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function, bool stubborn) { 
-    delay(100);
+    delay(100); 
     
     // Set sentinence interval and enable sentinel
     // this->disable(); delay(20);
@@ -701,15 +701,15 @@ uint16_t GB_SNTL::_tell(int data, int maxattempts, int currentattempt) {
     }
     
     // Reset mux
-    if (this->pins.commux) _gb->getdevice("tca").resetmux();
+    if (this->pins.commux) _gb->getdevice("tca")->resetmux();
     
     // Select I2C mux channel
-    if (this->pins.commux) _gb->getdevice("tca").selectexclusive(pins.muxchannel);
+    if (this->pins.commux) _gb->getdevice("tca")->selectexclusive(pins.muxchannel);
     
     // If maximum number of attempts have been made, return.
     if (currentattempt < 0) return 1;
 
-    int start = millis();
+    unsigned long start = millis();
 
     // Convert the int to byte; allowing any number between 0 and 127 (both including) be sent as a byte
     byte b = (byte) data;
@@ -761,7 +761,7 @@ uint16_t GB_SNTL::_tell(int data, int maxattempts, int currentattempt) {
         // // Reset noack state
         // this->_no_ack = false;
 
-        int end = millis();
+        unsigned long end = millis();
         // _gb->log("Reception time w/o ACk: " + String(end - start) + " ms");
 
         return 65534;

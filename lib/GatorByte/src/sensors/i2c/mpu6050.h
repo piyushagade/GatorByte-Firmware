@@ -58,7 +58,7 @@ GB_MPU6050& GB_MPU6050::configure(PINS pins) {
 
 // Turn on the module
 GB_MPU6050& GB_MPU6050::on() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     
     // Initialize object
@@ -71,7 +71,7 @@ GB_MPU6050& GB_MPU6050::on() {
 
 // Turn off the module
 GB_MPU6050& GB_MPU6050::off() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     this->_rebegin_on_restart = true;
     return *this;

@@ -149,7 +149,7 @@ void GB_MQTT::publish(String topic, String data) {
     _gb->log("Publishing to topic: " + topic, false);
 
     if(this->_mqttclient.connected()) {
-        int start = millis();
+        unsigned long start = millis();
         bool success = _mqttclient.publish(_gb->s2c(topic), _gb->s2c(data));
         if (success) _gb->log(" -> Done");
         else _gb->log(" -> Failed");

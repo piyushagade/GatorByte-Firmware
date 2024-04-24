@@ -20,13 +20,13 @@
     ! CAIP projects
 */
 #define GB_PLATFORM_IS_LRY_DRIFTER_V1 false
-#define GB_PLATFORM_IS_LRY_DRIFTER_V2 true
+#define GB_PLATFORM_IS_LRY_DRIFTER_V2 false
 #define GB_PLATFORM_IS_LRY_BUOY false
 
 /*
     ! SASBJEP projects
 */
-#define GB_PLATFORM_IS_SASBJEP_BIT false
+#define GB_PLATFORM_IS_SASBJEP_BIT true
 
 /*
     ! TAMU projects

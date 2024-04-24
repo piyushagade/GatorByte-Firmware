@@ -1,6 +1,10 @@
 #ifndef GB_AT_SCI_RTD_h
 #define GB_AT_SCI_RTD_h
 
+/*
+    ! Uses 2.5% flash memory
+*/
+
 #ifndef GB_h
     #include "../../GB.h"
 #endif
@@ -27,16 +31,16 @@ class GB_AT_SCI_RTD : public GB_DEVICE {
         };
         
         struct ADDRESSES {
-            int bus;
+            uint8_t bus;
         };
         struct REGISTERS {
-            int data;
-            int led;
-            int hibernation;
-            int new_reading;
-            int calibration_control;
-            int calibration_confirmation;
-            int calibration_request;
+            uint8_t data;
+            uint8_t led;
+            uint8_t hibernation;
+            uint8_t new_reading;
+            uint8_t calibration_control;
+            uint8_t calibration_confirmation;
+            uint8_t calibration_request;
         };
 
         ADDRESSES addresses = {0x68};
@@ -52,8 +56,6 @@ class GB_AT_SCI_RTD : public GB_DEVICE {
         GB_AT_SCI_RTD& activate();
         GB_AT_SCI_RTD& deactivate();
         GB_AT_SCI_RTD& led(String);
-        GB_AT_SCI_RTD& calibrate();
-        GB_AT_SCI_RTD& calibrate(int);
         int calibrate(String, int value);
         
         bool testdevice();
@@ -73,7 +75,6 @@ class GB_AT_SCI_RTD : public GB_DEVICE {
         bool _persistent = false;
         float _latest_value = 25;
 
-        float _sendCommand(String);
         void _write_byte(byte, byte);
         void _write_long(byte, unsigned long);
         void _read_register(byte, byte);
@@ -102,7 +103,7 @@ String GB_AT_SCI_RTD::status() {
     return this->device.detected ? this->_device_info() : "not-detected" + String(":") + device.id;
 }
 
-GB_AT_SCI_RTD& GB_AT_SCI_RTD::initialize () { this->initialize(false); } 
+GB_AT_SCI_RTD& GB_AT_SCI_RTD::initialize () { return this->initialize(false); } 
 GB_AT_SCI_RTD& GB_AT_SCI_RTD::initialize (bool testdevice) { 
     _gb->init();
     
@@ -148,14 +149,14 @@ GB_AT_SCI_RTD& GB_AT_SCI_RTD::on() {
     delay(2);
     
     // Reset mux
-    _gb->getdevice("tca").resetmux();
+    _gb->getdevice("tca")->resetmux();
     
     // Power on the device
-    if(this->pins.pwrmux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.pwrmux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     // Select I2C mux channel
-    if(this->pins.commux) _gb->getdevice("tca").selectexclusive(pins.muxchannel);
+    if(this->pins.commux) _gb->getdevice("tca")->selectexclusive(pins.muxchannel);
 
     delay(50);
     return *this;
@@ -165,7 +166,7 @@ GB_AT_SCI_RTD& GB_AT_SCI_RTD::on() {
 GB_AT_SCI_RTD& GB_AT_SCI_RTD::off() {
     if (this->_persistent) return *this;
     delay(10);
-    if(this->pins.pwrmux) this->_gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.pwrmux) this->_gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     delay(2);
     return *this;
@@ -173,6 +174,7 @@ GB_AT_SCI_RTD& GB_AT_SCI_RTD::off() {
 
 // Activate the module
 GB_AT_SCI_RTD& GB_AT_SCI_RTD::activate() {
+    this->on();
     this->_write_byte(this->registers.hibernation, 0x01);
     this->_read_register(this->registers.hibernation, 0x01);
     delay(200);
@@ -181,6 +183,7 @@ GB_AT_SCI_RTD& GB_AT_SCI_RTD::activate() {
 
 // Deactivate the module
 GB_AT_SCI_RTD& GB_AT_SCI_RTD::deactivate() {
+    this->on();
     this->_write_byte(this->registers.hibernation, 0x00);
     delay(100);
     return *this;
@@ -194,34 +197,50 @@ GB_AT_SCI_RTD& GB_AT_SCI_RTD::led(String state) {
 
 // Read the sensor
 float GB_AT_SCI_RTD::_read() {
-    
+
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
 
     float sensor_value = -1;
     float divident = 1000;
-    int DELAY_BETWEEN_SENSOR_READS = 420;
+    int DELAY_BETWEEN_SENSOR_READS = 0;
 
     // Sensor's temporal resolution (from datasheet)
     delay(DELAY_BETWEEN_SENSOR_READS);
 
     this->_read_register(this->registers.new_reading, 0x01);
     bool new_data_available = _acquired_data.i2c_data[0];
+
+    // _gb->log("New data available: " + String(new_data_available));
     
     // If new data is available
     if (new_data_available) {
         
         // Read sensor value
         this->_read_register(this->registers.data, 0x04);
+
+        // if (_acquired_data.i2c_data[1] != 99 && _acquired_data.i2c_data[0] == 232) {
+            // _acquired_data.i2c_data[3] = 0;
+            // _acquired_data.i2c_data[2] = 0;
+        // }
+
         sensor_value = _acquired_data.answ / divident; 
         this->_latest_value = sensor_value;
 
-        // The new data available register needs to be manually reset to 0 according to the datasheet
+        // Serial.print("New data value: ");
+        // Serial.print(String(_acquired_data.i2c_data[3], HEX) + " ");
+        // Serial.print(String(_acquired_data.i2c_data[2], HEX) + " ");
+        // Serial.print(String(_acquired_data.i2c_data[1], HEX) + " ");
+        // Serial.println(String(_acquired_data.i2c_data[0], HEX));
+
+        Serial.println(sensor_value);
+
+        // The 'new data available register' needs to be manually reset to 0 according to the datasheet
         this->_write_byte(this->registers.new_reading, 0x00);
     }
     
     // Disable watchdog
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
 
     return sensor_value;
 }
@@ -229,18 +248,21 @@ float GB_AT_SCI_RTD::_read() {
 float GB_AT_SCI_RTD::readsensor(String mode) {
     
     float sensor_value = -1;
+
+    // Take continuos readings
     if (mode == "continuous") {
         int NUMBER_OF_READINGS = 10;
 
         _gb->br().log("Reading " + String(NUMBER_OF_READINGS) + " values from " + this->device.name);
         this->activate();
         for (int i = 0; i < NUMBER_OF_READINGS; i++) {
-            sensor_value = sensor_value = this->_read(); 
+            sensor_value = this->_read(); 
             _gb->log(String(i) + ": " + String(sensor_value));
         }
         this->deactivate();
     }
 
+    // Take one reading
     else if (mode == "single") {
         return this->readsensor();
     }
@@ -255,7 +277,6 @@ float GB_AT_SCI_RTD::readsensor(String mode) {
     return sensor_value;
 }
 
-
 float GB_AT_SCI_RTD::quickreadsensor(int times) {
 
     this->on();
@@ -264,10 +285,6 @@ float GB_AT_SCI_RTD::quickreadsensor(int times) {
     // Variables
     String sensor_mode = _gb->globals.SENSOR_MODE;
     float sensor_value = -1;
-    float stability_delta = 0.5;
-    int min_stable_reading_count = 5;
-    float previous_reading = 0;
-    int stability_counter = 0;
 
     // Determine number of times to read the sensor
     int NUMBER_OF_SENSOR_READS = 10;
@@ -275,7 +292,6 @@ float GB_AT_SCI_RTD::quickreadsensor(int times) {
     int ATTEMPT_COUNT = 0;
 
     // Get readings
-    int timer = millis();
     float min = 99, max = 0, avg = 0;
 
     // Read sensors until readings are stable
@@ -306,12 +322,12 @@ float GB_AT_SCI_RTD::quickreadsensor(int times) {
     // Print statistics
     this->_gb->log(String(" -> ") + String(min) + " |--- " + String(avg) + " ---| " + String(max));
 
-    _gb->getdevice("gdc").send("gdc-db", "rtd=" + String(sensor_value));
+    _gb->getdevice("gdc")->send("gdc-db", "rtd=" + String(sensor_value));
 
     return sensor_value;
 }
 
-// Read the sensor
+// Read the sensor (w/ filtering)
 float GB_AT_SCI_RTD::readsensor() {
 
     // Loop mqtt
@@ -323,7 +339,7 @@ float GB_AT_SCI_RTD::readsensor() {
         this->_gb->log("Reading " + this->device.name, false);
         float value = random(5, 29) + random(0, 100) / 100.00;
         this->_gb->log(" -> Dummy value: " + String(value));
-        _gb->getdevice("gdc").send("gdc-db", "rtd=" + String(value));
+        _gb->getdevice("gdc")->send("gdc-db", "rtd=" + String(value));
         return value;
     }
 
@@ -332,7 +348,7 @@ float GB_AT_SCI_RTD::readsensor() {
     if (!this->device.detected) {
         this->_gb->log("Reading " + this->device.name, false);
         this->_gb->log(" -> Device not detected");
-        _gb->getdevice("gdc").send("gdc-db", "rtd=" + String(-1));
+        _gb->getdevice("gdc")->send("gdc-db", "rtd=" + String(-1));
         return -1;
     }
     
@@ -369,11 +385,11 @@ float GB_AT_SCI_RTD::readsensor() {
             float difference = abs(sensor_value - previous_reading);
             if (difference <= stability_delta) {
                 stability_counter++;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb").on("green"); delay (250); _gb->getdevice("rgb").on("magenta"); }
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("green"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
             }
             else {
                 stability_counter = 0;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb").on("yellow"); delay (250); _gb->getdevice("rgb").on("magenta"); }
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("yellow"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
             }
             previous_reading = sensor_value;
         }
@@ -406,7 +422,7 @@ float GB_AT_SCI_RTD::readsensor() {
     this->deactivate();
     this->off();
     // this->_gb->log(" -> " + String(sensor_value));
-    _gb->getdevice("gdc").send("gdc-db", "rtd=" + String(sensor_value));
+    _gb->getdevice("gdc")->send("gdc-db", "rtd=" + String(sensor_value));
 
     return sensor_value;
 }
@@ -416,118 +432,48 @@ float GB_AT_SCI_RTD::lastvalue() {
     return this->_latest_value < 0 ? 25 : this->_latest_value;
 }
 
-// Manual sensor calibration
-GB_AT_SCI_RTD& GB_AT_SCI_RTD::calibrate() {
-
-    #if not defined (LOW_MEMORY_MODE)
-        int step = 0;
-        String cmd = "c";
-        while (step <= 1 && cmd != "q") {
-            if (cmd == "w") {
-                _gb->log("\nReading 10 values from " + this->device.name);
-                _gb->log("-----------------------------------------------");
-                for (int i = 0; i < 10; i++) {
-                    _gb->log(this->readsensor());
-                    delay(500);
-                }
-                _gb->log("Done. Waiting for a new command.");
-
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "c") {
-                this->calibrate(step);
-                
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                // Increment the step count
-                step++;
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            if (cmd == "s") {
-                this->calibrate(step++);
-                
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "r") {
-                _gb->log(this->device.name + " value: " + this->readsensor());
-                
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "x") {
-                this->_calibrate("clr", 0);
-                cmd = "c";
-                step = 0;
-            }
-            else if (cmd == "/") {
-                // _gb->log("\nCalibration status: ", false);
-                // this->_calibrate("?");
-                cmd = "c";
-                step = 0;
-            }
-            else if (cmd == "q") {
-                _gb->log("\nExiting calibration mode.\n");
-                cmd = "c";
-                step = 0;
-                break;
-            }
-            else {
-                delay(500);
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-        }
-    #else
-        _gb->log("GatorByte operating in low power mode. Calibration is disabled.");
-    #endif
-
-    return *this;
-}
-
 // Sensor calibration
 int GB_AT_SCI_RTD::calibrate(String action, int value) {
-    if (action == "clear") return this->_calibrate("clr", 0);
-    else if (action == "mid") return this->_calibrate("mid", value);
+    if (action == "clear" || action == "clr") return this->_calibrate("clr", 0);
+    else if (action == "single") return this->_calibrate("single", value);
     return this->_calibrate("?", 0);
-}
-
-// Sensor calibration
-GB_AT_SCI_RTD& GB_AT_SCI_RTD::calibrate(int step) {
-
-    #if not defined (LOW_MEMORY_MODE)
-        if(step > 0) {
-            _gb->log("\nStep: " + String(step));
-            _gb->log("-------");
-        }
-        else _gb->log("");
-
-        if(step == 0) {
-            _gb->log("You have entered calibration mode for " + this->device.name);
-            _gb->log("Current status: ", false);
-            this->_calibrate("?", 0);
-            _gb->log("Calibration not required for this sensor. Click \"next\" to exit.");
-
-            // // Calibration complete
-            // this->calibrate(1);
-        }
-        else if(step == 1) {
-            _gb->log("The sensor is ready to be used. No action required.");
-        }
-    #endif
-    return *this;
 }
 
 // Calibration procedure
 int GB_AT_SCI_RTD::_calibrate(String cmd, int value) {
+
+    const byte calibration_value_register = 0x08; 
+	const byte calibration_request_register = 0x0C; 
+	const byte calibration_confirmation_register = 0x0D; 
+	const byte cal_clear = 0x01; 
+	const byte calibrate = 0x02; 
+	float calibration = 0; 
+
+
+	if (cmd == "?") {								
+		Serial.print("Calibration status: ");
+		this->_read_register(calibration_confirmation_register, 0x01); 
+		if (_acquired_data.i2c_data[0] == 0) Serial.println("No calibration");
+		if (_acquired_data.i2c_data[0] == 1) Serial.println("Single-point calibration found");
+	}
+
+	if (cmd == "clr") {								
+		_write_byte(calibration_request_register, cal_clear); 
+		delay(40);											 
+		_read_register(calibration_confirmation_register, 0x01); 
+		if (_acquired_data.i2c_data[0] == 0) Serial.println("Calibration cleared");
+	}
+
+	if (cmd == "single") { 
+		calibration = value; 
+		calibration *= 1000; 
+		_acquired_data.answ = calibration; 
+		_write_long(calibration_value_register, _acquired_data.answ); 
+		_write_byte(calibration_request_register, calibrate); 
+		delay(50); 
+		_read_register(calibration_confirmation_register, 0x01); 
+		if (_acquired_data.i2c_data[0] == 1) Serial.println("Calibrated to: " + String(_acquired_data.answ / 1000) + " C");
+	}
 
     return 0;
 }
@@ -535,6 +481,7 @@ int GB_AT_SCI_RTD::_calibrate(String cmd, int value) {
 // Write a byte to an OEM register
 void GB_AT_SCI_RTD::_write_byte(byte reg, byte data) {
     this->on();
+    delay(10);
     Wire.beginTransmission(this->addresses.bus);
     Wire.write(reg);
     Wire.write(data);
@@ -574,7 +521,7 @@ void GB_AT_SCI_RTD::_read_register(byte register_address, byte number_of_bytes_t
         _acquired_data.i2c_data[i - 1] = data;
     }
     Wire.endTransmission();
-    this->off();
+    // this->off();
 }
 
 // Sensor info function
@@ -597,7 +544,6 @@ String GB_AT_SCI_RTD::_device_info() {
     this->on();
 
     const byte device_type_register = 0x00;
-    const byte device_address_register = 0x03;
     this->_read_register(device_type_register, 0x02);
     if(_acquired_data.i2c_data[1] == 255) {
         _gb->log("Error reading device info.");
@@ -626,7 +572,7 @@ void GB_AT_SCI_RTD::_led_control(String cmd) {
     this->_write_byte(this->registers.led, led_control);
     this->_read_register(this->registers.led, 0x01);
     if (_acquired_data.i2c_data[0] != led_control) _gb->log("Error changing LED state.");
-    this->off();
+    // this->off();
 }
 
 #endif

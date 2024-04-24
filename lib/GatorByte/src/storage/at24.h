@@ -218,7 +218,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
         // this->write(this->MEMLOC_BOOT_COUNTER, bootcounter);
 
         // Disable stray watchdog timers
-        this->_gb->getmcu().watchdog("disable");
+        this->_gb->getmcu()->watchdog("disable");
 
         //! Format EEPROM's memory content (if first use)
         if(strcmp(_gb->s2c(this->get(0)), "formatted") != 0) this->format();
@@ -232,7 +232,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
         if (test) {
             
             //! Speed test
-            int start = millis();
+            unsigned long start = millis();
             String readdata = _gb->s2c(this->get(0));
             int readtime = millis() - start;
             _gb->log(" -> Read: " + String(readtime) + " ms", false);
@@ -278,8 +278,8 @@ GB_AT24& GB_AT24::initialize(bool test) {
             }
         } 
         
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--").wait(250).play("...");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--").wait(250).play("...");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
     }
     else {
         this->device.detected = false;
@@ -290,8 +290,8 @@ GB_AT24& GB_AT24::initialize(bool test) {
             return *this;
         }
         
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--").wait(250).play("---");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(250).revert();
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--").wait(250).play("---");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert();
     }
 
     this->off();
@@ -301,11 +301,11 @@ GB_AT24& GB_AT24::initialize(bool test) {
 // Format the contents in the EEPROM
 GB_AT24& GB_AT24::format() { 
     this->on();
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("yellow");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("yellow");
 
     
     // Start watchdog timer
-    this->_gb->getmcu().watchdog("enable");
+    this->_gb->getmcu()->watchdog("enable");
 
     Wire.begin();
     _gb->br().log("Formatting EEPROM module", false);
@@ -332,9 +332,9 @@ GB_AT24& GB_AT24::format() {
     else _gb->log(" -> Failed", true);
     
     // Disable watchdog timer
-    this->_gb->getmcu().watchdog("disable");
+    this->_gb->getmcu()->watchdog("disable");
     
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").revert();
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
 
     this->off();
     return *this;
@@ -342,7 +342,7 @@ GB_AT24& GB_AT24::format() {
 
 // Turn on the module
 GB_AT24&  GB_AT24::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     delay(1000);
     return *this;
@@ -353,7 +353,7 @@ GB_AT24&  GB_AT24::off() {
 
     if (this->_persistent) return *this;
     
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }
@@ -369,7 +369,7 @@ String GB_AT24::get(int id){
     this->on();
     
     // Start watchdog timer
-    this->_gb->getmcu().watchdog("enable");
+    this->_gb->getmcu()->watchdog("enable");
 
     String data = "";
     char message[this->_chunksize];
@@ -380,7 +380,7 @@ String GB_AT24::get(int id){
     }
     
     // Disable watchdog timer
-    this->_gb->getmcu().watchdog("disable");
+    this->_gb->getmcu()->watchdog("disable");
     
     this->off();
     return data;
@@ -397,7 +397,7 @@ GB_AT24& GB_AT24::write(int id, String data){
     this->on(); 
 
     // Start watchdog timer
-    this->_gb->getmcu().watchdog("enable");
+    this->_gb->getmcu()->watchdog("enable");
 
     String data_to_write = data;
 
@@ -415,7 +415,7 @@ GB_AT24& GB_AT24::write(int id, String data){
     delay(10);
     
     // Disable watchdog timer
-    this->_gb->getmcu().watchdog("disable");
+    this->_gb->getmcu()->watchdog("disable");
 
     this->off();
     return *this;
@@ -426,7 +426,7 @@ GB_AT24&  GB_AT24::remove(int id){
     this->on();
     
     // Start watchdog timer
-    this->_gb->getmcu().watchdog("enable");
+    this->_gb->getmcu()->watchdog("enable");
 
     String data_to_write = "";
     
@@ -440,7 +440,7 @@ GB_AT24&  GB_AT24::remove(int id){
     delay(10);
     
     // Disable watchdog timer
-    this->_gb->getmcu().watchdog("disable");
+    this->_gb->getmcu()->watchdog("disable");
 
     this->off();
     return *this;

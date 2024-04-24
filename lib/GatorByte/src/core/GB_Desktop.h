@@ -1,9 +1,15 @@
 #ifndef GB_DESKTOP_h
 #define GB_DESKTOP_h
 
+/*
+    ! Uses ~09% flash memory
+*/
+
 #ifndef GB_h
     #include "../GB.h"
 #endif
+
+#define LOGCONTROL false
 
 class GB_DESKTOP : public GB_DEVICE {
     public:
@@ -41,7 +47,6 @@ class GB_DESKTOP : public GB_DEVICE {
         bool lock = false;
         String _received_config_str = "";
         GB_DESKTOP& _busy(bool busy);
-
         
         // Temporary data
         String tempstring[5];
@@ -61,7 +66,9 @@ GB_DESKTOP::GB_DESKTOP(GB &gb) {
 
 // Test the device
 bool GB_DESKTOP::testdevice() { 
+    #if LOGCONTROL
     _gb->log("Testing " + device.id + ": " + String(this->device.detected));
+    #endif
     return this->device.detected;
 }
 String GB_DESKTOP::status() { 
@@ -90,14 +97,14 @@ GB_DESKTOP& GB_DESKTOP::detect(bool lock) {
         if (response.indexOf("##CL-GDC-PING##") != -1) {
             _gb->globals.GDC_CONNECTED = true;
             Serial.println("##CL-GDC-PONG##"); delay(50);
-            Serial.println("##CL-GDC-SN::" + _gb->getmcu().getsn() + "##"); delay(50);
+            Serial.println("##CL-GDC-SN::" + _gb->getmcu()->getsn() + "##"); delay(50);
 
             if (_gb->globals.GDC_SETUP_READY) {
                 Serial.println("##CL-GB-READY##");
                 
                 // Get device environment from memory
-                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
-                    String savedenv = _gb->getdevice("mem").get(1);
+                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem")->get(0) == "formatted") {
+                    String savedenv = _gb->getdevice("mem")->get(1);
                     _gb->env(savedenv);
                     Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
                 }
@@ -118,11 +125,11 @@ GB_DESKTOP& GB_DESKTOP::detect(bool lock) {
 
 GB_DESKTOP& GB_DESKTOP::_busy(bool busy) {
         if (busy) {
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(100).revert();
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play(",.");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(",.");
         }
         else  {
-            if (_gb->hasdevice("rgb") )_gb->getdevice("rgb").revert();
+            if (_gb->hasdevice("rgb") )_gb->getdevice("rgb")->revert();
         }
     return *this;
 }
@@ -130,7 +137,7 @@ GB_DESKTOP& GB_DESKTOP::_busy(bool busy) {
 // Enter console mode
 GB_DESKTOP& GB_DESKTOP::enter() {
 
-    _gb->log("GDC mode enabled. GatorByte is now locked in this mode.");
+    _gb->log("Locked GDC mode enabled.");
 
     uint8_t last_led_act_ts = millis();
     bool led_state = false;
@@ -143,8 +150,8 @@ GB_DESKTOP& GB_DESKTOP::enter() {
             last_led_act_ts = millis();
             led_state = !led_state;
             if (_gb->hasdevice("rgb")) {
-                if (led_state) _gb->getdevice("rgb").on("cyan");
-                else _gb->getdevice("rgb").off();
+                if (led_state) _gb->getdevice("rgb")->on("cyan");
+                else _gb->getdevice("rgb")->off();
             }
         }
 
@@ -156,7 +163,9 @@ GB_DESKTOP& GB_DESKTOP::enter() {
 
 // Turn off the module
 GB_DESKTOP& GB_DESKTOP::exit() {
-    _gb->log("Exiting comand mode. Reverting to \"" + this->_prev_mode + "\" mode.\n");
+    #if LOGCONTROL
+    _gb->log("Exiting commnd mode. Reverting to \"" + this->_prev_mode + "\" mode.\n");
+    #endif
     this->_gb->globals.MODE = this->_prev_mode;
     return *this;
 }
@@ -184,7 +193,7 @@ GB_DESKTOP& GB_DESKTOP::loop() {
         }
         
         // Set LED color to cyan
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("cyan");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("cyan");
 
     #endif
     return *this;
@@ -238,25 +247,26 @@ void GB_DESKTOP::cfprint(String message) {
 // Process the incoming command
 void GB_DESKTOP::process(string command) {
 
+    #if LOGCONTROL
     // _gb->br().log("Processing command: " + command, false);
     // _gb->log(" -> Current state: " + String(this->_state.length() > 0 ? this->_state : "None"));
+    #endif
     
     /*
         ! Ping
     */
     if (command.contains("gdc-ping")) {
         Serial.println("##CL-GDC-PONG##"); delay(50);
-        Serial.println("##CL-GDC-SN::" + _gb->getmcu().getsn() + "##"); delay(50);
+        Serial.println("##CL-GDC-SN::" + _gb->getmcu()->getsn() + "##"); delay(50);
         
-
         if (_gb->hasdevice("sd")) {
-            if (!_gb->getdevice("sd").testdevice()) Serial.println("##CL-GB-SD-UINT##");
+            if (!_gb->getdevice("sd")->testdevice()) Serial.println("##CL-GB-SD-UINT##");
             if (_gb->globals.GDC_SETUP_READY) {
                 Serial.println("##CL-GB-READY##");
                 
                 // Get device environment from memory
-                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem").get(0) == "formatted") {
-                    String savedenv = _gb->getdevice("mem").get(1);
+                if (_gb->hasdevice("mem") &&  _gb->getdevice("mem")->get(0) == "formatted") {
+                    String savedenv = _gb->getdevice("mem")->get(1);
                     _gb->env(savedenv);
                     Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
                 }
@@ -272,7 +282,9 @@ void GB_DESKTOP::process(string command) {
         // Set as busy
         this->_busy(true);
 
-        _gb->log("Received GDC command: " + command);
+        #if LOGCONTROL
+          _gb->log("Received GDC command: " + command);
+        #endif
 
         /*
             ! Check command validity
@@ -306,10 +318,10 @@ void GB_DESKTOP::process(string command) {
 
                 // int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
                 // int charsatatime = 30;
-                // String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // String data = _gb->getdevice("sd")->readLinesFromSD(filename, charsatatime, initialcharindex);
                 // this->sendfile("gdc-cfg", "fdl:" + data);
 
-                String data = _gb->getdevice("sd").readfile(filename);
+                String data = _gb->getdevice("sd")->readfile(filename);
                 for (int i = 0; i < data.length(); i += 30) {
                     // Extract a chunk of 30 characters
                     String chunk = data.substring(i, i + 30);
@@ -339,10 +351,10 @@ void GB_DESKTOP::process(string command) {
                 }
 
                 // Delete preexisting file if the upload has just started.
-                if (initialcharindex == 0) _gb->getdevice("sd").rm(filename);
+                if (initialcharindex == 0) _gb->getdevice("sd")->rm(filename);
 
                 // Append data to the file
-                _gb->getdevice("sd").writeLinesToSD(filename, data);
+                _gb->getdevice("sd")->writeLinesToSD(filename, data);
 
                 // Pause
                 delay(10);
@@ -355,14 +367,14 @@ void GB_DESKTOP::process(string command) {
             else if (command.contains("cfgupd:")) {
             
                 // Update config in the memory
-                _gb->getdevice("sd").readconfig();
+                _gb->getdevice("sd")->readconfig();
 
             }
 
             // Post config upload tasks
             else if (command.contains("hash")) {
             
-                String configdata = _gb->getdevice("sd").readfile("/config/config.ini");
+                String configdata = _gb->getdevice("sd")->readfile("/config/config.ini");
 
                 // Compute hash
                 unsigned int hash = _gb->s2hash(configdata);
@@ -374,10 +386,11 @@ void GB_DESKTOP::process(string command) {
 
             // Battery status
             else if (command.contains("batt")) {
-
-                _gb->log("Battery level requested.");
+                #if LOGCONTROL
+                    _gb->log("Battery level requested.");
+                #endif
             
-                float level = _gb->getmcu().fuel("level");
+                float level = _gb->getmcu()->fuel("level");
 
                 // Send acknowledgement
                 this->send("gdc-cfg", "cfgbatt:" + String(level)); delay(10);
@@ -396,7 +409,7 @@ void GB_DESKTOP::process(string command) {
                     this->send("gdc-sdf", "sd:error");
                     return;
                 }
-                if (!_gb->getdevice("sd").initialized()) {
+                if (!_gb->getdevice("sd")->initialized()) {
                     this->send("gdc-sdf", "sdinit:error");
                     return;
                 }
@@ -405,23 +418,31 @@ void GB_DESKTOP::process(string command) {
                 String folders[] = {"config", "calibration", "control", "readings", "debug", "logs", "queue"};
                 for (int i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
                     String foldername = folders[i];
-                    if (!_gb->getdevice("sd").exists("/" + foldername)) {
-                        _gb->log(foldername + " doesn't exist. Creating directory", false);
-                        bool success = _gb->getdevice("sd").mkdir("/" + foldername);
-                        _gb->arrow().log(success ? "Done" : "Failed");
+                    if (!_gb->getdevice("sd")->exists("/" + foldername)) {
+                        #if LOGCONTROL
+                            _gb->log(foldername + " doesn't exist. Creating directory", false);
+                        #endif
+                        bool success = _gb->getdevice("sd")->mkdir("/" + foldername);
+                        #if LOGCONTROL
+                          _gb->arrow().log(success ? "Done" : "Failed");
+                        #endif
                     }
                 }
 
                 // Create config file
-                if (!_gb->getdevice("sd").exists("/config/config.ini")) {
-                    _gb->log("File config.ini doesn't exist. Creating file.");
-                    _gb->getdevice("sd").writeLinesToSD("/config/config.ini", "");
+                if (!_gb->getdevice("sd")->exists("/config/config.ini")) {
+                    #if LOGCONTROL
+                        _gb->log("File config.ini doesn't exist. Creating file.");
+                    #endif
+                    _gb->getdevice("sd")->writeLinesToSD("/config/config.ini", "");
                 }
 
                 // Create control file
-                if (!_gb->getdevice("sd").exists("/control/variables.ini")) {
-                    _gb->log("File variables.ini doesn't exist. Creating file.");
-                    _gb->getdevice("sd").writeLinesToSD("/control/variables.ini", "");
+                if (!_gb->getdevice("sd")->exists("/control/variables.ini")) {
+                    #if LOGCONTROL
+                        _gb->log("File variables.ini doesn't exist. Creating file.");
+                    #endif
+                    _gb->getdevice("sd")->writeLinesToSD("/control/variables.ini", "");
                 }
 
                 // Send acknowledgement
@@ -449,12 +470,12 @@ void GB_DESKTOP::process(string command) {
                 String root = command.substring(command.indexOf(",") + 1, command.length());
                 // _gb->log("Listing folder: " + root);
                 
-                String filelistdata = _gb->getdevice("sd").getfilelist(root);
+                String filelistdata = _gb->getdevice("sd")->getfilelist(root);
                 int filecount = filelistdata.substring(0, filelistdata.indexOf("::")).toInt();
                 String list = filelistdata.substring(filelistdata.indexOf("::") + 2, filelistdata.length());
 
                 // Test SD
-                bool success = _gb->hasdevice("sd") ? _gb->getdevice("sd").testdevice() : false;
+                bool success = _gb->hasdevice("sd") ? _gb->getdevice("sd")->testdevice() : false;
 
                 // Send acknowledgment
                 if (success) {
@@ -490,9 +511,11 @@ void GB_DESKTOP::process(string command) {
                 int initialcharindex = 0;
                 int charsatatime = 100;
 
-                File file = _gb->getdevice("sd").openFile("read", filename);
+                File file = _gb->getdevice("sd")->openFile("read", filename);
                 if (!file) {
-                    _gb->log("Error opening file!");
+                    #if LOGCONTROL
+                        _gb->log("Error opening file!");
+                    #endif
                     return;
                 }
 
@@ -510,32 +533,40 @@ void GB_DESKTOP::process(string command) {
                     this->sendfile("gdc-dfl", "fdl:" + String(chunk)); delay(25);
                 }
 
+                #if LOGCONTROL
                 _gb->log("File upload completed: " + filename);
+                #endif
                 this->sendfile("gdc-dfl", "fdl:#DLEOF#"); delay(10);
             }
 
             // Delete a file
             if (command.contains("rm:")) {
                 String file = command.substring(command.indexOf("rm:") + 3, command.length());
+                #if LOGCONTROL
                 _gb->log("Removing file: " + file);
-                _gb->getdevice("sd").rm(file);
+                #endif
+                _gb->getdevice("sd")->rm(file);
             }
 
             // Delete a folder
             if (command.contains("rmd:")) {
                 String file = command.substring(command.indexOf("rmd:") + 4, command.length());
+                #if LOGCONTROL
                 _gb->log("Removing folder: " + file);
-                _gb->getdevice("sd").rmdir(file);
+                #endif
+                _gb->getdevice("sd")->rmdir(file);
             }
 
             // Make directory
             if (command.contains("crd:")) {
                 String dirname = command.substring(command.indexOf("crd:") + 4, command.length());
+                #if LOGCONTROL
                 _gb->log("Creating directory: " + dirname);
+                #endif
                 
                 String foldername = dirname;
-                if (!_gb->getdevice("sd").exists("/" + foldername)) {
-                    bool success = _gb->getdevice("sd").mkdir("/" + foldername);
+                if (!_gb->getdevice("sd")->exists("/" + foldername)) {
+                    bool success = _gb->getdevice("sd")->mkdir("/" + foldername);
                 }
             }
             
@@ -544,10 +575,12 @@ void GB_DESKTOP::process(string command) {
                 String stripped = command.substring(command.indexOf("rnd:") + 4, command.length());
                 String oldname = stripped.substring(0, stripped.indexOf("#"));
                 String newname = stripped.substring(stripped.indexOf("#") + 1, stripped.length());
+                #if LOGCONTROL
                 _gb->log("Renaming directory: " + oldname + " to " + newname);
+                #endif
                 
-                if (_gb->getdevice("sd").exists("/" + oldname)) {
-                    bool success = _gb->getdevice("sd").renamedir(oldname , newname);
+                if (_gb->getdevice("sd")->exists("/" + oldname)) {
+                    bool success = _gb->getdevice("sd")->renamedir(oldname , newname);
                 }
             }
 
@@ -561,13 +594,17 @@ void GB_DESKTOP::process(string command) {
                 String filepath = command.substring(String("fuplm:").length(), command.length());
                 this->tempstring[0] = filepath;
 
-                bool exists = _gb->getdevice("sd").exists(filepath);
+                bool exists = _gb->getdevice("sd")->exists(filepath);
                 if (exists) {
+                    #if LOGCONTROL
                     _gb->log("File already exists. Deleting file.");
-                    _gb->getdevice("sd").rm(filepath);
+                    #endif
+                    _gb->getdevice("sd")->rm(filepath);
                 }
                 
+                #if LOGCONTROL
                 _gb->log("Setting file path: " + filepath);
+                #endif
             }
 
             // Upload file
@@ -582,12 +619,16 @@ void GB_DESKTOP::process(string command) {
                 String data = _gb->sreplace(command, target, replacement);
                 
                 if (filepath.length() == 0) {
+                    #if LOGCONTROL
                     _gb->log("File path not set");
+                    #endif
                 }
 
                 else {
+                    #if LOGCONTROL
                     _gb->log("File upload request received: ", false);
                     _gb->log(filepath);
+                    #endif
 
                     while(data.contains("~")) {
                         data.replace("~", "\n");
@@ -597,7 +638,7 @@ void GB_DESKTOP::process(string command) {
                         data.replace("`", " ");
                     }
 
-                    _gb->getdevice("sd").writeLinesToSD(filepath, data);
+                    _gb->getdevice("sd")->writeLinesToSD(filepath, data);
 
                     this->send("gdc-dfl", "upl:ack");
                 }
@@ -632,8 +673,6 @@ void GB_DESKTOP::process(string command) {
                 // String sensor = strtok(_gb->s2c(command), ":");
                 // String remainder = strtok(NULL, ":");
 
-                _gb->log("Here 0: " + command);
-
                 String sensor = command.substring(0, command.indexOf(":"));
                 String level = command.substring(command.indexOf(":") + 1, command.indexOf(","));
                 int value = command.substring(command.indexOf(",") + 1, command.length()).toInt();
@@ -642,12 +681,14 @@ void GB_DESKTOP::process(string command) {
                 // String level = strtok(_gb->s2c(remainder), ",");
                 // int value = String(strtok(NULL, ",")).toInt();
                 
+                #if LOGCONTROL
                 _gb->log("Processed calibration request for: " + sensor);
                 _gb->log("Level: ", false);
                 _gb->log(level);
+                #endif
                 
                 // Calibrate
-                int status = _gb->getdevice(sensor).calibrate(level, value);
+                int status = _gb->getdevice(sensor)->calibrate(level, value);
                 
                 // Send acknowledgment
                 this->send("gdc-cal", "ack");
@@ -655,8 +696,8 @@ void GB_DESKTOP::process(string command) {
 
                 // Update "last calibrated" date on SD card
                 if (level != "status" && level != "clear") {
-                    _gb->getdevice("sd").rm("/calibration/" + sensor + ".ini");
-                    _gb->getdevice("sd").writeString("/calibration/" + sensor + ".ini", _gb->getdevice("rtc").timestamp());
+                    _gb->getdevice("sd")->rm("/calibration/" + sensor + ".ini");
+                    _gb->getdevice("sd")->writeString("/calibration/" + sensor + ".ini", _gb->getdevice("rtc")->timestamp());
                 }
             }
 
@@ -670,11 +711,14 @@ void GB_DESKTOP::process(string command) {
                 String sensor = command.substring(0, command.indexOf(":"));
                 int NUMBER_OF_READINGS = command.substring(command.indexOf(":") + 1, command.length()).toInt();
 
+                #if LOGCONTROL
                 _gb->br().log("Reading " + String(NUMBER_OF_READINGS) + " continuous values from " + sensor);
-                int starttime = millis();
+                #endif
                 int count = 0;
+
                 for (count = 0; count < NUMBER_OF_READINGS; count++) {
-                    float sensorvalue = _gb->getdevice(sensor).readsensor("next");
+
+                    float sensorvalue = _gb->getdevice(sensor)->readsensor("next");
 
                     // Push reading to GDC
                     this->send("gdc-cal", "cread" + String(":") + String(count) + String(":") + String(sensorvalue));
@@ -690,7 +734,7 @@ void GB_DESKTOP::process(string command) {
 
                 // Get sensor name
                 String sensor = command;
-                String lpi = _gb->getdevice("sd").readfile("/calibration/" + sensor + ".ini");
+                String lpi = _gb->getdevice("sd")->readfile("/calibration/" + sensor + ".ini");
                 
                 // Send acknowledgment
                 this->send("gdc-cal", "lpi" + String(":") + String(lpi));
@@ -714,19 +758,19 @@ void GB_DESKTOP::process(string command) {
                 this->send("gdc-db", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
                 
                 // MODEM firmware
-                this->send("gdc-db", "modem-fw=" + _gb->getmcu().getfirmwareinfo());
+                this->send("gdc-db", "modem-fw=" + _gb->getmcu()->getfirmwareinfo());
                 
                 // MODEM IMEI
-                this->send("gdc-db", "modem-imei=" + _gb->getmcu().getimei());
+                this->send("gdc-db", "modem-imei=" + _gb->getmcu()->getimei());
                 
                 // SIM ICCID
-                this->send("gdc-db", "sim-iccid=" + _gb->getmcu().geticcid());
+                this->send("gdc-db", "sim-iccid=" + _gb->getmcu()->geticcid());
 
                 // Network strength
-                this->send("gdc-db", "rssi=" + String(_gb->getmcu().getrssi()));
+                this->send("gdc-db", "rssi=" + String(_gb->getmcu()->getrssi()));
 
                 // Operator
-                String cops = _gb->getmcu().getoperator();
+                String cops = _gb->getmcu()->getoperator();
                 cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
                 this->send("gdc-db", "cops=" + String(cops));
             }
@@ -736,10 +780,10 @@ void GB_DESKTOP::process(string command) {
                 if (command.contains(":all")) {
                     String result = "";
 
-                    result += "rtd:" + String(_gb->getdevice("rtd").readsensor()) + String(",");
-                    result += "ph:" + String(_gb->getdevice("ph").readsensor()) + String(",");
-                    result += "dox:" + String(_gb->getdevice("dox").readsensor()) + String(",");
-                    result += "ec:" + String(_gb->getdevice("ec").readsensor());
+                    result += "rtd:" + String(_gb->getdevice("rtd")->readsensor()) + String(",");
+                    result += "ph:" + String(_gb->getdevice("ph")->readsensor()) + String(",");
+                    result += "dox:" + String(_gb->getdevice("dox")->readsensor()) + String(",");
+                    result += "ec:" + String(_gb->getdevice("ec")->readsensor());
 
                     // The following line is not needed because the individual functions above send this info on their own
                     this->send("gdc-db", "fsr=" + result);
@@ -747,25 +791,25 @@ void GB_DESKTOP::process(string command) {
                 else if (command.contains(":rtd")) {
                     String result = "";
 
-                    result += "rtd:" + String(_gb->getdevice("rtd").readsensor());
+                    result += "rtd:" + String(_gb->getdevice("rtd")->readsensor());
                     this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":ph")) {
                     String result = "";
 
-                    result += "ph:" + String(_gb->getdevice("ph").readsensor());
+                    result += "ph:" + String(_gb->getdevice("ph")->readsensor());
                     this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":dox")) {
                     String result = "";
 
-                    result += "dox:" + String(_gb->getdevice("dox").readsensor());
+                    result += "dox:" + String(_gb->getdevice("dox")->readsensor());
                     this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":ec")) {
                     String result = "";
 
-                    result += "ec:" + String(_gb->getdevice("ec").readsensor());
+                    result += "ec:" + String(_gb->getdevice("ec")->readsensor());
                     this->send("gdc-db", "fsr=" + result);
                 }
             }
@@ -791,9 +835,11 @@ void GB_DESKTOP::process(string command) {
 
                 //! Sync RTC
                 if (command.contains("sync")) {
-
+                    
+                    #if LOGCONTROL
                     _gb->log("Syncing GatorByte time to ", false);
-                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
+                    #endif
+                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc")->testdevice();
 
                     if (success) {
                         String month = command.substring(4, 7);
@@ -808,15 +854,18 @@ void GB_DESKTOP::process(string command) {
                         String fulldate = month + " " +  date + " " + year;
                         String fulltime = hour + ":" +  minute + ":" + second;
 
+                        #if LOGCONTROL
                         _gb->log(fulldate + ", ", false);
                         _gb->log(fulltime);
+                        #endif
 
-                        _gb->getdevice("rtc").sync(_gb->s2c(fulldate), _gb->s2c(fulltime));
+                        _gb->getdevice("rtc")->sync(_gb->s2c(fulldate), _gb->s2c(fulltime));
                         this->send("gdc-cfg", "ack");
                     }
                     else {
-                        
+                        #if LOGCONTROL
                         _gb->log(" -> Skipped");
+                        #endif
                         this->send("gdc-cfg", "nack");
                     }
                 }
@@ -824,31 +873,33 @@ void GB_DESKTOP::process(string command) {
                 //! Get RTC timestamp
                 if (command.contains("get")) {
                     
-                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc").testdevice();
+                    bool success = true || _gb->hasdevice("rtc") && _gb->getdevice("rtc")->testdevice();
                     
                     String data;
-                    if (success) data = _gb->getdevice("rtc").timestamp();
+                    if (success) data = _gb->getdevice("rtc")->timestamp();
                     else data = "not-detected";
 
                     // Send RTC time
-                    this->send("gdc-cfg", "rtc:" + data + "-" + _gb->getdevice("rtc").getsource());
+                    this->send("gdc-cfg", "rtc:" + data + "-" + _gb->getdevice("rtc")->getsource());
 
-                    Serial.println("rtc:" + data + "::" + _gb->getdevice("rtc").getsource()); 
+                    Serial.println("rtc:" + data + "::" + _gb->getdevice("rtc")->getsource()); 
                 }
             }
 
             //! Bluetooth action
             if (command.contains("bl:")) {
 
+                #if LOGCONTROL
                 _gb->log("Command: " + command);
+                #endif
                 if (command.contains("getconfig")) {
                     
-                    bool success = _gb->hasdevice("bl") && _gb->getdevice("bl").testdevice();
+                    bool success = _gb->hasdevice("bl") && _gb->getdevice("bl")->testdevice();
                     if (success) {
-                        String namedata = _gb->getdevice("bl").send_at_command("AT+NAME");
+                        String namedata = _gb->getdevice("bl")->send_at_command("AT+NAME");
                         String name = namedata.substring(namedata.indexOf('=') + 1, namedata.length());
                         
-                        String pindata = _gb->getdevice("bl").send_at_command("AT+PIN");
+                        String pindata = _gb->getdevice("bl")->send_at_command("AT+PIN");
                         String pin = pindata.substring(pindata.indexOf('=') + 1, pindata.length());
 
                         // Send BL config
@@ -862,17 +913,19 @@ void GB_DESKTOP::process(string command) {
                 if (command.contains("setconfig")) {
                     command.replace("bl:setconfig", "");
 
-                    bool success = _gb->hasdevice("bl") && _gb->getdevice("bl").testdevice();
+                    bool success = _gb->hasdevice("bl") && _gb->getdevice("bl")->testdevice();
                     if (success) {
                         String name = command.substring(0, command.indexOf(';'));
                         String pin = command.substring(command.indexOf(';') + 1, command.length());
 
+                        #if LOGCONTROL
                         _gb->log("Setting BL name to " + name);
                         _gb->log("Setting BL PIN to " + pin);
+                        #endif
 
                         // Update BL name and pin by sending AT commands
-                        _gb->getdevice("bl").send_at_command("AT+NAME" + name);
-                        _gb->getdevice("bl").send_at_command("AT+PIN" + pin);
+                        _gb->getdevice("bl")->send_at_command("AT+NAME" + name);
+                        _gb->getdevice("bl")->send_at_command("AT+PIN" + pin);
 
                         // Send BL config
                         delay(250); this->send("gdc-cfg", "bl:" + name + ";" + pin);
@@ -894,7 +947,7 @@ void GB_DESKTOP::process(string command) {
                 this->send("gdc-sdf", "sd:error");
                 return;
             }
-            if (!_gb->getdevice("sd").initialized()) {
+            if (!_gb->getdevice("sd")->initialized()) {
                 this->send("gdc-sdf", "sdinit:error");
                 return;
             }
@@ -911,10 +964,10 @@ void GB_DESKTOP::process(string command) {
                 // int initialcharindex = command.substring(command.indexOf(":") + 1, command.length()).toInt();
                 // int charsatatime = 30;
 
-                // String data = _gb->getdevice("sd").readLinesFromSD(filename, charsatatime, initialcharindex);
+                // String data = _gb->getdevice("sd")->readLinesFromSD(filename, charsatatime, initialcharindex);
                 // this->sendfile("gdc-cv", "fdl:" + data);
 
-                String data = _gb->getdevice("sd").readfile(filename);
+                String data = _gb->getdevice("sd")->readfile(filename);
                 for (int i = 0; i < data.length(); i += 30) {
                     // Extract a chunk of 30 characters
                     String chunk = data.substring(i, i + 30);
@@ -944,10 +997,10 @@ void GB_DESKTOP::process(string command) {
                 }
 
                 // Delete preexisting file if the upload has just started.
-                if (initialcharindex == 0) _gb->getdevice("sd").rm(filename);
+                if (initialcharindex == 0) _gb->getdevice("sd")->rm(filename);
 
                 // Append data to the file
-                _gb->getdevice("sd").writeLinesToSD(filename, data);
+                _gb->getdevice("sd")->writeLinesToSD(filename, data);
 
                 // Pause
                 delay(10);
@@ -966,17 +1019,19 @@ void GB_DESKTOP::process(string command) {
                 _gb->controls.reset();
             
                 // Update config in the memory
-                _gb->getdevice("sd").readconfig();
+                _gb->getdevice("sd")->readconfig();
 
             }
 
             //! Get hash from stored file
             if (command.contains("cv:hash")) {
 
-                String cvdata = _gb->getdevice("sd").readfile("/control/variables.ini");
+                String cvdata = _gb->getdevice("sd")->readfile("/control/variables.ini");
                 int hash = _gb->s2hash(cvdata);
 
+                #if LOGCONTROL
                 _gb->log("Control variables hash: " + String(hash));
+                #endif
 
                 // Send response
                 this->send("gdc-cv", "hash:" + String(hash));
@@ -999,25 +1054,29 @@ void GB_DESKTOP::process(string command) {
                 callback_t_on_control func = [](JSONary data){};
                 if (variabletype == "string") {
                     _gb->controls.set(variablename, variablevalue);
-                    _gb->getdevice("sd").updatecontrolstring(variablename, variablevalue, func);
+                    _gb->getdevice("sd")->updatecontrolstring(variablename, variablevalue, func);
                 }
                 else if (variabletype == "bool") {
                     _gb->controls.set(variablename, variablevalue);
-                    _gb->getdevice("sd").updatecontrolbool(variablename, variablevalue == "true", func);
+                    _gb->getdevice("sd")->updatecontrolbool(variablename, variablevalue == "true", func);
                 }
                 else if (variabletype == "int")  {
                     _gb->controls.set(variablename, variablevalue);
-                    _gb->getdevice("sd").updatecontrolint(variablename, variablevalue.toInt(), func);
+                    _gb->getdevice("sd")->updatecontrolint(variablename, variablevalue.toInt(), func);
                 }
                 else if (variabletype == "float")  {
                     _gb->controls.set(variablename, variablevalue);
-                    _gb->getdevice("sd").updatecontrolfloat(variablename, variablevalue.toDouble(), func);
+                    _gb->getdevice("sd")->updatecontrolfloat(variablename, variablevalue.toDouble(), func);
                 }
                 else _gb->controls.set(variablename, variablevalue);
 
+                #if LOGCONTROL
                 _gb->log("Control variables updated.");
-                _gb->getdevice("sd").readcontrol();
-                _gb->log(_gb->getdevice("sd").readfile("/control/variables.ini"));
+                #endif
+                _gb->getdevice("sd")->readcontrol();
+                #if LOGCONTROL
+                _gb->log(_gb->getdevice("sd")->readfile("/control/variables.ini"));
+                #endif
 
                 // Send response
                 this->send("gdc-cv", "ack:true");
@@ -1036,130 +1095,130 @@ void GB_DESKTOP::process(string command) {
             command.replace("#EOF#", "");
 
             if (command.contains("rtc")) {
-                String rtctimestamp = _gb->hasdevice("rtc") ? _gb->getdevice("rtc").timestamp() : "";
+                String rtctimestamp = _gb->hasdevice("rtc") ? _gb->getdevice("rtc")->timestamp() : "";
                 
                 // Send RTC time
                 this->send("gdc-dgn", "rtc:" + rtctimestamp);
             }
             
             if (command.contains("mem")) {
-                bool success = _gb->hasdevice("mem") ? _gb->getdevice("mem").get(0) == "formatted": false;
+                bool success = _gb->hasdevice("mem") ? _gb->getdevice("mem")->get(0) == "formatted": false;
                 
                 // Send response
                 this->send("gdc-dgn", "mem:" + String(success ? "true" : "false"));
             }
             
             if (command.contains("sd")) {
-                bool success = _gb->hasdevice("sd") ? _gb->getdevice("sd").testdevice() : false;
+                bool success = _gb->hasdevice("sd") ? _gb->getdevice("sd")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "sd:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("sd").status());
+                this->send("gdc-dgn", "sd:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("sd")->status());
             }
             
             if (command.contains("eadc")) {
-                bool success = _gb->hasdevice("eadc") ? _gb->getdevice("eadc").testdevice(): false;
+                bool success = _gb->hasdevice("eadc") ? _gb->getdevice("eadc")->testdevice(): false;
                 
                 // Send response
-                this->send("gdc-dgn", "eadc:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("eadc").status());
+                this->send("gdc-dgn", "eadc:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("eadc")->status());
             }
             
             if (command.contains("fram")) {
-                bool success = _gb->hasdevice("fram") ? _gb->getdevice("fram").testdevice() : false;
+                bool success = _gb->hasdevice("fram") ? _gb->getdevice("fram")->testdevice() : false;
 
                 // Send response
                 this->send("gdc-dgn", "fram:" + String(success ? "true" : "false"));
             }
             
             if (command.contains("bl")) {
-                bool success = _gb->hasdevice("bl") ? _gb->getdevice("bl").testdevice() : false;
+                bool success = _gb->hasdevice("bl") ? _gb->getdevice("bl")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "bl:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("bl").status());
+                this->send("gdc-dgn", "bl:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("bl")->status());
             }
             
             if (command.contains("gps")) {
-                bool success = _gb->hasdevice("gps") ? _gb->getdevice("gps").testdevice() : false;
+                bool success = _gb->hasdevice("gps") ? _gb->getdevice("gps")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "gps:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("gps").status());
+                this->send("gdc-dgn", "gps:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("gps")->status());
             }
             
             if (command.contains("sntl")) {
-                bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl").testdevice() : false;
+                bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl")->testdevice() : false;
                 
                 // Send response
-                // this->send("gdc-dgn", "sntl:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("sntl").status());
-                this->send("gdc-dgn", "sntl:" + String("true") + ":..:" + _gb->getdevice("sntl").status());
+                // this->send("gdc-dgn", "sntl:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("sntl")->status());
+                this->send("gdc-dgn", "sntl:" + String("true") + ":..:" + _gb->getdevice("sntl")->status());
             }
             
             if (command.contains("aht")) {
-                bool success = _gb->hasdevice("aht") ? _gb->getdevice("aht").testdevice() : false;
+                bool success = _gb->hasdevice("aht") ? _gb->getdevice("aht")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "aht:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("aht").status());
+                this->send("gdc-dgn", "aht:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("aht")->status());
             }
             
             if (command.contains("relay")) {
-                bool success = _gb->hasdevice("relay") ? _gb->getdevice("relay").testdevice() : false;
+                bool success = _gb->hasdevice("relay") ? _gb->getdevice("relay")->testdevice() : false;
                 
                 // Send response
                 this->send("gdc-dgn", "relay:" + String(success ? "true" : "false"));
             }
             
             if (command.contains("rgb")) {
-                bool success = _gb->hasdevice("rgb") ? _gb->getdevice("rgb").testdevice() : false;
+                bool success = _gb->hasdevice("rgb") ? _gb->getdevice("rgb")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "rgb:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("rgb").status());
+                this->send("gdc-dgn", "rgb:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("rgb")->status());
             }
             
             if (command.contains("buzzer")) {
-                bool success = _gb->hasdevice("buzzer") ? _gb->getdevice("buzzer").testdevice() : false;
+                bool success = _gb->hasdevice("buzzer") ? _gb->getdevice("buzzer")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "buzzer:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("buzzer").status());
+                this->send("gdc-dgn", "buzzer:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("buzzer")->status());
             }
             
             if (command.contains("uss")) {
-                bool success = _gb->hasdevice("uss") ? _gb->getdevice("uss").testdevice() : false;
+                bool success = _gb->hasdevice("uss") ? _gb->getdevice("uss")->testdevice() : false;
 
                 // Send response
-                this->send("gdc-dgn", "uss:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("uss").status());
+                this->send("gdc-dgn", "uss:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("uss")->status());
             }
             
             if (command.contains("ph")) {
-                bool success = _gb->hasdevice("ph") ? _gb->getdevice("ph").testdevice() : false;
+                bool success = _gb->hasdevice("ph") ? _gb->getdevice("ph")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "ph:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("ph").status());
+                this->send("gdc-dgn", "ph:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("ph")->status());
             }
 
             if (command.contains("ec")) {
-                bool success = _gb->hasdevice("ec") ? _gb->getdevice("ec").testdevice() : false;
+                bool success = _gb->hasdevice("ec") ? _gb->getdevice("ec")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "ec:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("ec").status());
+                this->send("gdc-dgn", "ec:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("ec")->status());
             }
             
             if (command.contains("dox")) {
-                bool success = _gb->hasdevice("dox") ? _gb->getdevice("dox").testdevice() : false;
+                bool success = _gb->hasdevice("dox") ? _gb->getdevice("dox")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "dox:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("dox").status());
+                this->send("gdc-dgn", "dox:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("dox")->status());
             }
             
             if (command.contains("rtd")) {
-                bool success = _gb->hasdevice("rtd") ? _gb->getdevice("rtd").testdevice() : false;
+                bool success = _gb->hasdevice("rtd") ? _gb->getdevice("rtd")->testdevice() : false;
                 
                 // Send response
-                this->send("gdc-dgn", "rtd:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("rtd").status());
+                this->send("gdc-dgn", "rtd:" + String(success ? "true" : "false") + ":..:" + _gb->getdevice("rtd")->status());
             }
             
             if (command.contains("lipo")) {
-                bool success = _gb->getmcu().testbattery();
+                bool success = _gb->getmcu()->testbattery();
                 
                 // Send response
-                this->send("gdc-dgn", "lipo:" + String(success ? "true" : "false") + ":..:" + _gb->getmcu().batterystatus());
+                this->send("gdc-dgn", "lipo:" + String(success ? "true" : "false") + ":..:" + _gb->getmcu()->batterystatus());
             }
             
             if (command.contains("comm:all")) {
@@ -1170,19 +1229,19 @@ void GB_DESKTOP::process(string command) {
                 this->send("gdc-dgn", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
                 
                 // MODEM firmware
-                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu().getfirmwareinfo());
+                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu()->getfirmwareinfo());
                 
                 // MODEM IMEI
-                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu().getimei());
+                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu()->getimei());
                 
                 // SIM ICCID
-                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu().geticcid());
+                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu()->geticcid());
 
                 // Network strength
-                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu().getrssi()));
+                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu()->getrssi()));
 
                 // Operator
-                String cops = _gb->getmcu().getoperator();
+                String cops = _gb->getmcu()->getoperator();
                 cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
                 this->send("gdc-dgn", "cops=" + String(cops));
             }
@@ -1195,14 +1254,16 @@ void GB_DESKTOP::process(string command) {
                 this->send("gdc-dgn", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
                 
                 // MODEM firmware
-                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu().getfirmwareinfo());
+                this->send("gdc-dgn", "modem-fw=" + _gb->getmcu()->getfirmwareinfo());
                 
                 // MODEM IMEI
-                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu().getimei());
+                this->send("gdc-dgn", "modem-imei=" + _gb->getmcu()->getimei());
             }
 
             if (command.endsWith("comm:modem:rb")) {
+                #if LOGCONTROL
                 _gb->log("Rebooting MODEM");
+                #endif
                 
                 NB _nb;
                 NBModem _nbModem;
@@ -1220,16 +1281,16 @@ void GB_DESKTOP::process(string command) {
             if (command.contains("comm:sim")) {
                 
                 // SIM ICCID
-                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu().geticcid());
+                this->send("gdc-dgn", "sim-iccid=" + _gb->getmcu()->geticcid());
             }
 
             if (command.contains("comm:nw")) {
                 
                 // Network strength
-                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu().getrssi()));
+                this->send("gdc-dgn", "rssi=" + String(_gb->getmcu()->getrssi()));
 
                 // Operator
-                String cops = _gb->getmcu().getoperator();
+                String cops = _gb->getmcu()->getoperator();
                 cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
                 this->send("gdc-dgn", "cops=" + String(cops));
             }

@@ -57,13 +57,13 @@ GB_NCLS& GB_NCLS::configure(PINS pins) {
 }
 
 GB_NCLS& GB_NCLS::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH); 
     return *this;
 }
 
 GB_NCLS& GB_NCLS::off() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }

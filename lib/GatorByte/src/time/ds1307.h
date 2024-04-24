@@ -118,7 +118,7 @@ GB_DS1307& GB_DS1307::sync() {
 }
 
 GB_DS1307& GB_DS1307::on() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     
     // Begin I2C communication
@@ -128,7 +128,7 @@ GB_DS1307& GB_DS1307::on() {
 }
 
 GB_DS1307& GB_DS1307::off() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }

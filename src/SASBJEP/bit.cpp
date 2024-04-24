@@ -195,7 +195,7 @@
     void parse_mqtt_message(String str){
 
         // Update the variables in SD card and in runtime memory
-        sd.updatecontrol(str, set_control_variables);
+        sd.updateallcontrol(str, set_control_variables);
         
         mqtt.publish("log/message", "Control variables updated.");
 
@@ -393,7 +393,7 @@
             
             //! Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
-            http.configure("api.ezbean-lab.com", 80);
+            // http.configure("api.ezbean-lab.com", 80);
             
             // Configure other peripherals
             rtc.configure({true, SR0}).initialize();
@@ -633,8 +633,14 @@
 
             send_state();
         });
+        
+        // Set sleep configuration
+        mcu.set_sleep_callback(on_sleep);
+        mcu.set_wakeup_callback(on_wakeup);
+        mcu.set_primary_piper(wlevpiper);
 
-        mcu.sleep(on_sleep, on_wakeup);
+        //! Sleep
+        mcu.sleep();
     }
 
 #endif

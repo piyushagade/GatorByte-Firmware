@@ -35,11 +35,11 @@
 #endif
 
 #ifndef CSVary_h
-    #include "CSVary.h";
+    #include "CSVary.h"
 #endif
 
 #ifndef JSONary_h
-    #include "JSONary.h";
+    #include "JSONary.h"
 #endif
 
 struct DEVICE {
@@ -53,11 +53,6 @@ struct DEVICE {
 
 //! Device base class
 #include "./GB_Manager.h"
-
-//! Compression
-#ifndef MICROLZW_H
-    #include "microlzw.h"
-#endif
 
 //! Global structures
 // !TODO: Find a better place for these
@@ -92,7 +87,6 @@ struct _BAUD_RATES {
         Stream *hardware;
     };
 #endif
-
 
 struct PINS {
     int enable;
@@ -180,14 +174,14 @@ class GB {
         void configure(bool debug, String device_id);
 
         // Get device by name
-        GB_DEVICE& getdevice(String);
-        GB_MCU& getmcu();
+        GB_DEVICE* getdevice(String);
+        GB_MCU* getmcu();
 
         // Functions
-        GB& wait(int);
+        GB& wait(unsigned long);
         GB& setup();
         GB& loop();
-        GB& loop(int delay);
+        GB& loop(unsigned long delay);
         String env();
         String env(String environment);
         GB& init();
@@ -226,6 +220,8 @@ class GB {
         String uuid();
         String uuid(int length);
 
+        char* trim(char str[]);
+        char* strccat(char str[], char c);
         int s2hash(String);
         String sremove(String, String, String);
         String sreplace(String, String, String);
@@ -234,7 +230,6 @@ class GB {
         String ca2s(char char_array[]);
         float ba2f(byte byte_array[]);
         bool isnumber(String);
-        String rle(String);
 
         typedef void (*callback_t_func)();
         GB& closure(int, callback_t_func);
@@ -298,7 +293,7 @@ GB& GB::includelibrary(String device_id, String device_name){
 GB& GB::includedevice(String device_id, String device_name) {
     
     // Detect GDC without lock
-    if (this->hasdevice("gdc")) this->getdevice("gdc").detect(false);
+    if (this->hasdevice("gdc")) this->getdevice("gdc")->detect(false);
 
     device_id.toLowerCase();
     this->_all_included_gb_devices += (this->_all_included_gb_devices.length() > 0 ? "::" : "") + device_id;
@@ -421,8 +416,8 @@ bool GB::hasdevice(String device_name) {
 GB& GB::setup() {
     this->_boot_timestamp = millis();
     if (this->hasdevice("mem")) {
-        // bool initialized = this->getdevice("mem").get
-        // this->getdevice("mem").detect(false);
+        // bool initialized = this->getdevice("mem")->get
+        // this->getdevice("mem")->detect(false);
     }
     return *this;
 }
@@ -439,13 +434,13 @@ String GB::env(String environment) {
 GB& GB::init() {
     
     // Detect GDC without lock
-    if (this->hasdevice("gdc")) this->getdevice("gdc").detect(false);
+    if (this->hasdevice("gdc")) this->getdevice("gdc")->detect(false);
 
     return *this;
 }
 
 GB& GB::loop() { return this->loop(0);  }
-GB& GB::loop(int wait) {
+GB& GB::loop(unsigned long wait) {
     bool LOG = false;
 
     // Send message to GDC
@@ -458,18 +453,18 @@ GB& GB::loop(int wait) {
             Serial.println("##CL-GB-READY##");
             
             // Get device environment from memory
-            if (this->hasdevice("mem") &&  this->getdevice("mem").get(0) == "formatted") {
-                String savedenv = this->getdevice("mem").get(1);
+            if (this->hasdevice("mem") &&  this->getdevice("mem")->get(0) == "formatted") {
+                String savedenv = this->getdevice("mem")->get(1);
                 this->env(savedenv);
                 Serial.println("##CL-GDC-ENV::" + this->env() + "##"); delay(50);
             }
             
-            if (this->hasdevice("buzzer")) this->getdevice("buzzer").play("-").wait(100).play("-");
+            if (this->hasdevice("buzzer")) this->getdevice("buzzer")->play("-").wait(100).play("-");
         }
 
         // Enter GDC mode if GDC available
-        this->getdevice("gdc").detect(true);
-        this->getdevice("gdc").loop();
+        this->getdevice("gdc")->detect(true);
+        this->getdevice("gdc")->loop();
     }
 
     //! Post setup tasks
@@ -485,20 +480,20 @@ GB& GB::loop(int wait) {
         // Calculate time elapsed for setup
         if (LOG) this->log("Setup took: " + String(millis()/1000 - this->_boot_timestamp/1000) + " seconds");
         this->globals.SETUPDELAY = millis()/1000 - this->_boot_timestamp/1000;
-        if (this->hasdevice("mem")) this->getdevice("mem").debug("Power cycle setup complete.");
+        if (this->hasdevice("mem")) this->getdevice("mem")->debug("Power cycle setup complete.");
 
         if (LOG) this->log("Loop : " + String(this->globals.ITERATION));
-        this->getdevice("gdc").send("highlight-cyan", "Loop: " + String(this->globals.ITERATION));
-        if(this->hasdevice("mem")) this->getdevice("mem").debug("Loop iteration: " + String(this->globals.ITERATION));
+        this->getdevice("gdc")->send("highlight-cyan", "Loop: " + String(this->globals.ITERATION));
+        if(this->hasdevice("mem")) this->getdevice("mem")->debug("Loop iteration: " + String(this->globals.ITERATION));
         
         // Set interation count and save it to memory
         if (this->hasdevice("mem")) {
-            if (this->getdevice("mem").get(8) == "") this->getdevice("mem").write(8, "0");
-            this->getdevice("mem").write(8, "0");
-            this->globals.ITERATION = this->getdevice("mem").get(8).toInt();
+            if (this->getdevice("mem")->get(8) == "") this->getdevice("mem")->write(8, "0");
+            this->getdevice("mem")->write(8, "0");
+            this->globals.ITERATION = this->getdevice("mem")->get(8).toInt();
         }
 
-        if(this->hasdevice("rtc")) this->globals.INIT_SECONDS = this->getdevice("rtc").timestamp().toDouble();
+        if(this->hasdevice("rtc")) this->globals.INIT_SECONDS = this->getdevice("rtc")->timestamp().toDouble();
     }
     else {
         /*
@@ -506,23 +501,23 @@ GB& GB::loop(int wait) {
         */
         this->globals.SETUPDELAY = 0;
         
-        if(this->hasdevice("mem")) this->getdevice("mem").debug("Loop iteration: " + String(this->globals.ITERATION));
+        if(this->hasdevice("mem")) this->getdevice("mem")->debug("Loop iteration: " + String(this->globals.ITERATION));
     }
 
-    this->globals.LOOPTIMESTAMP = this->getdevice("rtc").timestamp().toInt();
+    this->globals.LOOPTIMESTAMP = this->getdevice("rtc")->timestamp().toInt();
 
     if (LOG) this->log("Loop executing at: " + String(this->globals.LOOPTIMESTAMP));
 
-    if (this->getdevice("mem").get(12) == "") this->getdevice("mem").write(12, "0");
-    this->globals.LAST_READING_TIMESTAMP = this->getdevice("mem").get(12).toInt();
+    if (this->getdevice("mem")->get(12) == "") this->getdevice("mem")->write(12, "0");
+    this->globals.LAST_READING_TIMESTAMP = this->getdevice("mem")->get(12).toInt();
 
     // Handle invalid timestamps
     if (this->globals.LOOPTIMESTAMP - this->globals.LAST_READING_TIMESTAMP < 0) {
         if (LOG) this->log("Invalid timestamps detected. Resetting EEPROM values.");
         if (LOG) this->log("Loop timestamp: " + String(this->globals.LOOPTIMESTAMP));
         if (LOG) this->log("Last reading at: " + String(this->globals.LAST_READING_TIMESTAMP));
-        this->getdevice("mem").write(12, "0");
-        this->globals.LAST_READING_TIMESTAMP = this->getdevice("mem").get(12).toInt();
+        this->getdevice("mem")->write(12, "0");
+        this->globals.LAST_READING_TIMESTAMP = this->getdevice("mem")->get(12).toInt();
     }
 
     // Determine if readings are due
@@ -552,29 +547,29 @@ GB& GB::loop(int wait) {
     }
     
     // Calculate time taken to execute the previous loop
-    if (this->getmcu().on_wakeup()) {
-        this->globals.LOOPDELAY = (this->getdevice("rtc").timestamp().toInt() - this->_loop_execute_timestamp - this->getmcu().LAST_SLEEP_DURATION / 1000);
+    if (this->getmcu()->on_wakeup()) {
+        this->globals.LOOPDELAY = (this->getdevice("rtc")->timestamp().toInt() - this->_loop_execute_timestamp - this->getmcu()->LAST_SLEEP_DURATION / 1000);
         if (LOG) this->log("\nLast loop took: " + String(this->globals.LOOPDELAY) + " seconds.\n");
     }
     else this->globals.LOOPDELAY = 0;
-    this->_loop_execute_timestamp = this->getdevice("rtc").timestamp().toInt();
+    this->_loop_execute_timestamp = this->getdevice("rtc")->timestamp().toInt();
     this->_loop_counter++;
 
     // Start breath timer
-    this->getmcu().startbreathtimer();
+    this->getmcu()->startbreathtimer();
 
     // Increment iteration count
     if (this->hasdevice("mem")) {
-        if (this->getdevice("mem").get(8) == "") this->getdevice("mem").write(8, "0");
-        this->getdevice("mem").write(8, String(this->getdevice("mem").get(8).toInt() + 1));
-        this->globals.ITERATION = this->getdevice("mem").get(8).toInt();
+        if (this->getdevice("mem")->get(8) == "") this->getdevice("mem")->write(8, "0");
+        this->getdevice("mem")->write(8, String(this->getdevice("mem")->get(8).toInt() + 1));
+        this->globals.ITERATION = this->getdevice("mem")->get(8).toInt();
     }
 
     // RGB - Indicate if dummy mode
-    if(this->globals.MODE == "dummy") if (this->hasdevice("rgb")) this->getdevice("rgb").on("green");
-    else if (this->hasdevice("rgb")) this->getdevice("rgb").on("magenta");
+    if(this->globals.MODE == "dummy") if (this->hasdevice("rgb")) this->getdevice("rgb")->on("green");
+    else if (this->hasdevice("rgb")) this->getdevice("rgb")->on("magenta");
 
-    this->getdevice("gdc").send("gdc-db", "loopiteration=" + String(this->globals.ITERATION));
+    this->getdevice("gdc")->send("gdc-db", "loopiteration=" + String(this->globals.ITERATION));
 
     return *this;
 }
@@ -583,16 +578,16 @@ GB& GB::loop(int wait) {
 GB& GB::breathe() { return this->breathe(""); }
 GB& GB::breathe(String skipaction) {
 
-    this->getdevice("gdc").detect();
+    this->getdevice("gdc")->detect();
 
     // // Listen for Bluetooth commands
-    // if (this->hasdevice("bl") && skipaction.indexOf("bl") == -1) this->getdevice("bl").listen();
+    // if (this->hasdevice("bl") && skipaction.indexOf("bl") == -1) this->getdevice("bl")->listen();
 
     // RGB LED - Flash white
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").on("white");delay(100);
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").revert(); delay(200);
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").on("white"); delay(100);
-    // if (this->hasdevice("rgb")) this->getdevice("rgb").revert();
+    // if (this->hasdevice("rgb")) this->getdevice("rgb")->on("white");delay(100);
+    // if (this->hasdevice("rgb")) this->getdevice("rgb")->revert(); delay(200);
+    // if (this->hasdevice("rgb")) this->getdevice("rgb")->on("white"); delay(100);
+    // if (this->hasdevice("rgb")) this->getdevice("rgb")->revert();
 
     // // Loop mqtt
     // if (this->hasdevice("mqtt") && skipaction.indexOf("mqtt") == -1) {
@@ -601,10 +596,10 @@ GB& GB::breathe(String skipaction) {
 
     // // RGB - Indicate if dummy mode
     // if(this->globals.MODE == "dummy") {
-    //     if (this->hasdevice("rgb")) this->getdevice("rgb").on("green");
+    //     if (this->hasdevice("rgb")) this->getdevice("rgb")->on("green");
     // }
     // else if (this->hasdevice("rgb")) {
-    //     this->getdevice("rgb").on("magenta");
+    //     this->getdevice("rgb")->on("magenta");
     // }
 
     // if (Serial.available()) {
@@ -617,50 +612,51 @@ GB& GB::breathe(String skipaction) {
 }
 
 // Get device instance by name
-GB_DEVICE& GB::getdevice(String name) {
+// GB_DEVICE& GB::getdevice(String name) {
+GB_DEVICE* GB::getdevice(String name) {
 
-    if (name == "rgb") return *this->devices.rgb;
-    else if (name == "buzzer") return *this->devices.buzzer;
-    else if (name == "ioe") return *this->devices.ioe;
-    else if (name == "tca") return *this->devices.tca;
-    else if (name == "eadc") return *this->devices.eadc;
-    else if (name == "sd") return *this->devices.sd;
-    else if (name == "fram") return *this->devices.fram;
+    if (name == "rgb") return this->devices.rgb;
+    else if (name == "buzzer") return this->devices.buzzer;
+    else if (name == "ioe") return this->devices.ioe;
+    else if (name == "tca") return this->devices.tca;
+    else if (name == "eadc") return this->devices.eadc;
+    else if (name == "sd") return this->devices.sd;
+    else if (name == "fram") return this->devices.fram;
 
-    else if (name == "command") return *this->devices.command;
-    else if (name == "configurator") return *this->devices.configurator;
-    else if (name == "gdc") return *this->devices.gdc;
+    else if (name == "command") return this->devices.command;
+    else if (name == "configurator") return this->devices.configurator;
+    else if (name == "gdc") return this->devices.gdc;
 
-    else if (name == "mqtt") return *this->devices.mqtt; 
-    else if (name == "http") return *this->devices.http; 
+    else if (name == "mqtt") return this->devices.mqtt; 
+    else if (name == "http") return this->devices.http; 
 
-    else if (name == "bl") return *this->devices.bl; 
-    else if (name == "mem") return *this->devices.mem;
-    else if (name == "gps") return *this->devices.gps;
-    else if (name == "rtc") return *this->devices.rtc;
-    else if (name == "buzzer") return *this->devices.buzzer;
-    else if (name == "pwr") return *this->devices.pwr;
-    else if (name == "sntl") return *this->devices.sntl;
-    else if (name == "relay") return *this->devices.relay;
-    else if (name == "rg11") return *this->devices.rg11;
-    else if (name == "tpbck") return *this->devices.tpbck;
+    else if (name == "bl") return this->devices.bl; 
+    else if (name == "mem") return this->devices.mem;
+    else if (name == "gps") return this->devices.gps;
+    else if (name == "rtc") return this->devices.rtc;
+    else if (name == "buzzer") return this->devices.buzzer;
+    else if (name == "pwr") return this->devices.pwr;
+    else if (name == "sntl") return this->devices.sntl;
+    else if (name == "relay") return this->devices.relay;
+    else if (name == "rg11") return this->devices.rg11;
+    else if (name == "tpbck") return this->devices.tpbck;
 
-    else if (name == "ec") return *this->devices.ec;
-    else if (name == "rtd") return *this->devices.rtd;
-    else if (name == "ph") return *this->devices.ph;
-    else if (name == "dox") return *this->devices.dox;
-    else if (name == "aht") return *this->devices.aht;
-    else if (name == "uss") return *this->devices.uss;
+    else if (name == "ec") return this->devices.ec;
+    else if (name == "rtd") return this->devices.rtd;
+    else if (name == "ph") return this->devices.ph;
+    else if (name == "dox") return this->devices.dox;
+    else if (name == "aht") return this->devices.aht;
+    else if (name == "uss") return this->devices.uss;
 
     else {
         this->log("Device " + name + " not found in the 'getdevice' function.");
-        return *this->devices.none;
+        return this->devices.none;
     }
 }
 
 // Get microcontroller instance
-GB_MCU& GB::getmcu() {
-    return *this->devices.mcu;
+GB_MCU* GB::getmcu() {
+    return this->devices.mcu;
 }
 
 GB& GB::closure(callback_t_func function) { 

@@ -193,8 +193,8 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 
                 _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss") + ", source: " + this->getsource(), false);
                 
-                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("...");
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("...");
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
                 _gb->arrow().log("Done", true);
                 this->settimezone(_gb->globals.TIMEZONE);
 
@@ -212,8 +212,8 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss"), false);
                 _gb->arrow().log("Done", true);
 
-                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("---");
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(250).revert(); 
+                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("---");
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert(); 
             }
         }
         else {
@@ -226,26 +226,26 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 return *this;
             }
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
         }
     #else
         if(this->valid()) {
             this->device.detected = true;
             _gb->log(" -> Done", true);
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(500).play("...");
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(500).play("...");
         }
         else {
             this->device.detected = false;
             _gb->log(" -> Failed", true);
             _gb->log(" -> ", false);
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("--.").wait(500).play("---");
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(500).play("---");
             // this->sync();
         }
     #endif
 
     // // Disable watchdog timer
-    // this->_gb->getmcu().watchdog("disable");
+    // this->_gb->getmcu()->watchdog("disable");
 
     this->off();
     return *this;
@@ -308,7 +308,7 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
             String timestr = (hour.length() == 1 ? "0" : "") + hour + ":" + (minute.length() == 1 ? "0" : "") + minute + ":" + (second.length() == 1 ? "0" : "") + second + "+00";
             String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
 
-            String res = _gb->getmcu().send_at_command(atcommand);
+            String res = _gb->getmcu()->send_at_command(atcommand);
             if (res.endsWith("OK")) _gb->log(" -> Done");
             else _gb->log(" -> Failed");
 
@@ -581,9 +581,9 @@ DateTime GB_DS3231::now() {
         int counter = 50;
         while (!MODEM_INITIALIZED && counter-- >= 0) { MODEM_INITIALIZED = MODEM.begin() == 1; delay(250); }
         if(MODEM_INITIALIZED) {
-            String nwtimestr = _gb->getmcu().gettime();
+            String nwtimestr = _gb->getmcu()->gettime();
             int counter = 50;
-            while (nwtimestr.contains("2080") && counter-- >= 0) { nwtimestr = _gb->getmcu().gettime(); delay(250); }
+            while (nwtimestr.contains("2080") && counter-- >= 0) { nwtimestr = _gb->getmcu()->gettime(); delay(250); }
 
             int year, month, day, hour, minute, second, offset;
             sscanf(_gb->s2c(nwtimestr), "\"%d/%d/%d,%d:%d:%d-%d\"", &year, &month, &day, &hour, &minute, &second, &offset);
@@ -781,7 +781,7 @@ String GB_DS3231::time(String format) {
 }
 
 GB_DS3231& GB_DS3231::on() {
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     delay(50);
     return *this;
@@ -789,7 +789,7 @@ GB_DS3231& GB_DS3231::on() {
 
 GB_DS3231& GB_DS3231::off() {
     if (this->_persistent) return *this;
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }

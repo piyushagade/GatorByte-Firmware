@@ -407,7 +407,6 @@
             mqtt.waituntilresponse("control/response/single", 5000, false);
         });
 
-        
         bl.listen([] (String command) {
             Serial.println("Received command: " + command);
 
@@ -484,10 +483,10 @@
         });
 
         // Take readings
-        int secondsuntilread = readpiper.pipe(gb.controls.getint("SAMPLING_INTERVAL"), true, [] (int counter) {
+        readpiper.pipe(gb.controls.getint("SAMPLING_INTERVAL"), true, [] (int counter) {
 
             // Check if SD card is working
-            sntl.watch(60, [] {
+            sntl.watch(300, [] {
                 if (!sd.rwtest()) {
 
                     // Log error to console
@@ -509,7 +508,7 @@
                 }
             });
 
-            sntl.watch(200, [] {
+            sntl.watch(300, [] {
 
                 /*
                     ! Check the current state of the system and take actions accordingly
@@ -546,9 +545,6 @@
                 gb.log(csv.getheader());
                 gb.log(csv.getrows());
 
-                // //! Upload current data to desktop client
-                // gdc.send("data", csv.getheader() + BR + csv.getrows());
-                
                 /*
                     ! Prepare a queue file (with current iteration's data)
                     The queue file will be read and data uploaded once the network is established.
@@ -558,13 +554,9 @@
             });
         });
 
-        gb.color("white").log("Readings piper will be hot in " + String(secondsuntilread) + " seconds");
-
-        int secondsuntilupload = uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
+        uploaderpiper.pipe(gb.controls.getint("UPLOAD_INTERVAL"), true, [] (int counter) {
             uploadtoserver();
         });
-        
-        gb.color("white").log("Uploader piper will be hot in " + String(secondsuntilupload) + " seconds");
 
         psmpiper.pipe(30000, true, [] (int counter) {
 
@@ -579,11 +571,15 @@
 
         });
 
+        gb.color("white").log("Readings piper will be hot in " + String(readpiper.secondsuntilhot()) + " seconds");
+        gb.color("white").log("Uploader piper will be hot in " + String(uploaderpiper.secondsuntilhot()) + " seconds");
+
+        // Set sleep configuration
         mcu.set_sleep_callback(on_sleep);
         mcu.set_wakeup_callback(on_wakeup);
         mcu.set_primary_piper(readpiper);
 
         //! Sleep
-        mcu.sleep(on_sleep, on_wakeup);
+        mcu.sleep();
     }
 #endif

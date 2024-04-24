@@ -16,7 +16,7 @@
             virtual bool reconnect(String) { return false; };
             virtual bool reconnect() { return false; };
             virtual bool reset(String) { return false; };
-            virtual void sleep(String, int) { return; };
+            virtual void sleep() { return; };
             virtual bool on_wakeup() { return false; };
             virtual Client &newclient() {};
             virtual Client &deleteclient() {};

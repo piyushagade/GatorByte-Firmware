@@ -96,7 +96,7 @@ GB_AT_09& GB_AT_09::initialize() {
     _gb->includedevice(this->device.id, this->device.name);
 
     // Disable stray watchdog timers
-    this->_gb->getmcu().watchdog("disable");
+    this->_gb->getmcu()->watchdog("disable");
 
     // Begin serial communication
     _gb->serial.hardware->begin(this->_baud);
@@ -152,8 +152,8 @@ GB_AT_09& GB_AT_09::initialize() {
             }
         }
 
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-..").wait(250).play("-..");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
 
         _gb->log(" -> Name: " + name, false);
         _gb->log(", PIN: " + pin);
@@ -162,8 +162,8 @@ GB_AT_09& GB_AT_09::initialize() {
     else {
         _gb->log(" -> Not detected");
 
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-..").wait(250).play("-..").wait(250).play("---");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("green").wait(250).revert(); 
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..").wait(250).play("---");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
     }
 
     this->off("comm");
@@ -251,8 +251,8 @@ GB_AT_09& GB_AT_09::persistent() {
 // Turn on the module
 GB_AT_09& GB_AT_09::on(String type) {
     if(this->pins.mux) {
-        if (type == "power") _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
-        if (type == "comm") _gb->getdevice("ioe").writepin(this->pins.comm, HIGH);
+        if (type == "power") _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
+        if (type == "comm") _gb->getdevice("ioe")->writepin(this->pins.comm, HIGH);
     }
     else {
         if (type == "power") digitalWrite(this->pins.enable, HIGH);
@@ -270,8 +270,8 @@ GB_AT_09& GB_AT_09::on() {
 GB_AT_09& GB_AT_09::off(String type) {
     if (this->_persistent) return *this;
     if(this->pins.mux) {
-        if (type == "power") _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
-        if (type == "comm") _gb->getdevice("ioe").writepin(this->pins.comm, LOW);
+        if (type == "power") _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
+        if (type == "comm") _gb->getdevice("ioe")->writepin(this->pins.comm, LOW);
     }
     else {
         if (type == "power") digitalWrite(this->pins.enable, LOW);
@@ -326,7 +326,7 @@ void GB_AT_09::print(String message, bool new_line) {
 String GB_AT_09::read_at_command_response() {
     String response;
     int counter = 0;
-    int start = millis();
+    unsigned long start = millis();
     while (!_gb->serial.hardware->available() && counter++ < 200) delay(5);
     
     response = _gb->serial.hardware->readStringUntil('\n');
@@ -360,7 +360,7 @@ String GB_AT_09::send_at_command(String command) {
 void GB_AT_09::_purge_buffer() {
     String response;
     int counter = 0;
-    int start = millis();
+    unsigned long start = millis();
     while (!_gb->serial.hardware->available() && counter++ < 200) delay(5);
     
     response = _gb->serial.hardware->readStringUntil('\n');

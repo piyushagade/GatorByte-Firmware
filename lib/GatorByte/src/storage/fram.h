@@ -159,7 +159,7 @@ GB_FRAM& GB_FRAM::configure(PINS pins) {
 
 GB_FRAM& GB_FRAM::on() {
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     return *this;
@@ -170,7 +170,7 @@ GB_FRAM& GB_FRAM::off() {
     // Safety delay
     delay(250);
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
 
     return *this;
@@ -210,8 +210,8 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             _gb->log(" -> Not detected", true);
             this->device.detected = false;
 
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(250).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(250).on("red").wait(250).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(250).play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).on("red").wait(250).revert();
         }
         else {
             _fram_present = true;
@@ -225,8 +225,8 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             bool result = this->rwtest();
             this->_initialized = result;
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("blue").wait(250).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(250).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(250).revert();
         }
     }
     else _gb->log(" -> Disabled", true);

@@ -1,4 +1,6 @@
 #pragma once
+#include <string.h>
+#include <ctype.h>
 
 /*
     ! Split string by delimiter and get value at index
@@ -74,15 +76,16 @@ String GB::uuid(int index) {
 /*
     ! Delay function with mqtt updates
 */
-GB& GB::wait(int milliseconds){
-    int now = millis();
+GB& GB::wait(unsigned long milliseconds){
+    unsigned long now = millis();
     while (millis() - now < milliseconds) {
         now = millis();
 
 
         // Loop mqtt
-        if (this->hasdevice("mqtt")) this->getdevice("mqtt").update();
+        if (this->hasdevice("mqtt")) this->getdevice("mqtt")->update();
     }
+    return *this;
 }
 
 /*
@@ -187,7 +190,7 @@ GB& GB::log(String message, bool newline) {
         }
     // }
 
-    if(newline) {
+    if (newline) {
         
         int indexoflastslash = String(__FILE__).lastIndexOf("/");
         String filename = String(__FILE__).substring(indexoflastslash + 1, String(__FILE__).length());
@@ -196,8 +199,8 @@ GB& GB::log(String message, bool newline) {
         // this->serial.debug->print("[" + filename + ":" + __func__ + ":" + String(__LINE__) + "] ");
 
         if (this->BLDEBUG && !this->globals.GDC_CONNECTED) {
-            if (this->getdevice("bl").initialized() && this->hasdevice("bl")) {
-                this->getdevice("bl").print(message, newline);
+            if (this->getdevice("bl")->initialized() && this->hasdevice("bl")) {
+                this->getdevice("bl")->print(message, newline);
             }
         }
 
@@ -223,8 +226,8 @@ GB& GB::log(String message, bool newline) {
         if (!this->globals.GDC_CONNECTED) this->globals.NEWSENTENCE = this->globals.SENTENCEENDED ? true : false;
         
         if (this->BLDEBUG && !this->globals.GDC_CONNECTED) {
-            if (this->getdevice("bl").initialized() && this->hasdevice("bl")) {
-                this->getdevice("bl").print(message, false);
+            if (this->getdevice("bl")->initialized() && this->hasdevice("bl")) {
+                this->getdevice("bl")->print(message, false);
             }
         }
 
@@ -328,14 +331,14 @@ GB& GB::logd(String message, bool newline) {
 
 
     if(newline) {
-        this->serial.debug->println(F(message.c_str()));
+        this->serial.debug->println(message.c_str());
     }
     else {
         // Serial.write(27);                               // ESC
         // Serial.print("[2J");
         // Serial.write(27);                               // ESC
         // Serial.print("[H"); 
-        this->serial.debug->print(F(message.c_str()));
+        this->serial.debug->print(message.c_str());
     }
 
     return *this;
@@ -351,39 +354,39 @@ int GB::s2hash(String data) {
 
     return hash;
 }
+char* GB::trim(char str[]) {
+    char* trimmed_str = str;
 
-String GB::rle(String input) {
-
-    // return input;
-
-    String result = "";
-
-    // Declare compression dictionary size and buffer size.
-    const int dict_size = 1024, buffer_size = 256;
-
-    int compressed[dict_size];
-    size_t comp_size = 0;
-
-    char myCharArray[50]; // Make sure the array is large enough to hold your string
-
-    // Convert String to char array
-    input.toCharArray(myCharArray, sizeof(myCharArray));
-
-    // Compress the input string via LZW algorithm
-    mlzw_compress(myCharArray, compressed, &comp_size, dict_size);
-    
-    // Iterate to print all the compression output
-    for(uint8_t i = 0; i < comp_size; ++i) {
-        result += String(compressed[i], HEX);
+    // Trim leading spaces
+    while (isspace(*trimmed_str)) {
+        trimmed_str++;
     }
-    Serial.println("Compressed: " + result);
 
-    // Decompress the compressed output
-    char decompressed[buffer_size];
-    mlzw_decompress(compressed, comp_size, decompressed, dict_size);
+    if (*trimmed_str == '\0') // All spaces?
+        return trimmed_str;
 
-    Serial.print("Decompressed: ");
-    Serial.println(decompressed);
+    // Trim trailing spaces
+    char *end = trimmed_str + strlen(trimmed_str) - 1;
+    while (end > trimmed_str && isspace(*end)) {
+        end--;
+    }
 
-    return result;
+    // Write new null terminator
+    *(end + 1) = '\0';
+
+    return trimmed_str;
+}
+
+char* GB::strccat(char str[], char c) {
+    // Create a temporary string with the character to concatenate
+    char temp[2];
+    temp[0] = c;
+    temp[1] = '\0';  // Ensure the string is null-terminated
+
+    // Concatenate temp to str
+    if (strlen(str) + strlen(temp) < sizeof(str)) {
+        strcat(str, temp); // Pass the address of temp to strcat
+    }
+
+    return str;
 }

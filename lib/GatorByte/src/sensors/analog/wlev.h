@@ -80,12 +80,12 @@ GB_IWLS& GB_IWLS::configure(PINS pins, ADDRESSES addresses) {
 }
 
 GB_IWLS& GB_IWLS::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH); 
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH); 
     else digitalWrite(this->pins.enable, HIGH); 
 }
 
 GB_IWLS& GB_IWLS::off() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW); 
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW); 
     else digitalWrite(this->pins.enable, LOW); 
     return *this;
 }

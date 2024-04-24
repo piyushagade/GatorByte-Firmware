@@ -85,7 +85,7 @@ GB_USS& GB_USS::initialize() {
     _gb->includedevice(this->device.id, this->device.name);
 
     // Disable stray watchdogs
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
 
     // Initialize MODBUS library
     this->on();
@@ -120,7 +120,7 @@ String GB_USS::status() {
 }
 
 GB_USS& GB_USS::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
     delay(20);
     return *this;
@@ -128,7 +128,7 @@ GB_USS& GB_USS::on() {
 
 GB_USS& GB_USS::off() { 
     if (this->_persistent) return *this;
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     return *this;
 }

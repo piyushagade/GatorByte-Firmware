@@ -104,23 +104,23 @@ void GB_SERMUX::selectexclusive(int channel) {
             // Turn off the power pin
             if (!channelpins.persistent) {
                 _gb->log("Turning off channel: " + String(i));
-                if (channelpins.mux) _gb->getdevice("ioe").writepin(channelpins.power, LOW);
+                if (channelpins.mux) _gb->getdevice("ioe")->writepin(channelpins.power, LOW);
                 else digitalWrite(channelpins.power, LOW);
             }
             
             // Turn off the comm pin
-            if (channelpins.mux) _gb->getdevice("ioe").writepin(channelpins.comm, LOW);
+            if (channelpins.mux) _gb->getdevice("ioe")->writepin(channelpins.comm, LOW);
             else digitalWrite(channelpins.comm, LOW);
 
         }
         else {
             
             // Turn on the power pin
-            if(channelpins.mux) _gb->getdevice("ioe").writepin(channelpins.power, HIGH);
+            if(channelpins.mux) _gb->getdevice("ioe")->writepin(channelpins.power, HIGH);
             else digitalWrite(channelpins.power, HIGH);
             
             // Turn on the comm pin
-            if(channelpins.mux) _gb->getdevice("ioe").writepin(channelpins.comm, HIGH);
+            if(channelpins.mux) _gb->getdevice("ioe")->writepin(channelpins.comm, HIGH);
             else digitalWrite(channelpins.comm, HIGH);
         }
         

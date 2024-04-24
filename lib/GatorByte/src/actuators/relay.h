@@ -92,9 +92,9 @@ GB_RELAY& GB_RELAY::trigger() {
 GB_RELAY& GB_RELAY::trigger(int onduration) {
 
     if(this->pins.mux) {
-        _gb->getdevice("ioe").writepin(this->pins.trigger, HIGH);
+        _gb->getdevice("ioe")->writepin(this->pins.trigger, HIGH);
         delay(onduration);
-        _gb->getdevice("ioe").writepin(this->pins.trigger, LOW);
+        _gb->getdevice("ioe")->writepin(this->pins.trigger, LOW);
     }
     else {
         digitalWrite(this->pins.trigger, HIGH);

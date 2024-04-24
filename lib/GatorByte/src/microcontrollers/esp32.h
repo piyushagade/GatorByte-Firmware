@@ -231,7 +231,7 @@
 
         String result = "";
         HttpClient httpclient = HttpClient(this->client(), this->SERVER_IP, this->SERVER_PORT);
-        int start = millis();
+        unsigned long start = millis();
 
         // Connect to network if not connected
         int counter = 0;
@@ -281,7 +281,7 @@
         this->connect("wifi");
 
         HttpClient httpclient = HttpClient(this->client(), this->SERVER_IP, this->SERVER_PORT);
-        int start = millis();
+        unsigned long start = millis();
         String result = "";
 
         // Send request

@@ -143,7 +143,7 @@ void GB_MQTT::publish(String topic, String data) {
     this->_mqttclient.print("Hello from GatorByte");
     this->_mqttclient.endMessage();
 
-    // int start = millis();
+    // unsigned long start = millis();
     // bool success = _mqttclient.publish(_gb->s2c(topic), _gb->s2c(data));
     // if (success) _gb->log(" -> Done");
     // else _gb->log(" -> Failed");

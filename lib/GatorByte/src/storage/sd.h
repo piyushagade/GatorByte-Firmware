@@ -51,9 +51,9 @@ class GB_SD : public GB_DEVICE {
         
         // SD operations
         void ls();
-        bool sderase();
         bool gbformat();
-        bool sdformat();
+        // bool sdformat();
+        // bool sderase();
         bool rwtest();
         bool detected();
 
@@ -203,95 +203,95 @@ bool GB_SD::gbformat() {
     return true;
 }
 
-bool GB_SD::sdformat() { 
-    this->on();
-    bool success = true;
+// bool GB_SD::sdformat() { 
+//     this->on();
+//     bool success = true;
 
-    _gb->log("Formatting: " + this->device.name);
-    SdSpiConfig SD_CONFIG = SdSpiConfig(this->pins.ss, DEDICATED_SPI);
+//     _gb->log("Formatting: " + this->device.name);
+//     SdSpiConfig SD_CONFIG = SdSpiConfig(this->pins.ss, DEDICATED_SPI);
 
-    // Get card object
-    m_card = _cardFactory.newCard(SD_CONFIG);
-    if (!m_card || m_card->errorCode()) {
-        this->_gb->log(" -> Couldn't initialize card.");
-        success = false;
-    }
+//     // Get card object
+//     m_card = _cardFactory.newCard(SD_CONFIG);
+//     if (!m_card || m_card->errorCode()) {
+//         this->_gb->log(" -> Couldn't initialize card.");
+//         success = false;
+//     }
 
-    // Get sector count
-    this->_cardSectorCount = m_card->sectorCount();
-    if (!this->_cardSectorCount) {
-        this->_gb->log(" -> Couldn't get sector count.");
-        success = false;
-    }
+//     // Get sector count
+//     this->_cardSectorCount = m_card->sectorCount();
+//     if (!this->_cardSectorCount) {
+//         this->_gb->log(" -> Couldn't get sector count.");
+//         success = false;
+//     }
 
-    this->_gb->log(("Card size: ") + String(this->_cardSectorCount * 5.12e-7) + " GB");
-    this->_gb->log(("Card will be formated to: "), false);
-    if (this->_cardSectorCount > 67108864) this->_gb->log(("exFAT"));
-    else if (this->_cardSectorCount > 4194304) this->_gb->log(("FAT32"));
-    else this->_gb->log(("FAT16"));
+//     this->_gb->log(("Card size: ") + String(this->_cardSectorCount * 5.12e-7) + " GB");
+//     this->_gb->log(("Card will be formated to: "), false);
+//     if (this->_cardSectorCount > 67108864) this->_gb->log(("exFAT"));
+//     else if (this->_cardSectorCount > 4194304) this->_gb->log(("FAT32"));
+//     else this->_gb->log(("FAT16"));
 
-    ExFatFormatter exFatFormatter;
-    FatFormatter fatFormatter;
-    success = 
-        this->_cardSectorCount > 67108864 ?
-        exFatFormatter.format(m_card, this->_sectorBuffer, &Serial) :
-        fatFormatter.format(m_card, this->_sectorBuffer, &Serial);
+//     ExFatFormatter exFatFormatter;
+//     FatFormatter fatFormatter;
+//     success = 
+//         this->_cardSectorCount > 67108864 ?
+//         exFatFormatter.format(m_card, this->_sectorBuffer, &Serial) :
+//         fatFormatter.format(m_card, this->_sectorBuffer, &Serial);
 
-    if (success) this->_gb->log(("The operation was successful."));
-    else this->_gb->log(("Formatting was not successful."));
+//     if (success) this->_gb->log(("The operation was successful."));
+//     else this->_gb->log(("Formatting was not successful."));
 
-    this->off();
-    return success;
-}
+//     this->off();
+//     return success;
+// }
 
-bool GB_SD::sderase() { 
-    this->on();
-    bool success = true;
+// bool GB_SD::sderase() { 
+//     this->on();
+//     bool success = true;
 
-    _gb->log("Erase: " + this->device.name);
-    SdSpiConfig SD_CONFIG = SdSpiConfig(this->pins.ss, DEDICATED_SPI);
+//     _gb->log("Erase: " + this->device.name);
+//     SdSpiConfig SD_CONFIG = SdSpiConfig(this->pins.ss, DEDICATED_SPI);
 
-    // Get card object
-    m_card = _cardFactory.newCard(SD_CONFIG);
-    if (!m_card || m_card->errorCode()) {
-        this->_gb->log(" -> Couldn't initialize card.");
-        success = false;
-    }
+//     // Get card object
+//     m_card = _cardFactory.newCard(SD_CONFIG);
+//     if (!m_card || m_card->errorCode()) {
+//         this->_gb->log(" -> Couldn't initialize card.");
+//         success = false;
+//     }
 
-    // Get sector count
-    this->_cardSectorCount = m_card->sectorCount();
-    if (!this->_cardSectorCount) {
-        this->_gb->log(" -> Couldn't get sector count.");
-        success = false;
-    }
+//     // Get sector count
+//     this->_cardSectorCount = m_card->sectorCount();
+//     if (!this->_cardSectorCount) {
+//         this->_gb->log(" -> Couldn't get sector count.");
+//         success = false;
+//     }
 
-    this->_gb->log(("Card size: ") + String(this->_cardSectorCount * 5.12e-7) + " GB");
+//     this->_gb->log(("Card size: ") + String(this->_cardSectorCount * 5.12e-7) + " GB");
 
-    uint32_t const ERASE_SIZE = 262144L;
-    uint32_t firstBlock = 0;
-    uint32_t lastBlock;
-    uint16_t n = 0;
+//     uint32_t const ERASE_SIZE = 262144L;
+//     uint32_t firstBlock = 0;
+//     uint32_t lastBlock;
+//     uint16_t n = 0;
 
-    do {
-        lastBlock = firstBlock + ERASE_SIZE - 1;
-        if (lastBlock >= this->_cardSectorCount) {
-            lastBlock = this->_cardSectorCount - 1;
-        }
-        if (!m_card->erase(firstBlock, lastBlock)) success = false;
-        if ((n++)%64 == 63) {}
-        firstBlock += ERASE_SIZE;
-    } while (firstBlock < this->_cardSectorCount);
+//     do {
+//         lastBlock = firstBlock + ERASE_SIZE - 1;
+//         if (lastBlock >= this->_cardSectorCount) {
+//             lastBlock = this->_cardSectorCount - 1;
+//         }
+//         if (!m_card->erase(firstBlock, lastBlock)) success = false;
+//         if ((n++)%64 == 63) {}
+//         firstBlock += ERASE_SIZE;
+//     } while (firstBlock < this->_cardSectorCount);
 
-    if (!m_card->readSector(0, this->_sectorBuffer)) _gb->log(("Read block"));
+//     if (!m_card->readSector(0, this->_sectorBuffer)) _gb->log(("Read block"));
         
-    this->_gb->log("All data set to " + String(this->_sectorBuffer[0]));
+//     this->_gb->log("All data set to " + String(this->_sectorBuffer[0]));
 
-    if (success) this->_gb->log(("The operation was successful."));
-    else this->_gb->log(("Erasing was not successful."));
+//     if (success) this->_gb->log(("The operation was successful."));
+//     else this->_gb->log(("Erasing was not successful."));
 
-    this->off();
-    return success;
-}
+//     this->off();
+//     return success;
+// }
 
 GB_SD& GB_SD::configure(PINS pins) {
     this->pins = pins;
@@ -307,7 +307,7 @@ GB_SD& GB_SD::configure(PINS pins) {
 
 GB_SD& GB_SD::on() {
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     // Initialize the connection
@@ -323,7 +323,7 @@ GB_SD& GB_SD::off() {
     // Safety delay
     delay(250);
 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     this->_rebegin_on_restart = true;
 
@@ -339,7 +339,7 @@ GB_SD& GB_SD::state(String name, bool value) {
 bool GB_SD::detected() {
     if(this->SKIP_CHIP_DETECT) this->_sd_card_present = true;
     else {
-        if(this->pins.mux) this->_sd_card_present = _gb->getdevice("ioe").readpin(this->pins.cd);
+        if(this->pins.mux) this->_sd_card_present = _gb->getdevice("ioe")->readpin(this->pins.cd);
         else this->_sd_card_present = digitalRead(this->pins.cd);
         return this->_sd_card_present;
     }
@@ -401,8 +401,8 @@ GB_SD& GB_SD::initialize(String speed) {
                 return *this;
             }
 
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
 
         }
         else if(!_sd.begin(this->pins.ss, this->_sck_speed)) {
@@ -415,8 +415,8 @@ GB_SD& GB_SD::initialize(String speed) {
                 return *this;
             }
 
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(500).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
         }
         else {
             // Open root folder
@@ -440,8 +440,8 @@ GB_SD& GB_SD::initialize(String speed) {
                 return *this;
             }
             
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("-").wait(500).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("blue").wait(100).revert();
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(100).revert();
         }
     }
     else _gb->log(" -> Disabled", true);
@@ -655,12 +655,12 @@ void GB_SD::writeCSV(String filename, String data, String header) {
     if(!_gb->globals.WRITE_DATA_TO_SD) return;
     
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
     
     this->on();
     this->_run_counter++;
 
-    int start = millis();
+    unsigned long start = millis();
 
     // // Write to a different file in dummy mode
     // if (this->_gb->globals.MODE == "dummy") filename = "dummy-" + filename;
@@ -671,7 +671,7 @@ void GB_SD::writeCSV(String filename, String data, String header) {
     // If error occured during the R/W test
     if (erroroccured) {
         _gb->log(" -> Skipped due to error in R/W test");
-        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb").on("red");
+        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
     }
     else {
         _gb->log(" -> File" + String(this->exists(filename) ? " " : " not ") + "found", false);
@@ -703,15 +703,15 @@ void GB_SD::writeCSV(String filename, String data, String header) {
         }
         else{
             _gb->log(" -> Write failed (Couldn't open file)");
-            if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb").on("red");
-            // this->_gb->getmcu().reset("mcu");
+            if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
+            // this->_gb->getmcu()->reset("mcu");
         }
     }
 
     this->off();
     
     // Disable watchdog
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
 }
 
 // Write to a JSON file
@@ -757,7 +757,7 @@ void GB_SD::writeJSON(String filename, String data) {
 String GB_SD::readfile(String filename) {
     
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
 
     this->on();
 
@@ -775,7 +775,7 @@ String GB_SD::readfile(String filename) {
             this->closeFile(file);
             
             // Disable watchdog
-            _gb->getmcu().watchdog("disable");
+            _gb->getmcu()->watchdog("disable");
             
             this->off();
             return result;
@@ -784,7 +784,7 @@ String GB_SD::readfile(String filename) {
             this->off();
             
             // Disable watchdog
-            _gb->getmcu().watchdog("disable");
+            _gb->getmcu()->watchdog("disable");
     
             return "";
         }
@@ -793,7 +793,7 @@ String GB_SD::readfile(String filename) {
         this->off();
             
         // Disable watchdog
-        _gb->getmcu().watchdog("disable");
+        _gb->getmcu()->watchdog("disable");
 
         return "";
     }
@@ -810,7 +810,7 @@ bool GB_SD::_write(String filename, String data) {
         return true;
     }
     else{
-        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb").on("red");
+        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
         return false;
     }
     this->off();
@@ -826,19 +826,19 @@ GB_SD& GB_SD::readconfig() {
     if (!this->_initialized || !this->device.detected) {
         _gb->log(" -> Skipped");
         
-        _gb->getdevice("sntl").disable();
-        _gb->br().color("red").log("SD card not found. Configuration couldn't be read. Suspending operation until issue is fixed.").br();
+        _gb->getdevice("sntl")->disable();
+        _gb->br().color("red").log("Configuration can't be read.").br();
 
         uint8_t now = millis();
         while (!_sd.begin(this->pins.ss, this->_sck_speed)) {
-            _gb->getdevice("gdc").detect(true);
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "blue");
+            _gb->getdevice("gdc")->detect(true);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(((millis() - now) / 1000) % 2 ? "red" : "blue");
             
             this->off();delay(1000);
             this->on(); delay(50);
         }
-        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("....");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").off();
+        if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("....");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->off();
         
         // Reinitialize
         this->initialize();
@@ -846,26 +846,26 @@ GB_SD& GB_SD::readconfig() {
     }
 
     // // Enable watchdog
-    // _gb->getmcu().watchdog("enable");
+    // _gb->getmcu()->watchdog("enable");
 
     this->on();
 
     // Create config folder if not exists
     if (!this->exists("/config")) this->mkdir("/config");
 
-    String filename = "/config/config.ini";
+    const char* filename = "/config/config.ini";
     
     // If requested config file exists
     if(!this->exists(filename)){
         _gb->arrow().log("Config file not found.");
         
-        _gb->getdevice("sntl").disable();
-        _gb->br().color("red").log("Configuration absent on SD card. Suspending operation.");
-        _gb->color("white").log("Please use the GatorByte Desktop Client to configure this device.");
+        _gb->getdevice("sntl")->disable();
+        _gb->br().color("red").log("Configuration absent.");
+        _gb->color("white").log("Use GatorByte Desktop Client to proceed.");
         uint8_t now = millis();
         while (!_gb->globals.GDC_CONNECTED) {
-            _gb->getdevice("gdc").detect(true);
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "green");
+            _gb->getdevice("gdc")->detect(true);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(((millis() - now) / 1000) % 2 ? "red" : "green");
             delay(500);
         }
     }
@@ -876,92 +876,98 @@ GB_SD& GB_SD::readconfig() {
     // If the file opened successfully
     if(file){
         char char_code;
-        String line = "";
-        String category;
+        char line[256];
+        char category[256];
         while (file.available()) {
             char_code = file.read();
             delay(5);
 
             if(char_code == '\n' || !file.available()) {
-                if (!file.available()) line += String(char_code);
+                if (!file.available()) _gb->strccat(line, char_code);
                 
                 // If the current line is level 1 header
-                if (line.indexOf(" ") == -1) {
-                    line.trim();
-                    if (line.indexOf("data") == 0) category = line;
-                    else if (line.indexOf("device") == 0) category = line;
-                    else if (line.indexOf("survey") == 0) category = line;
-                    else if (line.indexOf("sleep") == 0) category = line;
-                    else if (line.indexOf("server") == 0) category = line;
-                    else if (line.indexOf("sim") == 0) category = line;
-                    else category = "";
-                    line = "";
+                if (strchr(line, ' ') == NULL) {
+                    _gb->trim(line);
+                    if (strstr(line, "data") == line) strcpy(category, line);
+                    else if (strstr(line, "device") == line) strcpy(category, line);
+                    else if (strstr(line, "survey") == line) strcpy(category, line);
+                    else if (strstr(line, "sleep") == line) strcpy(category, line);
+                    else if (strstr(line, "server") == line) strcpy(category, line);
+                    else if (strstr(line, "sim") == line) strcpy(category, line);
+                    else category[0] = '\0';
+                    line[0] = '\0';
                 }
                 else {
                     if (
-                        category.indexOf("data") == 0 || 
-                        category.indexOf("device") == 0 || 
-                        category.indexOf("server") == 0 || 
-                        category.indexOf("sim") == 0 || 
-                        category.indexOf("survey") == 0 || 
-                        category.indexOf("sleep") == 0
+                        strstr(line, "data") == line || strstr(line, "device") == line || 
+                        strstr(line, "server") == line || strstr(line, "sim") == line || 
+                        strstr(line, "survey") == line || strstr(line, "sleep") == line
                     ) {
-                        string key = line.substring(0, line.indexOf(":")); key.trim(); key.toLowerCase();
-                        string value = line.substring(line.indexOf(":") + 1, line.length()); value.trim();
+                        char* key = strtok(line, ":");
+                        char* value = strtok(NULL, ":");
+
+                        // Remove trailing \n
+                        *(strchr(key, '\n')) = '\0';
+                        *(strchr(value, '\n')) = '\0';
+
+                        // Remove leading/trailing whitespaces
+                        _gb->trim(key);
+                        _gb->trim(value);
+                        
+                        // Convert key to lowercase
+                        for (int i = 0; key[i]; i++) {
+                            key[i] = tolower(key[i]);
+                        }
 
                         // _gb->log(category + ":" + line);
 
-                        // Remove trailing '\n'
-                        if (key.indexOf("\n") >= 0) key.substring(0, key.length() - 1);
-                        if (value.indexOf("\n") >= 0) value.substring(0, value.length() - 1);
-
-                        if (category == "survey") {
-                            if (key == "mode") _gb->globals.SURVEY_MODE = value;
-                            if (key == "id") _gb->globals.PROJECT_ID = value;
-                            if (key == "tz") _gb->globals.TIMEZONE = value;
-                            if (key == "realtime") {}
+                        if (strcmp(category, "survey") == 0) {
+                            if (strcmp(key, "mode") == 0) _gb->globals.SURVEY_MODE = value;
+                            if (strcmp(key, "id") == 0) _gb->globals.PROJECT_ID = value;
+                            if (strcmp(key, "tz") == 0) _gb->globals.TIMEZONE = value;
+                            if (strcmp(key, "realtime") == 0) {}
                         }
 
-                        if (category == "data") {
-                            if (key == "mode") _gb->globals.MODE = value;
-                            if (key == "readuntil") _gb->globals.SENSOR_MODE = value;
+                        if (strcmp(category, "data") == 0) {
+                            if (strcmp(key, "mode") == 0) _gb->globals.MODE = value;
+                            if (strcmp(key, "readuntil") == 0) _gb->globals.SENSOR_MODE = value;
                         }
 
-                        if (category == "device") {
-                            if (key == "name") _gb->globals.DEVICE_NAME = value;
-                            if (key == "env") {
+                        if (strcmp(category, "device") == 0) {
+                            if (strcmp(key, "name") == 0) _gb->globals.DEVICE_NAME = value;
+                            if (strcmp(key, "env") == 0) {
                                 _gb->env(value);
-                                if (_gb->hasdevice("mem")) _gb->getdevice("mem").write(1, value);
+                                if (_gb->hasdevice("mem")) _gb->getdevice("mem")->write(1, value);
 
                                 if (_gb->globals.GDC_SETUP_READY) {
                                     Serial.println("##CL-GDC-ENV::" + _gb->env() + "##"); delay(50);
                                 }
                             }
 
-                            // if (key == "id") _gb->globals.DEVICE_SN = value;
-                            if (key == "devices") _gb->globals.DEVICES_LIST = value;
+                            // if (strcmp(key, "id") == 0) _gb->globals.DEVICE_SN = value;
+                            if (strcmp(key, "devices") == 0) _gb->globals.DEVICES_LIST = value;
                         }
 
-                        if (category == "sleep") {
-                            if (key.contains("mode")) _gb->globals.SLEEP_MODE = value;
-                            if (key.contains("duration")) _gb->globals.SLEEP_DURATION = (value).toInt();
+                        if (strcmp(category, "sleep") == 0) {
+                            if (strstr(key, "mode") != NULL) _gb->globals.SLEEP_MODE = value;
+                            if (strstr(key, "duration") != NULL) _gb->globals.SLEEP_DURATION = atoi(value);
                         }
 
-                        if (category == "server") {
-                            if (key.contains("url")) _gb->globals.SERVER_URL = value;
-                            if (key.contains("port")) _gb->globals.SERVER_PORT = (value).toInt();
-                            if (key.contains("enabled")) _gb->globals.OFFLINE_MODE = value == "disabled";
+                        if (strcmp(category, "server") == 0) {
+                            if (strstr(key, "url") != NULL) _gb->globals.SERVER_URL = value;
+                            if (strstr(key, "port") != NULL) _gb->globals.SERVER_PORT = atoi(value);
+                            if (strstr(key, "enabled") != NULL) _gb->globals.OFFLINE_MODE = strcmp(value, "disabled") == 0;
                         }
 
-                        if (category == "sim") {
-                            if (key.contains("apn")) _gb->globals.APN = value;
-                            if (key.contains("rat")) _gb->globals.RAT = value;
+                        if (strcmp(category, "sim") == 0) {
+                            if (strstr(key, "apn") != NULL) _gb->globals.APN = value;
+                            if (strstr(key, "rat") != NULL) _gb->globals.RAT = value;
                         }
                     }
-                    line = "";
+                    line[0] = '\0';
                 }
             }
-            else line += String(char_code);
+            else _gb->strccat(line, char_code);
         }
         
         this->closeFile(file);
@@ -970,13 +976,13 @@ GB_SD& GB_SD::readconfig() {
 
         // If device SN not set
         if (_gb->globals.DEVICE_SN == "" || _gb->globals.DEVICE_SN.contains("-")) {
-            _gb->getdevice("sntl").disable();
-            _gb->br().color("red").log("Configuration doesn't specify the device's SN. Suspending operation.");
-            _gb->color("white").log("Please use the GatorByte Desktop Client to configure this device.");
+            _gb->getdevice("sntl")->disable();
+            _gb->br().color("red").log("Device's SN not found in config.");
+            _gb->color("white").log("Use GatorByte Desktop Client to proceed.");
             uint8_t now = millis();
             while (!_gb->globals.GDC_CONNECTED) {
-                _gb->getdevice("gdc").detect(true);
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on(((millis() - now) / 1000) % 2 ? "red" : "yellow");
+                _gb->getdevice("gdc")->detect(true);
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(((millis() - now) / 1000) % 2 ? "red" : "yellow");
                 delay(500);
             }
         }
@@ -1007,7 +1013,7 @@ GB_SD& GB_SD::readconfig() {
         this->off();
         
         // // Disable watchdog
-        // _gb->getmcu().watchdog("disable");
+        // _gb->getmcu()->watchdog("disable");
 
         return *this;
     }
@@ -1021,10 +1027,10 @@ String GB_SD::readconfig(String type) { return this->readconfig("/config/config.
 String GB_SD::readconfig(String filename, String type) { 
     
     // Detect GDC without lock
-    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc").detect(false);
+    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc")->detect(false);
 
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
     this->on();
 
     // If requested config file exists
@@ -1061,7 +1067,7 @@ String GB_SD::readconfig(String filename, String type) {
         this->off();
         
         // Disable watchdog
-        _gb->getmcu().watchdog("disable");
+        _gb->getmcu()->watchdog("disable");
 
         return "";
     }
@@ -1072,7 +1078,7 @@ void GB_SD::updateconfig(String type, String data) { return this->updateconfig("
 void GB_SD::updateconfig(String filename, String type, String data) { 
 
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
     this->on();
 
     String configdata = "";
@@ -1125,7 +1131,7 @@ void GB_SD::updateconfig(String filename, String type, String data) {
             this->off();
             
             // Disable watchdog
-            _gb->getmcu().watchdog("disable");
+            _gb->getmcu()->watchdog("disable");
     
             return;
         }
@@ -1136,7 +1142,7 @@ void GB_SD::updateconfig(String filename, String type, String data) {
         this->off();
         
         // Disable watchdog
-        _gb->getmcu().watchdog("disable");
+        _gb->getmcu()->watchdog("disable");
 
         return;
     }
@@ -1563,13 +1569,13 @@ bool GB_SD::rwtest() {
         }
         else {
             _gb->log(" -> R/W code mismatch", false);
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red");
             _erroroccurred = true;
         }
     }
     else {
         _gb->log(" -> Failed (code 1)", false);
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("red");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red");
         _erroroccurred = true;
     }
 
@@ -1587,7 +1593,7 @@ GB_SD& GB_SD::readcontrol() {
 GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
     
     // Detect GDC without lock
-    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc").detect(false);
+    if (_gb->hasdevice("gdc")) _gb->getdevice("gdc")->detect(false);
 
     _gb->log("Reading control file from SD", false);
 
@@ -1607,7 +1613,7 @@ GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
     if (!this->exists("/control")) this->mkdir("/control");
 
     // Control file path
-    String filename = "/control/variables.ini";
+    const char* filename = "/control/variables.ini";
     
     // If requested config file exists
     if(!this->exists(filename)){
@@ -1741,7 +1747,6 @@ GB_SD& GB_SD::updatesinglecontrol(String keyvalue, callback_t_on_control callbac
     } while (String(keyvalue.charAt(cursor++)).length() > 0);
     
     _gb->log(key + " = " + value, false);
-    
     _gb->arrow().color("green").log("Done");
 
     // Update the variable on the SD and the global variable

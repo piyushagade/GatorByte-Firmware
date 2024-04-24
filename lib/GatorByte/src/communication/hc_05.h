@@ -122,8 +122,8 @@ GB_HC_05& GB_HC_05::persistent() {
 
 GB_HC_05& GB_HC_05::on() {
     if(this->pins.mux) {
-        _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
-        _gb->getdevice("ioe").writepin(this->pins.comm, HIGH);
+        _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
+        _gb->getdevice("ioe")->writepin(this->pins.comm, HIGH);
     }
     else {
         digitalWrite(this->pins.enable, HIGH);
@@ -136,8 +136,8 @@ GB_HC_05& GB_HC_05::off() {
     if (this->_persistent) return *this;
 
     if(this->pins.mux) {
-        _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
-        _gb->getdevice("ioe").writepin(this->pins.comm, LOW);
+        _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
+        _gb->getdevice("ioe")->writepin(this->pins.comm, LOW);
     }
     else {
         digitalWrite(this->pins.enable, LOW);

@@ -81,7 +81,7 @@ class GB_MQTT : public GB_DEVICE {
 
 GB_MQTT::GB_MQTT(GB &gb) {
     _gb = &gb;
-    _mcu = &_gb->getmcu();
+    // _mcu = &_gb->getmcu();
     _gb->includelibrary(this->device.id, this->device.name);
     _gb->devices.mqtt = this;
 }
@@ -107,7 +107,7 @@ GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback_t_on
 }
 
 GB_MQTT& GB_MQTT::disconnect() {
-    _gb->getmcu().watchdog("enable", 8000);
+    _gb->getmcu()->watchdog("enable", 8000);
 
     _gb->log("Disconnecting MQTT broker", false);
 
@@ -117,13 +117,13 @@ GB_MQTT& GB_MQTT::disconnect() {
         _gb->log(" -> Done");
     }
     else _gb->log(" -> Already disconnected");
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
     return *this;
 }
 
 GB_MQTT& GB_MQTT::connect(String username, String password) {
     
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("white");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
 
     /*
         ! Disconnect MQTT client
@@ -141,8 +141,8 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         _gb->log(" -> Already connected");
         
         // Blink green 2 times
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("green", 2, 300, 200);
-        _gb->getdevice("buzzer").play("..");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 2, 300, 200);
+        _gb->getdevice("buzzer")->play("..");
 
         return *this;
     }
@@ -152,8 +152,8 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
             _gb->log(" -> Skipped. Not connected to the Internet.");
             
             // Blink red 2 times
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 2, 300, 200);
-            _gb->getdevice("buzzer").play("..-");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
+            _gb->getdevice("buzzer")->play("..-");
             
             return *this;
         }
@@ -164,8 +164,8 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
             // else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Unknown error.");
             
             // Blink red 2 times
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 2, 300, 200);
-            _gb->getdevice("buzzer").play("..-");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
+            _gb->getdevice("buzzer")->play("..-");
             
             return *this;
         }
@@ -185,33 +185,33 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
             1. 12/2021 - Initial (short-term) inspection seems to work.
             2. 11/2022 - Stopping client causes failure in reconnection? Needs testing
     */
-    // this->_mcu->getclient().stop();
-    // this->_mcu->getsslclient().stop();
+    // _gb->getmcu()->getclient().stop();
+    // _gb->getmcu()->getsslclient().stop();
 
     // Set broker
     IPAddress ip(3,13,100,232);
-    this->_mqttclient.setClient(this->_mcu->getclient());
+    this->_mqttclient.setClient(_gb->getmcu()->getclient());
     this->_mqttclient.setServer(ip, this->BROKER_PORT);
     this->_mqttclient.setCallback(_on_message_handler);
 
     // // Enable watchdog
-    // _gb->getmcu().watchdog("enable");
+    // _gb->getmcu()->watchdog("enable");
     
     //! Attempt connection
     bool success = false; int counter = 0;
     while (counter++ < 3 && !success) {
         
 
-        if (!this->_mcu->getclient().available()) {
-            this->_mcu->getclient().flush();
-            this->_mcu->getclient().readString();
-            this->_mcu->deleteclient();
+        if (!_gb->getmcu()->getclient().available()) {
+            _gb->getmcu()->getclient().flush();
+            _gb->getmcu()->getclient().readString();
+            _gb->getmcu()->deleteclient();
         }
 
         success = this->_mqttclient.connect(_gb->s2c(this->CLIENT_ID), _gb->s2c(this->USER), _gb->s2c(this->PASS)); 
 
         // Reset watchdog
-        _gb->getmcu().watchdog("reset");
+        _gb->getmcu()->watchdog("reset");
         
         if (!success) {
             _gb->log(" .", false);
@@ -220,40 +220,40 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
     }
 
     // Reset watchdog
-    _gb->getmcu().watchdog("reset");
+    _gb->getmcu()->watchdog("reset");
 
     if (success) {
         CONNECTED_TO_MQTT_BROKER = true;
         this->_on_connect_handler();
 
         // Blink green 2 times
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("green", 2, 300, 200);
-        _gb->getdevice("buzzer").play("..");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 2, 300, 200);
+        _gb->getdevice("buzzer")->play("..");
         
         _gb->log(" -> Done");
     }
     else {
-        _gb->getdevice("rgb").on("red");
+        _gb->getdevice("rgb")->on("red");
         CONNECTED_TO_MQTT_BROKER = false;
         int errorcode = this->_mqttclient.state();
         String errormessage = errorcode == -2 ? "Couldn't connect to the broker" : "Unknown error";
         
         // Blink red 2 times
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 2, 300, 200);
-        _gb->getdevice("buzzer").play("..-");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
+        _gb->getdevice("buzzer")->play("..-");
                 
         _gb->log(" -> Failed: " + errormessage + " (" + String(errorcode) + ")");
     }
 
     // // Disable watchdog
-    // _gb->getmcu().watchdog("disable");
+    // _gb->getmcu()->watchdog("disable");
     
     return *this;
 }
 
 GB_MQTT& GB_MQTT::update() {
 
-    if (!_gb->getmcu().connected()) {
+    if (!_gb->getmcu()->connected()) {
         CONNECTED_TO_MQTT_BROKER = 0;
         return *this;
     }
@@ -303,7 +303,7 @@ GB_MQTT& GB_MQTT::update() {
             if (this->_reconnection_attempt_count++ == 5) {
                 
                 // Reset mcu
-                this->_mcu->reset("mcu");
+                _gb->getmcu()->reset("mcu");
             }
 
         }
@@ -349,7 +349,7 @@ bool GB_MQTT::publish(String topic, String data) {
 
     while (!success && attempts++ <= maxattempts)  {
 
-        // if (this->_wait_for_ack && _gb->getdevice("sd").exists("/queue/sent/" + this->_ack_id)) {
+        // if (this->_wait_for_ack && _gb->getdevice("sd")->exists("/queue/sent/" + this->_ack_id)) {
         //     _gb->log(" -> Already sent");
         //     return false;
         // }
@@ -367,7 +367,7 @@ bool GB_MQTT::publish(String topic, String data) {
             this->update();
 
             // if (this->_wait_for_ack) {
-            //     _gb->getdevice("sd").writeCSV("/queue/sent/" + this->_ack_id, "", "");
+            //     _gb->getdevice("sd")->writeCSV("/queue/sent/" + this->_ack_id, "", "");
             //     this->_wait_for_ack = false;
             // }
 

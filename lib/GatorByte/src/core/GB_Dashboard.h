@@ -79,13 +79,13 @@ bool GB_DASHBOARD::send(String category, String data) {
     if (_gb->globals.SERVER_METHOD == "http") {
 
         if (category == "control") {
-            _gb->getmcu().post("/" + _gb->globals.SERVER_API_VERSION + "/controls/set", "dasdsa");
+            _gb->getmcu()->post("/" + _gb->globals.SERVER_API_VERSION + "/controls/set", "dasdsa");
         }
         else if (category == "state") {
-            _gb->getmcu().post("/" + _gb->globals.SERVER_API_VERSION + "/state/set", "dasdsa");
+            _gb->getmcu()->post("/" + _gb->globals.SERVER_API_VERSION + "/state/set", "dasdsa");
         }
         else if (category == "data") {
-            _gb->getmcu().post("/" + _gb->globals.SERVER_API_VERSION + "/data/set", "dasdsa");
+            _gb->getmcu()->post("/" + _gb->globals.SERVER_API_VERSION + "/data/set", "dasdsa");
         }
     }
 }

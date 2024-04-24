@@ -37,17 +37,16 @@
     GB_NB1500 mcu(gb);
 
     GB_MQTT mqtt(gb);
-    GB_HTTP http(gb);
+    // GB_HTTP http(gb);
     GB_74HC595 ioe(gb);
     GB_TCA9548A tca(gb);
 
     // Peripherals and devices
     GB_RGB rgb(gb);
-    GB_PWRMTR pwr(gb);
     GB_AT24 mem(gb);
     GB_SD sd(gb);
     GB_DS3231 rtc(gb);
-    GB_BOOSTER booster(gb);
+    // GB_BOOSTER booster(gb);
     GB_AT_09 bl(gb);
     GB_BUZZER buzzer(gb);
     GB_NEO_6M gps(gb);
@@ -59,41 +58,17 @@
     GB_AT_SCI_PH ph(gb);
 
     GB_AHT10 aht(gb);
-    GB_DESKTOP gdc(gb);
     GB_SNTL sntl(gb);
-
-    // Pipers
-    GB_PIPER breathpiper;
-    GB_PIPER readpiper;
-    GB_PIPER uploaderpiper;
-    GB_PIPER fetchcontrolpiper;
+    GB_DESKTOP gdc(gb);
 
     /*
         Control variables
     */
     bool REBOOT_FLAG = false;
-    bool RECOVERY_MODE_FLAG = false;
-
-    int UPLOAD_INTERVAL = 60 * 60 * 1000;
-    int SAMPLING_INTERVAL = 5 * 60 * 1000;
-
-    /*
-        Timeouts
-    */
-    int ANTIFREEZE_REBOOT_DELAY = 5 * 86400 * 1000;
     
-    /*
-        Intervals
-    */
-    int BREATH_INTERVAL = 60 * 1000;
-
-
     void set_control_variables(JSONary data) {
 
-        SAMPLING_INTERVAL = data.getint("SAMPLING_INTERVAL");
         REBOOT_FLAG = data.getboolean("REBOOT_FLAG");
-        ANTIFREEZE_REBOOT_DELAY = data.getint("ANTIFREEZE_REBOOT_DELAY");
-        RECOVERY_MODE_FLAG = data.getboolean("RECOVERY_MODE_FLAG");
 
         gb.log("Updating runtime variables -> Done");
 
@@ -187,7 +162,7 @@
         sntl.disable().enablebeacon(0);
 
         gb.log("The device is now awake.");
-        gdc.send("highlight-yellow", "Device awake");
+        // gdc.send("highlight-yellow", "Device awake");
     }
     
     /* 
@@ -197,44 +172,43 @@
             b. 'simplify: false' returns a json object.
 
     */
-    void get_control_variable () {
+    // void get_control_variable () {
         
-        sntl.watch(120, [] {
+    //     sntl.watch(120, [] {
 
-            // //! Disconnect from the network
-            // mcu.disconnect("cellular");
+    //         // //! Disconnect from the network
+    //         // mcu.disconnect("cellular");
 
-            //! Connect to network
-            mcu.connect("cellular");
-        });
+    //         //! Connect to network
+    //         mcu.connect("cellular");
+    //     });
 
-        sntl.watch(30, [] {
-            JSONary data;
-            data
+    //     sntl.watch(30, [] {
+    //         JSONary data;
+    //         data
 
-                // The 'key' is the variable value requested
-                .set("key", "RECOVERY_MODE")
+    //             // The 'key' is the variable value requested
+    //             .set("key", "RECOVERY_MODE")
 
-                // 'reset' set the value to the provided value if the value is true.
-                .set("reset", "false")
+    //             // 'reset' set the value to the provided value if the value is true.
+    //             .set("reset", "false")
 
-                // 'simplify: true' simplifies the response and returns a string.
-                .set("simplify", "true")
+    //             // 'simplify: true' simplifies the response and returns a string.
+    //             .set("simplify", "true")
 
-                // Device SN is required
-                .set("device-sn", gb.globals.DEVICE_SN);
+    //             // Device SN is required
+    //             .set("device-sn", gb.globals.DEVICE_SN);
 
-            if(http.post("v3/gatorbyte/control/get/bykey", data.get()) ) {
-                String response = http.httpresponse();
-                gb.controls.set("RECOVERY_MODE", response);
-                sd.updatecontrolbool("RECOVERY_MODE", response);
-                gb.log("Fetched RECOVERY_MODE flag: " + response);
-            }
+    //         if(http.post("v3/gatorbyte/control/get/bykey", data.get()) ) {
+    //             String response = http.httpresponse();
+    //             gb.controls.set("RECOVERY_MODE", response);
+    //             sd.updatecontrolbool("RECOVERY_MODE", response);
+    //         }
 
-            // //! Disconnect from the network
-            // mcu.disconnect("cellular");
-        });
-    }
+    //         // //! Disconnect from the network
+    //         // mcu.disconnect("cellular");
+    //     });
+    // }
     
     /*
         ! Prepare a queue file (with current iteration's data)
@@ -332,7 +306,7 @@
         mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
         //! Detect GDC
-        gdc.detect(false);
+        // gdc.detect(false);
         
         //! Initialize Sentinel
         sntl.configure({true, 4}, 9).initialize().ack(true).enablebeacon(0);
@@ -342,7 +316,7 @@
         sntl.watch(120, []() {
             
             // Check battery level
-            gb.log("Current battery level: " + String(mcu.fuel("level")) + " %");
+            gb.log("Battery: " + String(mcu.fuel("level")) + " %");
 
             // Initialize SD first to read the config file
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
@@ -360,16 +334,19 @@
             mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
 
-
             //! Configure sensors
-            rtd.configure({true, SR6, true, 0}).initialize(true);
-            dox.configure({true, SR8, true, 2}).initialize(true);
-            ec.configure({true, SR9, true, 3}).initialize(true);
-            ph.configure({true, SR7, true, 1}).initialize(true).on();
+            // rtd.configure({true, SR6, true, 0}).initialize(true);
+            // dox.configure({true, SR8, true, 2}).initialize(true);
+            // ec.configure({true, SR9, true, 3}).initialize(true);
+            // ph.configure({true, SR7, true, 1}).initialize(true);
 
         });
 
         gb.log("Setup complete");
+
+        // rtd.calibrate("?", 25);
+        // rtd.calibrate("clr", 0);
+        // rtd.calibrate("single", 25);
     }
 
     void preloop () {
@@ -384,29 +361,24 @@
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
 
         // Detect GDC
-        gdc.detect(false);
-
+        // gdc.detect(false);
     }
 
     void loop () {
 
+        // rtd.readsensor();
+        
+        // return;
+
         // GatorByte loop function
         gb.loop();
-        
-        bl.listen([] (String command) {
-            Serial.println("Received command: " + command);
 
-            if (command.contains("ping")) bl.print("pong");
-        });
+        gb.getdevice("buzzer")->play("---...---");
 
-        if (uploaderpiper.ishot()) {
-            gb.log("Uploader piper is hot");
-        }
-
-        if (readpiper.ishot()) {
-            gb.log("Readings piper is hot");
-            gps.on();
-        }
+        // bl.listen([] (String command) {
+        //     Serial.println("Received command: " + command);
+        //     if (command.contains("ping")) bl.print("pong");
+        // });
 
         sntl.watch(300, [] {
 
@@ -421,6 +393,7 @@
 
             //! Get sensor readings
             float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
+            // float read_rtd_value = 0, read_ph_value = 0, read_ec_value = 0, read_dox_value = 0;
 
             // Initialize CSVary object
             CSVary csv;
@@ -431,8 +404,9 @@
             // Construct CSV object
             csv
                 .clear()
-                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
+                .setheader("DEVICESN,MILLIS,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
                 .set(gb.globals.DEVICE_SN)
+                .set(String(millis() / 1000))
                 .set(timestamp)
                 .set(date)
                 .set(time)
@@ -463,7 +437,12 @@
         //! Upload data to server
         uploadtoserver();
 
+        // Set sleep configuration
+        mcu.set_sleep_callback(on_sleep);
+        mcu.set_wakeup_callback(on_wakeup);
+
         //! Sleep
-        mcu.sleep(on_sleep, on_wakeup);
+        mcu.sleep();
     }
+
 #endif

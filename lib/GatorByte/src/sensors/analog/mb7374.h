@@ -50,13 +50,13 @@ GB_MB7374& GB_MB7374::configure(PINS pins) {
 }
 
 GB_MB7374& GB_MB7374::on() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH); 
     return *this;
 }
 
 GB_MB7374& GB_MB7374::off() { 
-    if(this->pins.mux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.mux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, HIGH);
     return *this;
 }

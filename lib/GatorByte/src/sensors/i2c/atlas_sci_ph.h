@@ -1,6 +1,10 @@
 #ifndef GB_AT_SCI_PH_h
 #define GB_AT_SCI_PH_h
 
+/*
+    ! Uses 2.5% flash memory
+*/
+
 #ifndef GB_h
     #include "../../GB.h"
 #endif
@@ -49,8 +53,6 @@ class GB_AT_SCI_PH : public GB_DEVICE {
         GB_AT_SCI_PH& activate();
         GB_AT_SCI_PH& deactivate();
         GB_AT_SCI_PH& led(String);
-        GB_AT_SCI_PH& calibrate();
-        GB_AT_SCI_PH& calibrate(int);
         int calibrate(String, int);
         
         bool testdevice();
@@ -59,6 +61,8 @@ class GB_AT_SCI_PH : public GB_DEVICE {
         float readsensor();
         float readsensor(String mode);
         float quickreadsensor(int times);
+
+        bool stablereadings = false;
 
     private:
         GB *_gb;
@@ -69,7 +73,6 @@ class GB_AT_SCI_PH : public GB_DEVICE {
         } _acquired_data;
         bool _persistent = false;
 
-        float _sendCommand(String);
         void _write_byte(byte, byte);
         void _write_long(byte, unsigned long);
         void _read_register(byte, byte);
@@ -146,14 +149,14 @@ GB_AT_SCI_PH& GB_AT_SCI_PH::on() {
     delay(2);
     
     // Reset mux
-    _gb->getdevice("tca").resetmux();
+    _gb->getdevice("tca")->resetmux();
 
     // Power on the device
-    if(this->pins.pwrmux) _gb->getdevice("ioe").writepin(this->pins.enable, HIGH);
+    if(this->pins.pwrmux) _gb->getdevice("ioe")->writepin(this->pins.enable, HIGH);
     else digitalWrite(this->pins.enable, HIGH);
 
     // Select I2C mux channel
-    if(this->pins.commux) _gb->getdevice("tca").selectexclusive(pins.muxchannel);
+    if(this->pins.commux) _gb->getdevice("tca")->selectexclusive(pins.muxchannel);
 
     delay(10);
 
@@ -165,7 +168,7 @@ GB_AT_SCI_PH& GB_AT_SCI_PH::off() {
     
     if (this->_persistent) return *this;
     delay(10);
-    if(this->pins.pwrmux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
+    if(this->pins.pwrmux) _gb->getdevice("ioe")->writepin(this->pins.enable, LOW);
     else digitalWrite(this->pins.enable, LOW);
     delay(2);
     return *this;
@@ -228,7 +231,7 @@ void GB_AT_SCI_PH::_compensate(float value) {
 float GB_AT_SCI_PH::_read() {
     
     // Enable watchdog
-    _gb->getmcu().watchdog("enable");
+    _gb->getmcu()->watchdog("enable");
 
     float sensor_value = -1;
     float divident = 1000;
@@ -252,7 +255,7 @@ float GB_AT_SCI_PH::_read() {
     }
     
     // Disable watchdog
-    _gb->getmcu().watchdog("disable");
+    _gb->getmcu()->watchdog("disable");
 
     return sensor_value;
 }
@@ -336,7 +339,7 @@ float GB_AT_SCI_PH::quickreadsensor(int times) {
     // Print statistics
     this->_gb->log(String(" -> ") + String(min) + " |--- " + String(avg) + " ---| " + String(max));
 
-    _gb->getdevice("gdc").send("gdc-db", "ph=" + String(sensor_value));
+    _gb->getdevice("gdc")->send("gdc-db", "ph=" + String(sensor_value));
 
     return sensor_value;
 }
@@ -352,7 +355,7 @@ float GB_AT_SCI_PH::readsensor() {
         this->_gb->log("Reading " + this->device.name, false);
         float value = random(5, 29) + random(0, 100) / 100.00;
         this->_gb->log(" -> Dummy value: " + String(value));
-        _gb->getdevice("gdc").send("gdc-db", "ph=" + String(value));
+        _gb->getdevice("gdc")->send("gdc-db", "ph=" + String(value));
         return value;
     }
 
@@ -361,14 +364,14 @@ float GB_AT_SCI_PH::readsensor() {
     if (!this->device.detected) {
         this->_gb->log("Reading " + this->device.name, false);
         this->_gb->log(" -> Device not detected");
-        _gb->getdevice("gdc").send("gdc-db", "ph=" + String(-1));
+        _gb->getdevice("gdc")->send("gdc-db", "ph=" + String(-1));
         return -1;
     }
 
-    _gb->log("Compensation temperature value: " + String(_gb->getdevice("rtd").lastvalue()));
+    _gb->log("Compensation temperature value: " + String(_gb->getdevice("rtd")->lastvalue()));
     
     // // Get temperature sensor value for compensation.
-    // this->_compensate(_gb->hasdevice("rtd") ? _gb->getdevice("rtd").lastvalue() : 25) ;
+    // this->_compensate(_gb->hasdevice("rtd") ? _gb->getdevice("rtd")->lastvalue() : 25) ;
     
     this->on();
     this->activate();
@@ -424,14 +427,20 @@ float GB_AT_SCI_PH::readsensor() {
             float difference = abs(sensor_value - previous_reading);
             if (difference <= stability_delta) {
                 stability_counter++;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb").on("green"); delay (250); _gb->getdevice("rgb").on("magenta"); }
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("green"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
             }
             else {
                 stability_counter = 0;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb").on("yellow"); delay (250); _gb->getdevice("rgb").on("magenta"); }
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("yellow"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
             }
             previous_reading = sensor_value;
         }
+
+        if (ATTEMPT_COUNT == MAX_ATTEMPTS) {
+            this->_gb->arrow().color("yellow").log("Stability not acheived");
+            this->stablereadings = false;
+        }
+        else this->stablereadings = true;
 
     }
     else if (sensor_mode == "iterations") {
@@ -474,159 +483,9 @@ float GB_AT_SCI_PH::readsensor() {
     this->deactivate();
     this->off();
 
-    _gb->getdevice("gdc").send("gdc-db", "ph=" + String(sensor_value));
+    _gb->getdevice("gdc")->send("gdc-db", "ph=" + String(sensor_value));
 
     return sensor_value;
-}
-
-// Manual sensor calibration
-GB_AT_SCI_PH& GB_AT_SCI_PH::calibrate() {
-
-    
-    #if not defined (LOW_MEMORY_MODE)
-        int step = 0;
-        String cmd = "c";
-        while (step < 7 && cmd != "q") {
-            if (cmd == "a") {
-                this->activate();
-            }
-            if (cmd == "d") {
-                this->deactivate();
-            }
-            if (cmd == "pard") {
-                this->on();
-                delay(500);
-                this->activate();
-
-                this->readsensor();
-                // _gb->log(this->device.name + ": " + this->_read());
-                
-                this->deactivate();
-                this->off();
-                cmd = "";
-            }
-            if (cmd == "cpard") {
-                int NUMBER_OF_READINGS = 50;
-                int DELAY = 20 * 1000;
-                _gb->log("\nReading " + String(NUMBER_OF_READINGS) + " values from " + this->device.name + " every " + String(DELAY/1000) + " seconds.");
-                for (int i = 0; i < NUMBER_OF_READINGS; i++) {
-                    this->on();
-                    delay(500);
-                    this->activate();
-            
-                    _gb->log(String(i + 1) + ": ", false);
-                    this->readsensor();
-                    // _gb->log(this->device.name + ": " + this->_read());
-                    
-                    this->deactivate();
-                    this->off();
-
-                    delay(DELAY);
-                }
-                cmd = "";
-            }
-            if (cmd == "ard") {
-                this->activate();
-
-                this->readsensor();
-                // _gb->log(this->device.name + ": " + this->_read());
-                
-                this->deactivate();
-                cmd = "";
-            }
-            if (cmd == "+") {
-                this->on();
-            }
-            if (cmd == "-") {
-                if(this->pins.pwrmux) _gb->getdevice("ioe").writepin(this->pins.enable, LOW);
-                else digitalWrite(this->pins.enable, LOW);
-            }
-            if (cmd == "w" || cmd == "i") {
-                int NUMBER_OF_READINGS = cmd == "w" ? 30 : 1000;
-                _gb->br().log("Reading " + String(NUMBER_OF_READINGS) + " values from " + this->device.name);
-
-                this->activate();
-                for (int i = 0; i < NUMBER_OF_READINGS; i++) {
-                    
-                    float sensor_value = sensor_value = this->_read(); 
-                    _gb->log(String(i) + ": " + String(sensor_value));
-                }
-                this->deactivate();
-                _gb->log("Done. Waiting for a new command.");
-
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                // // Increment the step count
-                // step++;
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "c") {
-                this->calibrate(step);
-                
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                // Increment the step count
-                step++;
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            // else if (cmd == "1" || cmd == "2" || cmd == "3") {
-            //     if (cmd == "1") this->_calibrate("low");
-            //     else if (cmd == "2") this->_calibrate("mid");
-            //     else if (cmd == "3") this->_calibrate("high");
-                
-            //     // Wait for serial input
-            //     while(!_gb->serial.debug->available());
-
-            //     // // Increment the step count
-            //     // step++;
-
-            //     if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            // }
-            else if (cmd == "s") {
-                this->calibrate(++step);
-                
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "r") {
-                this->readsensor();
-
-                // Wait for serial input
-                while(!_gb->serial.debug->available());
-
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-            else if (cmd == "x") {
-                // this->_calibrate("clr");
-                cmd = "c";
-                step = 0;
-            }
-            else if (cmd == "/") {
-                _gb->log("\nCalibration status: ", false);
-                // this->_calibrate("?");
-                cmd = "c";
-                step = 0;
-            }
-            else if (cmd == "q") {
-                _gb->log("\nExiting calibration mode.\n");
-                cmd = "c";
-                step = 0;
-                break;
-            }
-            else {
-                delay(500);
-                if (_gb->serial.debug->available()) cmd = _gb->serial.debug->readStringUntil('\n');
-            }
-        }
-    #else
-        _gb->log("GatorByte operating in low power mode. Calibration is disabled.");
-    #endif
 }
 
 // Sensor calibration
@@ -636,65 +495,6 @@ int GB_AT_SCI_PH::calibrate(String action, int value) {
     else if (action == "mid") return this->_calibrate("mid", value);
     else if (action == "high") return this->_calibrate("high", value);
     return this->_calibrate("?", 0);
-}
-
-// Sensor calibration
-GB_AT_SCI_PH& GB_AT_SCI_PH::calibrate(int step) {
-
-    #if not defined (LOW_MEMORY_MODE)
-        // if(step > 0) {
-        //     _gb->log("\nStep: " + String(step));
-        //     _gb->log("-------");
-        // }
-        // else _gb->log("");
-
-        // if(step == 0) {
-        //     _gb->log("You have entered calibration mode for " + this->device.name);
-        //     _gb->log("This is a guided process. So, please follow the instructions that are shown below. You will need pH 4.0, pH 7.0, and pH 10.0 buffer solutions.");
-        //     _gb->log("Current status: ", false);
-        //     this->_calibrate("?");
-        //     _gb->log("During this process, press 'c' to move on to next step, or press 'q' to quit.");
-        //     _gb->log("You can also enter '1' for low-point calibration, '2' for mid-point calibration, or '3' for high-point calibration.");
-        // }
-        // else if(step == 1) {
-        //     _gb->log("Now let's calibrate the pH sensor to the pH 7.0 solution. Add some solution to a beaker. Make sure you are wearing gloves and safety glasses before you proceed.");
-        //     _gb->log("Dip the sensor in the solution and stir it gently for 30 secconds. Enter \"c\" when ready to perform calibration.");
-        // }
-        // else if(step == 2) {
-        //     _gb->log("Calibrating to pH 7.0 solution: ", false);
-        //     this->_calibrate("mid");
-        //     _gb->log("Make sure you close the remaining buffer solution according to its user manual.");
-        //     _gb->log("Enter \"c\" to continue.");
-        // }
-        // else if(step == 3) {
-        //     _gb->log("Now we will calibrate the sensor to pH 4.0 solution. Rinse the sensor with distilled water and dry it out before proceeding.");
-        //     _gb->log("Dip the sensor in the pH 4.0 solution, and stir gently for about 30 seconds.");
-        //     _gb->log("When ready, enter \"c\".");
-        // }
-        // else if(step == 4) {
-        //     _gb->log("Calibrating to pH 4.0 solution: ", false);
-        //     this->_calibrate("low");
-        //     _gb->log("Hit \"next\" to continue.");
-        // }
-        // else if(step == 5) {
-        //     _gb->log("And now we will calibrate the sensor to pH 10.0 solution. Again, do not forget to rinse the sensor with distilled water and dry it out before proceeding. When ready, hit \"next\".");
-        // }
-        // else if(step == 6) {
-        //     _gb->log("Calibrating to pH 10.0 solution: ", false);
-        //     this->_calibrate("high");
-
-        //     // Calibration complete
-        //     this->calibrate(7);
-        // }
-        // else if(step == 7) {
-        //     _gb->log("All done. The sensor is now ready to use. For high precision and accuracy, please calibrate the sensor every few months.");
-            
-        //     // TODO: Should the mode be set to "read" always?
-        //     _gb->globals.MODE = "read";
-        // }
-    #endif
-
-    return *this;
 }
 
 // Write a long to an OEM register

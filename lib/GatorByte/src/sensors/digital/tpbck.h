@@ -105,7 +105,7 @@ bool GB_TPBCK::listener(callback_t callback) {
 bool GB_TPBCK::listener() {
 
     //// Read channel 3 from EADC
-    // int value = _gb->getdevice("eadc").getreading(3);
+    // int value = _gb->getdevice("eadc")->getreading(3);
     // ADCVALUE = value;
     // int reading = ADCLOWERTHRESHOLD <= value && value < ADCUPPERTHRESHOLD ? HIGH : LOW;
 
@@ -126,9 +126,9 @@ bool GB_TPBCK::listener() {
                 this->_rain_pulse_count++;
                 pulsedetected = true;
 
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("white");
-                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play("...");
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").revert();
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
+                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("...");
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
             }
         }
     }

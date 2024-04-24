@@ -129,6 +129,7 @@ class GB_NB1500 : public GB_MCU {
         void set_sleep_callback(callback_t_on_sleep);
         void set_wakeup_callback(callback_t_on_wakeup);
         void set_primary_piper(GB_PIPER);
+        void set_secondary_piper(GB_PIPER);
 
         void sleep();
         void sleep(String level);
@@ -194,7 +195,9 @@ class GB_NB1500 : public GB_MCU {
         bool _HAS_SLEEP_CALLBACK = false;
         bool _HAS_WAKE_CALLBACK = false;
         bool _HAS_PRIMARY_PIPER = false;
+        bool _HAS_SECONDARY_PIPER = false;
         GB_PIPER _primary_piper;
+        GB_PIPER _secondary_piper;
 
         int _breath_timer_id;
 
@@ -448,7 +451,7 @@ GB_NB1500& GB_NB1500::debug(Serial_ &ser, int baud_rate) {
     _serial.debug->begin(_baudrate.debug);
     _gb->serial = _serial;
 
-    // _gb->getdevice("gdc").detect(false);
+    // _gb->getdevice("gdc")->detect(false);
 
     return *this;
 }
@@ -590,7 +593,7 @@ bool GB_NB1500::clearfplmn() {
     String clearresponse = this->_sara_at_command("AT+CRSM=214,28539,0,0,12,\"130184FFFFFFFFFFFFFFFFFF\"");
     
     if (!clearresponse.endsWith("+CRSM: 144,0,\"\"")) {
-        _gb->getdevice("rgb").on("red");
+        _gb->getdevice("rgb")->on("red");
         _gb->log(" -> Failed");
         return false;
     }
@@ -598,9 +601,9 @@ bool GB_NB1500::clearfplmn() {
     // If clearing the list succeeded
     else {
         _gb->log(" -> Done. Restarting the device.");
-        _gb->getdevice("rgb").on("red");
+        _gb->getdevice("rgb")->on("red");
         delay(3000);
-        _gb->getmcu().reset("mcu");
+        _gb->getmcu()->reset("mcu");
         
         return true;
     }
@@ -701,7 +704,7 @@ bool GB_NB1500::connected() {
 bool GB_NB1500::connect() { return this->connect(false); }
 bool GB_NB1500::connect(bool diagnostics) {
     
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").on("white");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
 
     /*
         ! If the device is operating in offline mode
@@ -712,7 +715,7 @@ bool GB_NB1500::connect(bool diagnostics) {
         CONNECTED_TO_NETWORK = false;
         CONNECTED_TO_INTERNET = false;
         
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").revert();
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
         return false;
     }
     
@@ -896,10 +899,10 @@ bool GB_NB1500::connect(bool diagnostics) {
             CONNECTED_TO_INTERNET = true;
             
             // Buzz
-            if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer").play("..");
+            if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer")->play("..");
             
             // Slow blink green 3 times
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("green", 3, 300, 200);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 3, 300, 200);
 
             _gb->log(" -> Done ");
             
@@ -927,10 +930,10 @@ bool GB_NB1500::connect(bool diagnostics) {
             _gb->log(" -> Failed");
             
             // Buzz
-            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer").play(".-");
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".-");
 
             // Blink red 3 times
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").blink("red", 3, 300, 200);
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 3, 300, 200);
             return false;
         }
     }
@@ -1045,48 +1048,57 @@ void GB_NB1500::set_wakeup_callback(callback_t_on_wakeup callback) {
 void GB_NB1500::set_primary_piper(GB_PIPER piper) { 
     this->_HAS_PRIMARY_PIPER = true;
     this->_primary_piper = piper;
-
 }
 
-void GB_NB1500::sleep(callback_t_on_sleep callback) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); }
-void GB_NB1500::sleep(String level, callback_t_on_sleep callback) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback); }
-void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback) {
-    this->_HAS_WAKE_CALLBACK = false;
-    
-    // Call user defined pre-sleep operations
-    callback();
+void GB_NB1500::set_secondary_piper(GB_PIPER piper) { 
+    this->_HAS_SECONDARY_PIPER = true;
+    this->_secondary_piper = piper;
+}
+
+void GB_NB1500::sleep() { 
 
     // Enter low power-mode
-    this->_sleep(level, milliseconds);
+    this->_sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION);
 }
 
-void GB_NB1500::sleep(callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback_on_sleep, callback_on_wakeup); }
-void GB_NB1500::sleep(String level, callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback_on_sleep, callback_on_wakeup); }
-void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) {
+// void GB_NB1500::sleep(callback_t_on_sleep callback) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback); }
+// void GB_NB1500::sleep(String level, callback_t_on_sleep callback) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback); }
+// void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback) {
+//     this->_HAS_WAKE_CALLBACK = false;
     
-    // Set wake up callback
-    this->_HAS_WAKE_CALLBACK = true;
-    this->_wake_callback = callback_on_wakeup;
+//     // Call user defined pre-sleep operations
+//     callback();
+
+//     // Enter low power-mode
+//     this->_sleep(level, milliseconds);
+// }
+
+// void GB_NB1500::sleep(callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION, callback_on_sleep, callback_on_wakeup); }
+// void GB_NB1500::sleep(String level, callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) { this->sleep(level, _gb->globals.SLEEP_DURATION, callback_on_sleep, callback_on_wakeup); }
+// void GB_NB1500::sleep(String level, int milliseconds, callback_t_on_sleep callback_on_sleep, callback_t_on_wakeup callback_on_wakeup) {
     
-    // Set sleep callback
-    this->_HAS_SLEEP_CALLBACK = true;
-    this->_sleep_callback = callback_on_sleep;
+//     // Set wake up callback
+//     this->_HAS_WAKE_CALLBACK = true;
+//     this->_wake_callback = callback_on_wakeup;
+    
+//     // Set sleep callback
+//     this->_HAS_SLEEP_CALLBACK = true;
+//     this->_sleep_callback = callback_on_sleep;
 
-    // Call user defined pre-sleep operations
-    callback_on_sleep();
+//     // Call user defined pre-sleep operations
+//     callback_on_sleep();
 
-    // Enter low power-mode
-    this->_sleep(level, milliseconds);
-}
+//     // Enter low power-mode
+//     this->_sleep(level, milliseconds);
+// }
 
-void GB_NB1500::sleep() { this->sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION); }
-void GB_NB1500::sleep(String level) { this->sleep(level, _gb->globals.SLEEP_DURATION); }
-void GB_NB1500::sleep(String level, int milliseconds) {
-    this->_HAS_WAKE_CALLBACK = false;
 
-    // Enter low power-mode
-    this->_sleep(level, milliseconds);
-}
+// void GB_NB1500::sleep(String level) { this->sleep(level, _gb->globals.SLEEP_DURATION); }
+// void GB_NB1500::sleep(String level, int milliseconds) {
+
+//     // Enter low power-mode
+//     this->_sleep(level, milliseconds);
+// }
 
 void GB_NB1500::_sleep(String level, int milliseconds) {
     
@@ -1095,7 +1107,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     // if (_gb->hasdevice("ioe")) {
     //     _gb->log("Turning off peripherals", false);
     //     for(int i = 0; i < 15; i++) {
-    //         _gb->getdevice("ioe").writepin(i, LOW);
+    //         _gb->getdevice("ioe")->writepin(i, LOW);
     //     }
     //     _gb->log(" -> Done"); delay(300);
     // }
@@ -1107,7 +1119,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     if (this->_HAS_SLEEP_CALLBACK) this->_sleep_callback();
 
     //! RGB rainbow
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").rainbow(5000).off();
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(5000).off();
     
     // Deduce sleep duration from the last timestamp when readings were taken
     _gb->br().log("Seconds since last reading: " + String(_gb->globals.SECONDS_SINCE_LAST_READING) + " seconds");
@@ -1140,9 +1152,14 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     this->LAST_SLEEP_DURATION = milliseconds;
 
     if (this->_HAS_PRIMARY_PIPER) _gb->log("Primary piper milliseconds before hot: " + String(this->_primary_piper.secondsuntilhot()) + " seconds.");
+    if (this->_HAS_SECONDARY_PIPER) _gb->log("Secondary piper milliseconds before hot: " + String(this->_secondary_piper.secondsuntilhot()) + " seconds.");
     if (this->_primary_piper.secondsuntilhot() * 1000 < milliseconds) {
-        _gb->color("yellow").log("Overriding sleep duration to piper duration.");
+        _gb->color("yellow").log("Overriding sleep duration to the primary piper duration.");
         milliseconds = this->_primary_piper.secondsuntilhot() * 1000;
+    }
+    if (this->_secondary_piper.secondsuntilhot() * 1000 < milliseconds) {
+        _gb->color("yellow").log("Overriding sleep duration to the secondary piper duration.");
+        milliseconds = this->_secondary_piper.secondsuntilhot() * 1000;
     }
     
     _gb->br().color("white").log("Entering low-power mode for " + String(milliseconds / 60 / 1000) + " min " + String(milliseconds / 1000 % 60) + " seconds. (" + String(milliseconds / 1000) + " seconds)", true);
@@ -1174,7 +1191,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
 
         _gb->log("Entering 'daydream' sleep mode.");
         
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").rainbow(milliseconds);
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(milliseconds);
         _gb->log("Exiting 'daydream' sleep mode.");
     }
     
@@ -1185,9 +1202,9 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     else if (level == "reset") {
 
         _gb->log("Entering 'fake' and reset sleep mode.");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb").rainbow(milliseconds);
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(milliseconds);
         _gb->log("Exiting 'fake' and reset sleep mode."); delay(2000);
-        _gb->getmcu().reset("mcu");
+        _gb->getmcu()->reset("mcu");
     }
     
     /*
@@ -1318,7 +1335,7 @@ bool GB_NB1500::checksignalviability(bool diagnostics) {
         viable = false;
 
         // Error handler
-        if (++esc.no_cell_signal >= 3) _gb->getdevice("sntl").reboot();
+        if (++esc.no_cell_signal >= 3) _gb->getdevice("sntl")->reboot();
     }
     else if (rssi <= this->CELL_SIGNAL_LOWER_BOUND) {
         _gb->log("Signal strength: Low signal strength detected (" + String(rssi) + ",");
@@ -1363,7 +1380,7 @@ bool GB_NB1500::checklist(string categories) {
         // Reboot the system
         if (++esc.modem_init_failure >= this->CELL_FAILURE_COUNT_LIMIT) {
             _gb->arrow().log("Rebooting GatorByte"); delay(1000);
-            _gb->getdevice("sntl").reboot();
+            _gb->getdevice("sntl")->reboot();
         }
 
         /* 
@@ -1477,9 +1494,9 @@ bool GB_NB1500::checklist(string categories) {
 void GB_NB1500::diagnostics() { 
     if (_gb->hasdevice("mem")) {
         _gb->log("\nDiagnostics information: ");
-        _gb->log("  > Last failure count: " + String(_gb->getdevice("mem").get(6)));
-        _gb->log("  > Number of MODEM failures: " + String(_gb->getdevice("mem").get(10)));
-        _gb->log("  > Number of microcontroller resets: " + String(_gb->getdevice("mem").get(11)));
+        _gb->log("  > Last failure count: " + String(_gb->getdevice("mem")->get(6)));
+        _gb->log("  > Number of MODEM failures: " + String(_gb->getdevice("mem")->get(10)));
+        _gb->log("  > Number of microcontroller resets: " + String(_gb->getdevice("mem")->get(11)));
         _gb->log();
     }
     else {
@@ -1500,8 +1517,8 @@ bool GB_NB1500::reset(String type) {
         */
         if (_gb->hasdevice("mem")) {
             _gb->log("Updating MODEM reboot counter");
-            if (_gb->getdevice("mem").get(11) == "") _gb->getdevice("mem").write(11, "0");
-            _gb->getdevice("mem").write(11, String(_gb->getdevice("mem").get(11).toInt() + 1));
+            if (_gb->getdevice("mem")->get(11) == "") _gb->getdevice("mem")->write(11, "0");
+            _gb->getdevice("mem")->write(11, String(_gb->getdevice("mem")->get(11).toInt() + 1));
         }
         delay(200);
 
@@ -1537,8 +1554,8 @@ bool GB_NB1500::reset(String type) {
         */
         if (_gb->hasdevice("mem")) {
             _gb->log("Updating MODEM reboot counter");
-            if (_gb->getdevice("mem").get(10) == "") _gb->getdevice("mem").write(10, "0");
-            _gb->getdevice("mem").write(10, String(_gb->getdevice("mem").get(10).toInt() + 1));
+            if (_gb->getdevice("mem")->get(10) == "") _gb->getdevice("mem")->write(10, "0");
+            _gb->getdevice("mem")->write(10, String(_gb->getdevice("mem")->get(10).toInt() + 1));
         }
 
         this->getclient().stop();
@@ -1569,7 +1586,7 @@ bool GB_NB1500::get(String path) {
     _gb->log("Sending GET: " + path + " to " + this->SERVER_IP + ", " + this->SERVER_PORT, false);
     
     HttpClient httpclient = HttpClient(this->getclient(), this->SERVER_IP, this->SERVER_PORT);
-    int start = millis();
+    unsigned long start = millis();
     String result = "";
 
     // Send request
@@ -1621,7 +1638,7 @@ bool GB_NB1500::post(String path, String data) {
     _gb->log("Sending POST: " + path + " to " + this->SERVER_IP + ", " + this->SERVER_PORT, false);
 
     HttpClient httpclient = HttpClient(this->getclient(), this->SERVER_IP, this->SERVER_PORT);
-    int start = millis();
+    unsigned long start = millis();
     String result = "";
 
     // Send request
