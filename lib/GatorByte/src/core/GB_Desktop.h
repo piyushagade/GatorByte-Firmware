@@ -2,7 +2,7 @@
 #define GB_DESKTOP_h
 
 /*
-    ! Uses ~09% flash memory
+    ! Uses ~9% flash memory
 */
 
 #ifndef GB_h
@@ -17,7 +17,7 @@ class GB_DESKTOP : public GB_DEVICE {
         
         DEVICE device = {
             "gdc",
-            "GatorByte Desktop Client"
+            "Desktop Client"
         };
 
         GB_DESKTOP& detect() override;
@@ -25,13 +25,8 @@ class GB_DESKTOP : public GB_DEVICE {
         GB_DESKTOP& loop() override;
         
         void process(string);
-        bool contains(String, String);
         GB_DESKTOP& enter();
         GB_DESKTOP& exit();
-        
-        String cfget(String message);
-        void cfset(String message);
-        void cfprint(String message);
         
         bool send(String data);
         bool send(String category, String data);
@@ -45,7 +40,6 @@ class GB_DESKTOP : public GB_DEVICE {
         String _prev_mode;
         String _state = "";
         bool lock = false;
-        String _received_config_str = "";
         GB_DESKTOP& _busy(bool busy);
         
         // Temporary data
@@ -134,10 +128,10 @@ GB_DESKTOP& GB_DESKTOP::_busy(bool busy) {
     return *this;
 }
 
-// Enter console mode
+// Enter GDC mode
 GB_DESKTOP& GB_DESKTOP::enter() {
 
-    _gb->log("Locked GDC mode enabled.");
+    _gb->log("Entering GDC mode");
 
     uint8_t last_led_act_ts = millis();
     bool led_state = false;
@@ -199,57 +193,12 @@ GB_DESKTOP& GB_DESKTOP::loop() {
     return *this;
 }
 
-/*
-    ! Get a value/state from GatorByte configurator or console-based GatorByte datastore 
-*/
-String GB_DESKTOP::cfget(String key) { 
-    
-    String prefix = "##SOF##", suffix = "##EOF##";
-
-    //! Send the command to GatorByte Configurator
-    this->_gb->serial.debug->println(prefix + key + suffix);
-
-    //! Get the response from the GatorByte Configurator
-    int counter = 0;
-    while (!this->_gb->serial.debug->available() && counter++ < 10) delay(500);
-
-    String response = "";
-    String value = "";
-    while (_gb->serial.debug->available()) {
-        response += _gb->serial.debug->readString();
-        response.trim();
-
-        // Check if a string is coming from the GB Configurator 
-        if (response.indexOf("$$GBCG$$") == 0) {
-            
-            // Strip the prefix
-            response = response.substring(response.indexOf("$$GBCG$$") + 8, response.length());
-
-            // Check if the response is a key-value pair
-            if (response.indexOf(":") > -1) {
-                String key = response.substring(0, response.indexOf(":"));
-                value = response.substring(response.indexOf(":") + 1, response.length());
-                response = value;
-            }
-        }  
-    }
-    return response;
-}
-
-void GB_DESKTOP::cfprint(String message) { 
-    String prefix = "##SOF##", suffix = "##EOF##";
-
-    //! Send the command to GatorByte Configurator
-    // this->_gb->serial.debug->println(prefix + "log-message::" + message + suffix);
-    this->_gb->serial.debug->println(message);
-}
-
 // Process the incoming command
 void GB_DESKTOP::process(string command) {
 
     #if LOGCONTROL
     // _gb->br().log("Processing command: " + command, false);
-    // _gb->log(" -> Current state: " + String(this->_state.length() > 0 ? this->_state : "None"));
+    // _gb->arrow().log("Current state: " + String(this->_state.length() > 0 ? this->_state : "None"));
     #endif
     
     /*
@@ -277,7 +226,11 @@ void GB_DESKTOP::process(string command) {
         }
     }
     
+    //! Uses 8% flash
     #if not defined (LOW_MEMORY_MODE)
+
+        String CONFIGPATH = "/config/config.ini";
+        String CVPATH = "/control/variables.ini";
 
         // Set as busy
         this->_busy(true);
@@ -307,24 +260,21 @@ void GB_DESKTOP::process(string command) {
         };
 
         /*
-            ! Global configuration download/upload
+            ! Global configuration download/upload; Uses 0.5% flash
         */
         if (command.startsWith("cfg")) {
 
             // Configuration download request
             if (command.contains("cfgdl:")) {
 
-                String filename = "/config/" + command.substring(command.indexOf("dl:") + 3, command.indexOf(","));
-
-                // int initialcharindex = command.substring(command.indexOf(",") + 1, command.length()).toInt();
-                // int charsatatime = 30;
-                // String data = _gb->getdevice("sd")->readLinesFromSD(filename, charsatatime, initialcharindex);
-                // this->sendfile("gdc-cfg", "fdl:" + data);
-
-                String data = _gb->getdevice("sd")->readfile(filename);
-                for (int i = 0; i < data.length(); i += 30) {
+                // String filename = "/config/" + command.substring(command.indexOf("dl:") + 3, command.indexOf(","));
+                // String configdata = _gb->getdevice("sd")->readfile(filename);
+                
+                String configdata = _gb->getconfig();
+                for (unsigned int i = 0; i < configdata.length(); i += 30) {
+                    
                     // Extract a chunk of 30 characters
-                    String chunk = data.substring(i, i + 30);
+                    String chunk = configdata.substring(i, i + 30);
 
                     // Send the chunk over Serial
                     this->sendfile("gdc-cfg", "fdl:" + chunk);
@@ -338,7 +288,7 @@ void GB_DESKTOP::process(string command) {
             // Configuration upload request
             else if (command.contains("cfgupl:")) {
             
-                String filename = "/config/config.ini";
+                String filename = CONFIGPATH;
                 string data = command.substring(command.indexOf("upl:") + 4, command.indexOf("^"));
                 int initialcharindex = command.substring(command.indexOf("^") + 1, command.length()).toInt();
 
@@ -366,15 +316,21 @@ void GB_DESKTOP::process(string command) {
             // Post config upload tasks
             else if (command.contains("cfgupd:")) {
             
-                // Update config in the memory
-                _gb->getdevice("sd")->readconfig();
+                // Get the updated config from SD
+                String configdata = _gb->getdevice("sd")->readconfig();
+
+                // // Sync config in the EEPROM
+                // _gb->getdevice("mem")->writeconfig(configdata);
+
+                // Updata the config in the Arduino's flash memory
+                _gb->processconfig(configdata);
 
             }
 
             // Post config upload tasks
             else if (command.contains("hash")) {
             
-                String configdata = _gb->getdevice("sd")->readfile("/config/config.ini");
+                String configdata = _gb->getdevice("sd")->readfile(CONFIGPATH);
 
                 // Compute hash
                 unsigned int hash = _gb->s2hash(configdata);
@@ -398,9 +354,8 @@ void GB_DESKTOP::process(string command) {
             }
         }
         
-
         /*
-            ! Create base folders and files on SD card if they don't exist
+            ! Create base folders and files on SD card if they don't exist; Uses 0.3% flash
         */
         if (command.startsWith("sdf")) {
             
@@ -416,7 +371,7 @@ void GB_DESKTOP::process(string command) {
 
                 // Create folder
                 String folders[] = {"config", "calibration", "control", "readings", "debug", "logs", "queue"};
-                for (int i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
+                for (unsigned int i = 0; i < sizeof(folders) / sizeof(folders[0]); i++) {
                     String foldername = folders[i];
                     if (!_gb->getdevice("sd")->exists("/" + foldername)) {
                         #if LOGCONTROL
@@ -430,19 +385,19 @@ void GB_DESKTOP::process(string command) {
                 }
 
                 // Create config file
-                if (!_gb->getdevice("sd")->exists("/config/config.ini")) {
+                if (!_gb->getdevice("sd")->exists(CONFIGPATH)) {
                     #if LOGCONTROL
                         _gb->log("File config.ini doesn't exist. Creating file.");
                     #endif
-                    _gb->getdevice("sd")->writeLinesToSD("/config/config.ini", "");
+                    _gb->getdevice("sd")->writeLinesToSD(CONFIGPATH, "");
                 }
 
                 // Create control file
-                if (!_gb->getdevice("sd")->exists("/control/variables.ini")) {
+                if (!_gb->getdevice("sd")->exists(CVPATH)) {
                     #if LOGCONTROL
                         _gb->log("File variables.ini doesn't exist. Creating file.");
                     #endif
-                    _gb->getdevice("sd")->writeLinesToSD("/control/variables.ini", "");
+                    _gb->getdevice("sd")->writeLinesToSD(CVPATH, "");
                 }
 
                 // Send acknowledgement
@@ -450,12 +405,11 @@ void GB_DESKTOP::process(string command) {
             }
         }
 
-
         /*
-            ! SD file list / File download
+            ! SD file list / File download; Uses 1% flash
         */
-        if (this->_state == "files-list" || command.contains("fl")) {
-            this->_state = "files-list";
+        if (this->_state == "fl" || command.contains("fl")) {
+            this->_state = "fl";
 
             // Strip prefix and suffix
             command.replace("##GB##fl", "");
@@ -485,7 +439,7 @@ void GB_DESKTOP::process(string command) {
                         this->send("gdc-dfl", "error:nofile");
                     }
                     else {
-                        for (int i = 0; i < list.length(); i++) {
+                        for (unsigned int i = 0; i < list.length(); i++) {
                             String c = String(list[i]);
 
                             if (c != "," && i < list.length() - 1) file += c;
@@ -508,9 +462,6 @@ void GB_DESKTOP::process(string command) {
 
                 String filename = command.substring(command.indexOf(":") + 1, command.indexOf(","));
                 
-                int initialcharindex = 0;
-                int charsatatime = 100;
-
                 File file = _gb->getdevice("sd")->openFile("read", filename);
                 if (!file) {
                     #if LOGCONTROL
@@ -643,13 +594,14 @@ void GB_DESKTOP::process(string command) {
                     this->send("gdc-dfl", "upl:ack");
                 }
             }
+        
         }
         
         /*
-            ! Calibration
+            ! Calibration; Uses 1% flash
         */
-        if (this->_state == "calibration" || command.contains("calibration")) {
-            this->_state = "calibration";
+        if (this->_state == "cal" || command.contains("calibration")) {
+            this->_state = "cal";
 
             // Set state to calibration
             if (command.contains(":enter")) {
@@ -739,13 +691,14 @@ void GB_DESKTOP::process(string command) {
                 // Send acknowledgment
                 this->send("gdc-cal", "lpi" + String(":") + String(lpi));
             }
+        
         }
 
         /* 
-            ! Dashboard
+            ! Dashboard; Uses 1% flash
         */
-        if (this->_state == "dashboard" || command.contains("db")) {
-            this->_state = "dashboard";
+        if (this->_state == "db" || command.contains("db")) {
+            this->_state = "db";
 
             if (command.contains(":enter")) {
                 NBModem _nbModem;
@@ -775,6 +728,7 @@ void GB_DESKTOP::process(string command) {
                 this->send("gdc-db", "cops=" + String(cops));
             }
             
+            // Sensor readings
             else if (command.contains("fsr:")) {
 
                 if (command.contains(":all")) {
@@ -817,15 +771,46 @@ void GB_DESKTOP::process(string command) {
         }
         
         /* 
-            ! Configure GatorByte
+            ! Configure GatorByte; Uses 1% flash
         */
-        if (this->_state == "configuration" || command.contains("cfgb")) {
-            this->_state = "configuration";
+        if (this->_state == "cfg" || command.contains("cfgb")) {
+            this->_state = "cfg";
 
             // Strip prefix and suffix
             command.replace("##GB##cfgb", "");
             command.replace("##GB##cfg", "");
             command.replace("#EOF#", "");
+
+            
+            //! Sentinel configuration
+            if (command.contains("sntl:")) {
+
+                #if LOGCONTROL
+                _gb->log("Command: " + command);
+                #endif
+
+
+                // Get fuse status
+                if (command.contains("sf:get")) {
+                    
+                    bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl")->testdevice() : false;            
+                    uint8_t code = 39;
+                    uint8_t status = _gb->getdevice("sntl")->tell(code, 5);
+                    _gb->log("Fuse getting: " + String(status));
+                    this->send("gdc-cfg", "sf:get:" + String(status ? "true" : "false"));
+                }
+
+                // Set fuse
+                if (command.contains("sf:set:")) {
+                    
+                    command = command.substring(12, command.length());
+                    bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl")->testdevice() : false;            
+                    uint8_t code = command == "set" ? 37 : 38;
+                    _gb->log("Fuse setting to: " + String(code));
+                    if (success) success = _gb->getdevice("sntl")->tell(code, 5) == 0;
+                    this->send("gdc-cfg", "sf:" + String(success ? "true" : "false"));
+                }
+            }
 
             //! RTC action
             if (command.contains("rtc:")) {
@@ -864,7 +849,7 @@ void GB_DESKTOP::process(string command) {
                     }
                     else {
                         #if LOGCONTROL
-                        _gb->log(" -> Skipped");
+                        _gb->arrow().log("Skipped");
                         #endif
                         this->send("gdc-cfg", "nack");
                     }
@@ -935,13 +920,14 @@ void GB_DESKTOP::process(string command) {
                     }
                 }
             }
+        
         }
         
         /* 
-            ! Control variables
+            ! Control variables; Uses 1% flash
         */
-        if (this->_state == "controlvariables" || command.contains("cv")) {
-            this->_state = "controlvariables";
+        if (this->_state == "cv" || command.contains("cv")) {
+            this->_state = "cv";
 
             if (!_gb->hasdevice("sd")) {
                 this->send("gdc-sdf", "sd:error");
@@ -959,7 +945,7 @@ void GB_DESKTOP::process(string command) {
             // Configuration download request
             if (command.contains("cvdl:")) {
                 
-                String filename = "/control/variables.ini";
+                String filename = CVPATH;
 
                 // int initialcharindex = command.substring(command.indexOf(":") + 1, command.length()).toInt();
                 // int charsatatime = 30;
@@ -984,7 +970,7 @@ void GB_DESKTOP::process(string command) {
             // Control variables upload request
             else if (command.contains("cvupl:")) {
             
-                String filename = "/control/variables.ini";
+                String filename = CVPATH;
                 string data = command.substring(command.indexOf("upl:") + 4, command.indexOf("^"));
                 int initialcharindex = command.substring(command.indexOf("^") + 1, command.length()).toInt();
 
@@ -1026,7 +1012,7 @@ void GB_DESKTOP::process(string command) {
             //! Get hash from stored file
             if (command.contains("cv:hash")) {
 
-                String cvdata = _gb->getdevice("sd")->readfile("/control/variables.ini");
+                String cvdata = _gb->getdevice("sd")->readfile(CVPATH);
                 int hash = _gb->s2hash(cvdata);
 
                 #if LOGCONTROL
@@ -1075,7 +1061,7 @@ void GB_DESKTOP::process(string command) {
                 #endif
                 _gb->getdevice("sd")->readcontrol();
                 #if LOGCONTROL
-                _gb->log(_gb->getdevice("sd")->readfile("/control/variables.ini"));
+                _gb->log(_gb->getdevice("sd")->readfile(CVPATH));
                 #endif
 
                 // Send response
@@ -1085,13 +1071,13 @@ void GB_DESKTOP::process(string command) {
         }
         
         /* 
-            ! Device diagnostics
+            ! Device diagnostics; Uses 2% flash
         */
-        if (this->_state == "diagnostics" || command.contains("dgn")) {
-            this->_state = "diagnostics";
+        if (this->_state == "dgn" || command.contains("dgn")) {
+            this->_state = "dgn";
             
             // Strip prefix and suffix
-            command.replace("##GB##dgn", "");
+            command.replace("##GB##", "");
             command.replace("#EOF#", "");
 
             if (command.contains("rtc")) {
@@ -1294,18 +1280,21 @@ void GB_DESKTOP::process(string command) {
                 cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
                 this->send("gdc-dgn", "cops=" + String(cops));
             }
+
+            if (command.contains("comm:conn")) {
+                
+                //! Connect to network
+                _gb->getmcu()->connect();
+                
+                //! Connect to MQTT servver
+                _gb->getdevice("mqtt")->connect("pi", "abe-gb-mqtt");
+                    
+                this->send("gdc-dgn", "conn=init");
+            }
+        
         }
     
     #endif
-}
-
-/*
-    ! Send a string to GatorByte configurator or console-based GatorByte datastore 
-*/
-void GB_DESKTOP::cfset(String key) { 
-    
-    String prefix = "##SOF##", suffix = "##EOF##";
-    this->_gb->serial.debug->println(prefix + key + suffix);
 }
 
 /*
@@ -1333,7 +1322,6 @@ bool GB_DESKTOP::send(String category, String data) {
 
     return true;
 }
-
 void GB_DESKTOP::sendfile(String category, String data) { 
     if (!_gb->globals.GDC_CONNECTED) return;
 

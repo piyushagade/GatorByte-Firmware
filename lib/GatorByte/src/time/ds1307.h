@@ -79,17 +79,17 @@ GB_DS1307& GB_DS1307::initialize() {
     Wire.begin();
     _rtc.begin();   // Comment Wire.begin in the RTC's library if error occurs
     
-    _gb->log("Initializing RTC module", false);
+    _gb->log("Initializing " + this->device.name, false);
     if(this->running()) {
-        if(_rtc.now().unixtime() > 1000000000) _gb->log(" -> Done at " + this->date() + " " + this->time("hh:mm:ss a"), true);
+        if(_rtc.now().unixtime() > 1000000000) _gb->arrow().log("Done at " + this->date() + " " + this->time("hh:mm:ss a"), true);
         else {
-            _gb->log(" -> Timestamp: " + String(_rtc.now().unixtime()), false);
-            _gb->log(" -> RTC running. Incorrect time. ", false);
+            _gb->arrow().log("Timestamp: " + String(_rtc.now().unixtime()), false);
+            _gb->arrow().log("RTC running. Incorrect time. ", false);
         }
 
     }
     else {
-        _gb->log(" -> Failed at " + String(_rtc.now().unixtime()), true);
+        _gb->arrow().log("Failed at " + String(_rtc.now().unixtime()), true);
     }
 
     this->off();
@@ -106,7 +106,7 @@ GB_DS1307& GB_DS1307::sync(char date[], char time[]) {
 
     _gb->log("Syncing RTC to the time of compilation", false);
     _rtc.adjust(DateTime(date, time));
-    _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()));
+    _gb->arrow().log("RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()));
 
     this->off();
     return *this;

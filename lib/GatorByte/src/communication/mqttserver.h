@@ -99,9 +99,9 @@ GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback_t_on
     this->_on_message_handler = on_message_ptr;
     this->_on_connect_handler = on_connect_ptr;
 
-    if(ip.length() == 0) _gb->log(" -> Failed. Invalid Broker IP");
-    else if(port <= 0) _gb->log(" -> Failed. Invalid Broker port");
-    else _gb->log(" -> Done");
+    if(ip.length() == 0) _gb->arrow().log("Failed. Invalid Broker IP");
+    else if(port <= 0) _gb->arrow().log("Failed. Invalid Broker port");
+    else _gb->arrow().log("Done");
 
     return *this;
 }
@@ -114,9 +114,9 @@ GB_MQTT& GB_MQTT::disconnect() {
     if (this->_mqttclient.connected()) {
         this->_mqttclient.disconnect();
         CONNECTED_TO_MQTT_BROKER = false;
-        _gb->log(" -> Done");
+        _gb->arrow().log("Done");
     }
-    else _gb->log(" -> Already disconnected");
+    else _gb->arrow().log("Already disconnected");
     _gb->getmcu()->watchdog("disable");
     return *this;
 }
@@ -138,7 +138,7 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
     _gb->log("Connecting to MQTT broker: " + String(this->BROKER_IP) + ", " + String(this->BROKER_PORT), false);
 
     if (this->_mqttclient.connected()) {
-        _gb->log(" -> Already connected");
+        _gb->arrow().log("Already connected");
         
         // Blink green 2 times
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 2, 300, 200);
@@ -149,7 +149,7 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
 
     #ifdef ESP32
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !MODEM_INITIALIZED) {
-            _gb->log(" -> Skipped. Not connected to the Internet.");
+            _gb->arrow().log("Skipped. Not connected to the Internet.");
             
             // Blink red 2 times
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
@@ -159,9 +159,9 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         }
     #else
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !MODEM_INITIALIZED) {
-            // if (!CONNECTED_TO_NETWORK) _gb->log(" -> Skipped. Not connected to the network.");
-            // else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Not connected to the Internet.");
-            // else if (!CONNECTED_TO_INTERNET) _gb->log(" -> Skipped. Unknown error.");
+            if (!CONNECTED_TO_NETWORK) _gb->arrow().log("Skipped");
+            else if (!CONNECTED_TO_INTERNET) _gb->arrow().log("Skipped");
+            else _gb->arrow().log("Skipped");
             
             // Blink red 2 times
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
@@ -230,7 +230,7 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 2, 300, 200);
         _gb->getdevice("buzzer")->play("..");
         
-        _gb->log(" -> Done");
+        _gb->arrow().log("Done");
     }
     else {
         _gb->getdevice("rgb")->on("red");
@@ -242,7 +242,7 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("red", 2, 300, 200);
         _gb->getdevice("buzzer")->play("..-");
                 
-        _gb->log(" -> Failed: " + errormessage + " (" + String(errorcode) + ")");
+        _gb->arrow().log("Failed: " + errormessage + " (" + String(errorcode) + ")");
     }
 
     // // Disable watchdog
@@ -325,15 +325,15 @@ bool GB_MQTT::publish(String topic, String data) {
 
     #ifdef ESP32
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !CONNECTED_TO_MQTT_BROKER) {
-            if (log) this->_gb->log(" -> Skipped");
+            if (log) this->_gb->arrow().log("Skipped");
             return false;
         }
     #elif __AVR_ATmega328P__ || __AVR_ATmega168__
-        if (log) this->_gb->log(" -> Skipped");
+        if (log) this->_gb->arrow().log("Skipped");
         return false;
     #else
         if(!CONNECTED_TO_NETWORK || !CONNECTED_TO_INTERNET || !CONNECTED_TO_MQTT_BROKER) {
-            if (log) this->_gb->log(" -> Skipped");
+            if (log) this->_gb->arrow().log("Skipped");
             return false;
         }
     #endif
@@ -350,7 +350,7 @@ bool GB_MQTT::publish(String topic, String data) {
     while (!success && attempts++ <= maxattempts)  {
 
         // if (this->_wait_for_ack && _gb->getdevice("sd")->exists("/queue/sent/" + this->_ack_id)) {
-        //     _gb->log(" -> Already sent");
+        //     _gb->arrow().log("Already sent");
         //     return false;
         // }
         
@@ -428,8 +428,8 @@ bool GB_MQTT::connected(bool log) {
     if(log) _gb->log("Broker connection: ", false);
     bool result = _mqttclient.connected();
     if (log) {
-        if(result) _gb->log(" -> Done");
-        else _gb->log(" -> Failed");
+        if(result) _gb->arrow().log("Done");
+        else _gb->arrow().log("Failed");
     }
     return result;
 }

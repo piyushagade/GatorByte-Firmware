@@ -18,10 +18,8 @@
     */
     #include "GB.h"
 
-
     /* 
-        ! Gatorbyte core instance
-        This is a virtual twin of the GatorByte datalogger. All the peripherals and sensors 
+        ! Gatorbyte core instancegb.. All the peripherals and sensors 
         will be "in" this virtual twin. Pass this object to the peripherals/sensors as the
         first parameter.
     */
@@ -218,16 +216,18 @@
     void writetoqueue(CSVary csv) {
         gb.log("Writing to queue file: ", false);
         String currentdataqueuefile = sd.getavailablequeuefilename();
-        gb.log(currentdataqueuefile, false);
-        sd.writequeuefile(currentdataqueuefile, csv.get());
-        gb.arrow().color().log("Done");
+        if (currentdataqueuefile.length() > 0) {
+            gb.log(currentdataqueuefile, false);
+            sd.writequeuefile(currentdataqueuefile, csv.get());
+            gb.arrow().color().log("Done");
+        }
     }
 
     /*
         ! Upload all outstanding queue files to server
         Any files queued on the SD card will be sent one at a time.
     */
-    void uploadtoserver() {
+    void uploadqueuetoserver() {
 
         // Send outstanding data and current data
         if (sd.getqueuecount() > 0) {
@@ -237,7 +237,7 @@
             sntl.watch(120, [] {
             
                 //! Connect to network
-                mcu.connect("cellular");
+                mcu.connect();
                 
                 sntl.kick();
 
@@ -276,6 +276,37 @@
             gb.br().log("Found " + String(sd.getqueuecount()) + " queue files on SD. Skipping upload.");
         }
     }
+
+    /*
+        ! Upload the current CSV file to server
+        This will be executed if the SD card is not detected
+    */
+    void uploadcurrentdatatoserver(CSVary csv) {
+
+        //! Connect to the network
+        sntl.watch(120, [] {
+        
+            //! Connect to network
+            mcu.connect();
+            
+            sntl.kick();
+
+            //! Connect to MQTT servver
+            mqtt.connect("pi", "abe-gb-mqtt");
+            
+        });
+            
+        //! Publish first ten queued-data with MQTT
+        if (CONNECTED_TO_MQTT_BROKER) {
+            gb.log("Sending current data", false);
+
+            // Attempt publishing queue-data
+            if (mqtt.publish("data/set", csv.get())) {
+                gb.arrow().color("green").log("Done");
+            }
+        }
+
+    }
     
     /* 
         ! Peripherals configurations and initializations
@@ -309,44 +340,51 @@
         // gdc.detect(false);
         
         //! Initialize Sentinel
-        sntl.configure({true, 4}, 9).initialize().ack(true).enablebeacon(0);
-        
-        // while(true) mcu.connect("cellular");
+        sntl.configure({true, 4}, 9).initialize().setack(true).enablebeacon(0);
 
+        while(false) {
+            // sntl.configure({true, 4}, 9).initialize();
+            sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+        }
+        
         sntl.watch(120, []() {
-            
-            // Check battery level
-            gb.log("Battery: " + String(mcu.fuel("level")) + " %");
 
             // Initialize SD first to read the config file
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+            
+            // Initialize EEPROM
+            mem.configure({true, SR0}).initialize();
+
+            // mem.writecontrolvariables("REBOOT_FLAG:false");
+            // mem.writecontrolvariables("REBOOT_FLAG:false\nRESET_VARIABLES_FLAG:false\nQUEUE_UPLOAD_INTERVAL:60000\nWLEV_SAMPLING_INTERVAL:30000");
+
+            // // mem.getcontrolvariables();
+            // gb.log(mem.getcontrolvariables());
+
+            // Process device configuration
+            gb.processconfig();
 
             // Read SD config and control files
-            sd.readconfig().readcontrol(set_control_variables);
+            sd.readcontrol(set_control_variables);
 
             // Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
             
-            // Initialize remaining peripherals
+            //! Initialize remaining peripherals
             rtc.configure({true, SR0}).initialize();
             gps.configure({true, SR2, SR10}).initialize();
             bl.configure({true, SR3, SR11}).initialize().on().persistent();
-            mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
 
             //! Configure sensors
-            // rtd.configure({true, SR6, true, 0}).initialize(true);
-            // dox.configure({true, SR8, true, 2}).initialize(true);
-            // ec.configure({true, SR9, true, 3}).initialize(true);
-            // ph.configure({true, SR7, true, 1}).initialize(true);
+            rtd.configure({true, SR6, true, 0}).initialize(true);
+            dox.configure({true, SR8, true, 2}).initialize(true);
+            ec.configure({true, SR9, true, 3}).initialize(true);
+            ph.configure({true, SR7, true, 1}).initialize(true);
 
         });
 
         gb.log("Setup complete");
-
-        // rtd.calibrate("?", 25);
-        // rtd.calibrate("clr", 0);
-        // rtd.calibrate("single", 25);
     }
 
     void preloop () {
@@ -357,30 +395,42 @@
         gb.globals.INIT_SECONDS = rtc.timestamp().toDouble();
 
         gb.br().log("Environment: " + gb.env());
+        gb.log("Battery: " + String(mcu.fuel("level")) + " %");
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
-        gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
+        gb.br().color("white").log("Error report").log(gb.globals.INIT_REPORT);
 
         // Detect GDC
         // gdc.detect(false);
+
+        /*
+            ! Blow the fuse
+            TODO: This might cause the loop() to take too long to execute. Maybe do this only 
+                    if iteration == 0; 
+            This will enable the master sentinel timer.
+
+            When the fuse is set (in GDC), the GB device can have it's
+            battery connected with the power relay turned off without
+            the Sentinel turning on the power relay. This is acheived
+            by disabling the master timer (TIMER 3).
+        */
+        if (!gb.globals.GDC_CONNECTED) {
+            gb.color("cyan").log("Blowing fuse").br();
+            sntl.blow();
+        }
+
     }
 
     void loop () {
 
-        // rtd.readsensor();
-        
-        // return;
-
         // GatorByte loop function
         gb.loop();
-
-        gb.getdevice("buzzer")->play("---...---");
 
         // bl.listen([] (String command) {
         //     Serial.println("Received command: " + command);
         //     if (command.contains("ping")) bl.print("pong");
         // });
 
-        sntl.watch(300, [] {
+        sntl.watch(1200, [] {
 
             /*
                 ! Check the current state of the system and take actions accordingly
@@ -393,20 +443,18 @@
 
             //! Get sensor readings
             float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
-            // float read_rtd_value = 0, read_ph_value = 0, read_ec_value = 0, read_dox_value = 0;
 
             // Initialize CSVary object
             CSVary csv;
-            int timestamp = rtc.timestamp().toInt();
+            String timestamp = rtc.timestamp();
             String date = rtc.date("MM/DD/YY");
             String time = rtc.time("hh:mm");
 
             // Construct CSV object
             csv
                 .clear()
-                .setheader("DEVICESN,MILLIS,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
+                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
                 .set(gb.globals.DEVICE_SN)
-                .set(String(millis() / 1000))
                 .set(timestamp)
                 .set(date)
                 .set(time)
@@ -431,11 +479,12 @@
                 The queue file will be read and data uploaded once the network is established.
                 The file gets deleted if the upload is successful. 
             */
-            writetoqueue(csv);
+            if (sd.device.detected) writetoqueue(csv);
+            else uploadcurrentdatatoserver(csv);
         });
 
         //! Upload data to server
-        uploadtoserver();
+        if (sd.device.detected) uploadqueuetoserver();
 
         // Set sleep configuration
         mcu.set_sleep_callback(on_sleep);

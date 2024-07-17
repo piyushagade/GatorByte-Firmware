@@ -82,9 +82,9 @@ GB_74HC595& GB_74HC595::initialize(int state) {
 
     // // Set all pins to low
     // state == LOW ? this->_sr.setAllLow() : this->_sr.setAllHigh();
-    // _gb->log(" -> All peripherals set to " + String(state == LOW ? "low" : "high"));
+    // _gb->arrow().log("All peripherals set to " + String(state == LOW ? "low" : "high"));
     
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     
     return *this;
 }

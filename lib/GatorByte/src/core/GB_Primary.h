@@ -115,6 +115,7 @@ class GB {
             String TIMEZONE = "EST";
             String SENSOR_MODE = "iterations";
             String SLEEP_MODE = "shallow";
+            String INIT_REPORT = "";
             
             String SERVER_METHOD = "mqtt";
             String SERVER_URL = "/";
@@ -172,6 +173,9 @@ class GB {
         void configure();
         void configure(bool debug);
         void configure(bool debug, String device_id);
+        String getconfig();
+        void processconfig();
+        void processconfig(String configdata);
 
         // Get device by name
         GB_DEVICE* getdevice(String);
@@ -276,6 +280,156 @@ void GB::configure(bool debug) {
 void GB::configure(bool debug, String device_name) {
     this->_debug = debug;
     this->globals.DEVICE_NAME = device_name;
+}
+
+String GB::getconfig() {
+
+    String configdata;
+    this->log("Configuration source", false).arrow().color("white");
+    if (this->getdevice("mem")->hasconfig()) {
+        this->log("EEPROM");
+        configdata = this->getdevice("mem")->getconfig();
+    }
+    else {
+        this->log("SD");
+        configdata = this->getdevice("sd")->readconfig();
+    }
+    
+    return configdata;
+}
+
+void GB::processconfig() {
+
+    // Get configuration data from EEPROM or SD
+    String configdata = this->getconfig();
+
+    // Process config data
+    this->processconfig(configdata);
+}
+
+void GB::processconfig(String configdata) {
+
+    String line, category;
+    unsigned int cursor = 0;
+
+    // Iterate through the C-string, printing each character
+    while (cursor <= configdata.length()) {
+        char c = configdata[cursor];
+        cursor++;
+
+        if (c != '\n') {
+            line += String(c);
+        }
+        else {
+            // If the current line is level 1 header
+            if (line.indexOf(" ") == -1) {
+
+                line.trim();
+                if (line.indexOf("data") == 0) category = line;
+                else if (line.indexOf("device") == 0) category = line;
+                else if (line.indexOf("survey") == 0) category = line;
+                else if (line.indexOf("sleep") == 0) category = line;
+                else if (line.indexOf("server") == 0) category = line;
+                else if (line.indexOf("sim") == 0) category = line;
+                else category = "";
+                line = "";
+
+            }
+            else {
+
+                if (
+                    category.indexOf("data") == 0 || 
+                    category.indexOf("device") == 0 || 
+                    category.indexOf("server") == 0 || 
+                    category.indexOf("sim") == 0 || 
+                    category.indexOf("survey") == 0 || 
+                    category.indexOf("sleep") == 0
+                ) {
+                    string key = line.substring(0, line.indexOf(":")); key.trim(); key.toLowerCase();
+                    string value = line.substring(line.indexOf(":") + 1, line.length()); value.trim();
+                    
+                    // this->log(category + ":" + line);
+
+                    // Remove trailing '\n'
+                    if (key.indexOf("\n") >= 0) key.substring(0, key.length() - 1);
+                    if (value.indexOf("\n") >= 0) value.substring(0, value.length() - 1);
+
+                    if (category == "survey") {
+                        if (key == "mode") this->globals.SURVEY_MODE = value;
+                        if (key == "id") this->globals.PROJECT_ID = value;
+                        if (key == "tz") this->globals.TIMEZONE = value;
+                        if (key == "realtime") {}
+                    }
+
+                    if (category == "data") {
+                        if (key == "mode") this->globals.MODE = value;
+                        if (key == "readuntil") this->globals.SENSOR_MODE = value;
+                    }
+
+                    if (category == "device") {
+                        if (key == "name") this->globals.DEVICE_NAME = value;
+                        if (key == "env") {
+                            this->env(value);
+                            if (this->hasdevice("mem")) this->getdevice("mem")->write(1, value);
+
+                            if (this->globals.GDC_SETUP_READY) {
+                                Serial.println("##CL-GDC-ENV::" + this->env() + "##"); delay(50);
+                            }
+                        }
+
+                        // if (key == "id") this->globals.DEVICE_SN = value;
+                        if (key == "devices") this->globals.DEVICES_LIST = value;
+                    }
+
+                    if (category == "sleep") {
+                        if (key.contains("mode")) this->globals.SLEEP_MODE = value;
+                        if (key.contains("duration")) this->globals.SLEEP_DURATION = (value).toInt();
+                    }
+
+                    if (category == "server") {
+                        if (key.contains("url")) this->globals.SERVER_URL = value;
+                        if (key.contains("port")) this->globals.SERVER_PORT = (value).toInt();
+                        if (key.contains("enabled")) this->globals.OFFLINE_MODE = value == "disabled";
+                    }
+
+                    if (category == "sim") {
+                        if (key.contains("apn")) this->globals.APN = value;
+                        if (key.contains("rat")) this->globals.RAT = value;
+                    }
+                }
+                line = "";
+            }
+        }
+    }
+
+    // If device SN not set
+    if (this->globals.DEVICE_SN == "" || this->globals.DEVICE_SN.contains("-")) {
+        this->getdevice("sntl")->disable();
+        this->br().color("red").log("Device's SN not found in config.");
+        this->color("white").log("Use GatorByte Desktop Client to proceed.");
+        uint8_t now = millis();
+        while (!this->globals.GDC_CONNECTED) {
+            this->getdevice("gdc")->detect(true);
+            if (this->hasdevice("rgb")) this->getdevice("rgb")->on(((millis() - now) / 1000) % 2 ? "red" : "yellow");
+        if (this->hasdevice("buzzer")) this->getdevice("buzzer")->play("-");
+            delay(500);
+        }
+    }
+    
+    this->br();
+    this->heading("Processed configuration");
+    this->log("Environment: " + this->env());
+    this->log("Project ID: " + this->globals.PROJECT_ID);
+    this->log("Device SN: " + this->globals.DEVICE_SN);
+    // this->log("SD SN: " + this->getdevice("sd").sn);
+    this->log("Device name: " + this->globals.DEVICE_NAME);
+    this->log("Survey mode: " + this->globals.SURVEY_MODE);
+    this->log("Read mode: " + this->globals.SENSOR_MODE);
+    this->log("Local timezone: " + this->globals.TIMEZONE);
+    this->log("Server URL: " + this->globals.SERVER_URL + ":" + this->globals.SERVER_PORT);
+    this->log("APN: " + (this->globals.APN.length() > 0 ? this->globals.APN : "Not set"));
+    this->log("Sleep settings: " + this->globals.SLEEP_MODE + ", " + (String(this->globals.SLEEP_DURATION / 60 / 1000) + " min " + String(this->globals.SLEEP_DURATION / 1000 % 60) + " seconds."));
+    this->br();
 }
 
 // Add device library to the virtual GatorByte
@@ -487,11 +641,12 @@ GB& GB::loop(unsigned long wait) {
         if(this->hasdevice("mem")) this->getdevice("mem")->debug("Loop iteration: " + String(this->globals.ITERATION));
         
         // Set interation count and save it to memory
-        if (this->hasdevice("mem")) {
-            if (this->getdevice("mem")->get(8) == "") this->getdevice("mem")->write(8, "0");
-            this->getdevice("mem")->write(8, "0");
+        if (false && this->hasdevice("mem")) {
+            if (this->getdevice("mem")->get(8).length() == 0) this->getdevice("mem")->write(8, this->s2c("0"));
+            this->getdevice("mem")->write(8, this->s2c("0"));
             this->globals.ITERATION = this->getdevice("mem")->get(8).toInt();
         }
+        this->globals.ITERATION++;
 
         if(this->hasdevice("rtc")) this->globals.INIT_SECONDS = this->getdevice("rtc")->timestamp().toDouble();
     }
@@ -570,7 +725,7 @@ GB& GB::loop(unsigned long wait) {
     else if (this->hasdevice("rgb")) this->getdevice("rgb")->on("magenta");
 
     this->getdevice("gdc")->send("gdc-db", "loopiteration=" + String(this->globals.ITERATION));
-
+    
     return *this;
 }
 

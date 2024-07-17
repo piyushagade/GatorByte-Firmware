@@ -378,15 +378,28 @@
         gdc.detect(false);
 
         //! Initialize Sentinel
-        sntl.configure({false}, 9).initialize().ack(true).enablebeacon(0);
+        sntl.configure({false}, 9).initialize().setack(true).enablebeacon(0);
+
+        // while(true) {
+        //     // sntl.configure({true, 4}, 9).initialize();
+        //     sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+        //     mem.configure({true, SR0}).initialize();
+        // }
 
         sntl.watch(120, []() {
 
             // Configure SD
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
             
-            // Read SD config and control files
-            sd.readconfig().readcontrol(set_control_variables);
+            mem.configure({true, SR0}).initialize();
+
+            // mem.writeconfig(sd.readconfig());
+
+            gb.processconfig(sd.readconfig());
+            // gb.processconfig();
+
+            // Read control variables
+            sd.readcontrol(set_control_variables);
             
             // Detect GDC
             gdc.detect(false);
@@ -394,22 +407,34 @@
             //! Configure MQTT broker and connect 
             mqtt.configure(mqtt_message_handler, mqtt_on_connect);
             // http.configure("api.ezbean-lab.com", 80);
+
+            if (false) {
+                sntl.watch(90, [] {
+                    
+                    //! Connect to network
+                    mcu.connect("cellular");
+                    
+                    sntl.kick();
+
+                    //! Connect to MQTT servver
+                    mqtt.connect("pi", "abe-gb-mqtt");
+                    
+                });
+            }
             
-            // Configure other peripherals
+            // Configure other peripheralsm
             rtc.configure({true, SR0}).initialize();
-            mem.configure({true, SR0}).initialize();
             aht.configure({true, SR0}).initialize();
+
+            // Configure BL
+            bl.configure({true, SR3, SR11}).off();
 
             // Configure sensors and actuators
             uss.configure({true, SR7, A6}).persistent().initialize();
 
-        //     // // Configure BL
-        //     // bl.configure({true, SR3, SR11}).initialize().persistent().on();
 
         });
 
-        gb.log("Recovery mode: " + String(gb.controls.getboolean("RECOVERY_MODE")));
-        
         gb.log("Setup complete");
         
     }
@@ -423,10 +448,10 @@
 
         gb.br().log("RTC time: " + rtc.date("MM/DD/YYYY") + ", " + rtc.time("hh:mm:ss"));
         gb.log("Init timestamp: " + String(gb.globals.INIT_SECONDS));
-        gb.log("Water level sensing timeout: " + String(gb.controls.getint("WLEV_SAMPLING_INTERVAL")));
+        gb.log("Water level sensing timeout: " + String(gb.controls.getint("WLEV_SAMPLING_INTERVAL")) + " ms");
         
         // Detect GDC
-        gdc.detect(true);
+        gdc.detect(false);
     }
 
     void loop () {
@@ -515,7 +540,7 @@
             get_control_variable();
         });
 
-        //! Read water level data
+        //! Read water level data and send data to the server
         wlevpiper.pipe(gb.controls.getint("WLEV_SAMPLING_INTERVAL"), true, [] (int counter) {
 
             sntl.watch(90, [] {
@@ -540,7 +565,7 @@
                 mqtt.update();
             });
             
-            sntl.watch(15, [] {
+            sntl.watch(180, [] { 
 
                 // Initialize CSVary object
                 CSVary csv;
@@ -599,7 +624,7 @@
 
                     if (CONNECTED_TO_MQTT_BROKER) {
                         
-                        int MAX_FILES_TO_UPLOAD = 30;
+                        int MAX_FILES_TO_UPLOAD = 50;
                         
                         while (!sd.isqueueempty() && MAX_FILES_TO_UPLOAD-- > 0) {
 
@@ -617,6 +642,8 @@
                             else {
                                 gb.log("Queue file not deleted.");
                             }
+
+                            sntl.kick();
                         }
                     }
                 });
@@ -630,17 +657,16 @@
 
         //! Upload state to the server
         statepiper.pipe(STATE_UPLOAD_INTERVAL, true, [] (int counter) {
-
             send_state();
         });
         
-        // Set sleep configuration
-        mcu.set_sleep_callback(on_sleep);
-        mcu.set_wakeup_callback(on_wakeup);
-        mcu.set_primary_piper(wlevpiper);
+        // // Set sleep configuration
+        // mcu.set_sleep_callback(on_sleep);
+        // mcu.set_wakeup_callback(on_wakeup);
+        // mcu.set_primary_piper(wlevpiper);
 
-        //! Sleep
-        mcu.sleep();
+        // //! Sleep
+        // mcu.sleep();
     }
 
 #endif

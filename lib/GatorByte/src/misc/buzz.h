@@ -154,7 +154,7 @@ GB_BUZZER& GB_BUZZER::initialize() {
 
     this->device.detected = true;
     
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     return *this;
 }
 

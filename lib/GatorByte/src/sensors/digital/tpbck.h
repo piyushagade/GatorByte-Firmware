@@ -61,13 +61,13 @@ GB_TPBCK& GB_TPBCK::configure(PINS pins) {
 GB_TPBCK& GB_TPBCK::initialize() { 
     _gb->init();
     
-    _gb->log("Initializing Tipping Bucket sensor", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
     
     this->on();
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     this->off();
     return *this;    
 }

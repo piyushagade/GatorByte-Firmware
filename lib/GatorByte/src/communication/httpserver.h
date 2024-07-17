@@ -63,9 +63,9 @@ GB_HTTP& GB_HTTP::configure(String ip, int port) {
     this->SERVER_PORT = port;
     _gb->getmcu()->SERVER_PORT = port;
 
-    if(ip.length() == 0) _gb->log(" -> Failed. Invalid Server IP");
-    else if(port <= 0) _gb->log(" -> Failed. Invalid port");
-    else _gb->log(" -> Done");
+    if(ip.length() == 0) _gb->arrow().log("Failed. Invalid Server IP");
+    else if(port <= 0) _gb->arrow().log("Failed. Invalid port");
+    else _gb->arrow().log("Done");
 
     return *this;
 }

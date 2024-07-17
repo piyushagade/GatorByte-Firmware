@@ -155,8 +155,8 @@
     bool GB_ESP32::connect(String type) {
         if(type == "wifi") {
             _gb->log("Connecting to WiFi SSID: " + this->_SSID, false);
-            if(_gb->globals.OFFLINE_MODE) { _gb->log(" -> Skipped"); return false; }
-            if(WiFi.status() == WL_CONNECTED) { _gb->log(" -> Already connected"); return true; }
+            if(_gb->globals.OFFLINE_MODE) { _gb->arrow().log("Skipped"); return false; }
+            if(WiFi.status() == WL_CONNECTED) { _gb->arrow().log("Already connected"); return true; }
 
             if(this->_SSID.length() == 0) { _gb->log("Wi-Fi SSID not provided. See documentation for more information."); return false; }
             if(this->_PASS.length() == 0) { _gb->log("Wi-Fi password not provided. See documentation for more information."); return false; }
@@ -168,7 +168,7 @@
 
             this->_wifi_connected = WiFi.status() == WL_CONNECTED;
             if (this->_wifi_connected) {
-                _gb->log(" -> Done"); 
+                _gb->arrow().log("Done"); 
                 CONNECTED_TO_NETWORK = true;
                 
                 // TODO: Add check for internet connectivity
@@ -176,7 +176,7 @@
                 return true;
             }
             else {
-                _gb->log(" -> Failed. Status code: " + String(WiFi.status())); 
+                _gb->arrow().log("Failed. Status code: " + String(WiFi.status())); 
                 CONNECTED_TO_NETWORK = false;
                 CONNECTED_TO_INTERNET = false;
                 return false;
@@ -238,7 +238,7 @@
         while (WiFi.status() != WL_CONNECTED && counter++ < 10) { this->connect("wifi"); delay(1000); }
 
         if (WiFi.status() != WL_CONNECTED) {
-            _gb->log(" -> Couldn't connect to Wi-Fi SSID: " + this->_SSID);
+            _gb->arrow().log("Couldn't connect to Wi-Fi SSID: " + this->_SSID);
             return result;
         }
         else {
@@ -250,22 +250,22 @@
 
             // Get response
             if (state == HTTP_SUCCESS) {
-                _gb->log(" -> Done");
+                _gb->arrow().log("Done");
 
                 _gb->log("Getting response", false);
                 int code = httpclient.responseStatusCode();
                 if (code == 200) {
-                    _gb->log(" -> Received: " + String(code));
+                    _gb->arrow().log("Received: " + String(code));
                     result = httpclient.responseBody();
                 }
                 else {
-                    _gb->log(" -> Error: " + String(code));
+                    _gb->arrow().log("Error: " + String(code));
                     result = "";
                 }
                 httpclient.stop();
             }
             else {
-                _gb->log(" -> Failed");
+                _gb->arrow().log("Failed");
                 httpclient.stop();
             }
 
@@ -294,22 +294,22 @@
 
         // Get response
         if (state == HTTP_SUCCESS) {
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
 
             _gb->log("Getting response", false);
             int code = httpclient.responseStatusCode();
             if (code == 200) {
-                _gb->log(" -> Received: " + String(code));
+                _gb->arrow().log("Received: " + String(code));
                 result = httpclient.responseBody();
             }
             else {
-                _gb->log(" -> Error: " + String(code));
+                _gb->arrow().log("Error: " + String(code));
                 result = "";
             }
             httpclient.stop();
         }
         else {
-            _gb->log(" -> Failed");
+            _gb->arrow().log("Failed");
             httpclient.stop();
         }
 

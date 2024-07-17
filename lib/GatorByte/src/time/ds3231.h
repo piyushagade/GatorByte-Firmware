@@ -23,7 +23,7 @@ class GB_DS3231 : public GB_DEVICE {
         /* Device meta information */
         DEVICE device = {
             "rtc",
-            "Mini DS3231 Realtime clock"
+            "DS3231 RTC"
         };
 
         /* Device pin information */
@@ -169,7 +169,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
     _gb->init();
     
     this->on();
-    _gb->log("Initializing RTC module", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -203,6 +203,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
             }
             else {
                 this->device.detected = false;
+                _gb->globals.INIT_REPORT += this->device.id;
                 _gb->arrow().log("Not detected. Falling back to MODEM for time", false);
                 
                 if (_gb->globals.GDC_CONNECTED) {
@@ -232,13 +233,14 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
     #else
         if(this->valid()) {
             this->device.detected = true;
-            _gb->log(" -> Done", true);
+            _gb->arrow().log("Done", true);
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(500).play("...");
         }
         else {
             this->device.detected = false;
-            _gb->log(" -> Failed", true);
-            _gb->log(" -> ", false);
+            _gb->globals.INIT_REPORT += this->device.id;
+            _gb->arrow().log("Failed", true);
+            _gb->arrow().log("", false);
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(500).play("---");
             // this->sync();
         }
@@ -309,8 +311,8 @@ GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
             String atcommand = "AT+CCLK=\"" + datestr + "," + timestr + "\"";
 
             String res = _gb->getmcu()->send_at_command(atcommand);
-            if (res.endsWith("OK")) _gb->log(" -> Done");
-            else _gb->log(" -> Failed");
+            if (res.endsWith("OK")) _gb->arrow().log("Done");
+            else _gb->arrow().log("Failed");
 
         }
     #endif
@@ -340,8 +342,8 @@ GB_DS3231& GB_DS3231::sync(DateTime dt) {
     if (this->device.detected) {
         this->on();delay(50);
         _rtc.adjust(dt); delay(50);
-        _gb->log(" -> RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
-        _gb->log(" -> Done");
+        _gb->arrow().log("RTC set to " + String(_rtc.now().month()) + "/" + String(_rtc.now().day()) + "/" + String(_rtc.now().year()) + ", " + String(_rtc.now().hour()) + ":" + String(_rtc.now().minute()) + ":" + String(_rtc.now().second()), false);
+        _gb->arrow().log("Done");
         this->off();
     }
     else _gb->arrow().color("red").log("Not detected. Skipping.").color();

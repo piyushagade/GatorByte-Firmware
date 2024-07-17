@@ -98,7 +98,7 @@ GB_AHT10& GB_AHT10::initialize() { initialize(true); }
 GB_AHT10& GB_AHT10::initialize(bool testdevice) { 
     _gb->init();
     
-    _gb->log("Initializing AHT10 sensor", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -126,6 +126,7 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
         }
         else {
             _gb->arrow().log("Not detected"); 
+            _gb->globals.INIT_REPORT += this->device.id;
             
             if (_gb->globals.GDC_CONNECTED) {
                 this->off();

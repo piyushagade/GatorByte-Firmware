@@ -43,12 +43,12 @@ GB_SIM7XXX::GB_SIM7XXX(GB &gb) {
 // Initialize the module
 GB_SIM7XXX& GB_SIM7XXX::initialize() { 
     this->on();
-    _gb->log("Initializing SIM7XXX module", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
     
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     this->off();
     return *this;
 }

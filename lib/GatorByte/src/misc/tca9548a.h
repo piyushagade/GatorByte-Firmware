@@ -68,14 +68,14 @@ GB_TCA9548A& GB_TCA9548A::initialize() {
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
 
-    _gb->log("Initializing TCA9548A", false);
+    _gb->log("Initializing " + this->device.name, false);
 
     Wire.begin();
     Wire.beginTransmission(this->_tca_address);
     bool success = Wire.endTransmission() == 0;
     this->device.detected = success;
 
-    _gb->log(success ? " -> Done" : " -> Failed");
+    _gb->arrow().log(success ? "Done" : "Failed");
 
     return *this;
 }
@@ -109,10 +109,10 @@ void GB_TCA9548A::selectexclusive(int channel) {
         // Update control byte
         this->_control_byte = 1 << channel;
 
-        if (log) _gb->log(" -> Done (" + String(this->_control_byte) + ")");
+        if (log) _gb->arrow().log("Done (" + String(this->_control_byte) + ")");
     }
     else {
-        if (log) _gb->log(" -> Failed");
+        if (log) _gb->arrow().log("Failed");
     }
     
     delay(25);
@@ -151,10 +151,10 @@ void GB_TCA9548A::select(int channel) {
         // Update control byte
         this->_control_byte |= 1 << channel;
 
-        if (log) _gb->log(" -> Done (" + String(this->_control_byte) + ")");
+        if (log) _gb->arrow().log("Done (" + String(this->_control_byte) + ")");
     }
     else {
-        if (log) _gb->log(" -> Failed");
+        if (log) _gb->arrow().log("Failed");
     }
 
     delay(25);

@@ -4,28 +4,35 @@
 ##
 
 import subprocess, sys
-def checklib (library_name):
-	try:
-		__import__(library_name)
-		return True
-	except ImportError:
-		return False
+def checklib(library_name):
+    try:
+        __import__(library_name)
+        return True
+    except ImportError:
+        return False
 
-def install(name):
-    subprocess.call([sys.executable, '-m', 'pip', 'install', name])
+def install(package_name):
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package_name])
 
-def remove(name):
-    subprocess.call([sys.executable, '-m', 'pip', 'uninstall', name])
+def remove(package_name):
+    # Attempt to uninstall the package
+    result = subprocess.run([sys.executable, '-m', 'pip', 'uninstall', package_name], capture_output=True, text=True)
+    
+    # Check the return code to determine success or failure
+    if result.returncode != 0:
+        print(f"Failed to uninstall {package_name}. Error message:\n{result.stderr}")
+    else:
+        print(f"{package_name} uninstalled successfully.")
 
 # Remove 'serial'
-if (checklib("serial")):
+if (False and checklib("serial")):
 	try:
 		remove("serial")
 	except Exception as e:
 		print(f'Failed to install library: {str(e)}')
 
 # Install 'pyserial'
-if (not checklib("pyserial")):
+if (False and not checklib("pyserial")):
 	try:
 		install("pyserial")
 	except Exception as e:

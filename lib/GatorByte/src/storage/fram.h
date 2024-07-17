@@ -119,11 +119,11 @@ bool GB_FRAM::rwtest() {
     counter = 0;
     while (!_flash->eraseSection(address, 4 * KiB) && counter++ <= 500) delay(10);
     
-    if (prompt != readstring) _gb->log(" -> R/W code mismatch");
+    if (prompt != readstring) _gb->arrow().log("R/W code mismatch");
     else {
-        if (!success) _gb->log(" -> Failed");
+        if (!success) _gb->arrow().log("Failed");
         else {
-            _gb->log(" -> Read: " + String(readtimer) + " ms, Write: " + String(writetimer) + " ms.");
+            _gb->arrow().log("Read: " + String(readtimer) + " ms, Write: " + String(writetimer) + " ms.");
         }
     }
 
@@ -201,13 +201,13 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
     // Default speed value
     else this->_sck_speed = SPI_HALF_SPEED;
 
-    _gb->log("Initializing FRAM module", false);
+    _gb->log("Initializing " + this->device.name, false);
     if(_gb->globals.WRITE_DATA_TO_SD){
 
         bool success = this->_flash->begin();
 
         if(!success) {
-            _gb->log(" -> Not detected", true);
+            _gb->arrow().log("Not detected", true);
             this->device.detected = false;
 
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(250).play("---");
@@ -219,7 +219,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             // Get FRAM capacity
             float capacity = _flash->getCapacity() / 1024 / 1024;
             
-            _gb->log(" -> Done (" + String(capacity) + " MB)", false);
+            _gb->arrow().log("Done (" + String(capacity) + " MB)", false);
 
             // Perform R/W test
             bool result = this->rwtest();
@@ -229,7 +229,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(250).revert();
         }
     }
-    else _gb->log(" -> Disabled", true);
+    else _gb->arrow().log("Disabled", true);
     this->off();
     return *this;
 }

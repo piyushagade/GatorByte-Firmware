@@ -84,7 +84,7 @@ String GB_EADC::status() {
 GB_EADC& GB_EADC::initialize() { 
     _gb->init();
 
-    _gb->log("Initializing ADS1115 module", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -100,20 +100,20 @@ GB_EADC& GB_EADC::initialize() {
         this->device.detected = true;
 
         if (_gb->globals.GDC_CONNECTED) {
-            _gb->log(" -> Done", true);
+            _gb->arrow().log("Done", true);
             this->off();
             return *this;
         }
 
         // Read channels
         _gb->space(1).log("(" + String(this->readchannel(0)) + ", " + String(this->readchannel(1)) + ", " + String(this->readchannel(2)) + ", " + String(this->readchannel(3)) + ")", false);
-        _gb->log(" -> Done", true);
+        _gb->arrow().log("Done", true);
         
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--..").wait(500).play("...");
     }
     else {
         this->device.detected = false;
-        _gb->log(" -> Not detected", true);
+        _gb->arrow().log("Not detected", true);
 
         if (_gb->globals.GDC_CONNECTED) {
             this->off();
@@ -223,7 +223,7 @@ float GB_EADC::getdepth(uint8_t channel) {
     // Ignore invalid readings
     if (depth < 0) depth = 0.0;
     
-    // _gb->log(" -> " + String(depth));
+    // _gb->arrow().log("" + String(depth));
 
     return depth;
 }

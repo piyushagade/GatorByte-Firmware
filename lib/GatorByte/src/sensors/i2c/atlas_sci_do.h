@@ -108,12 +108,21 @@ GB_AT_SCI_DO& GB_AT_SCI_DO::initialize (bool testdevice) {
     if (testdevice) {
         if (this->device.detected) {
             this->on();
-            _gb->log(" -> " + this->_device_info());
+            _gb->arrow().log("" + this->_device_info());
             this->off();
+            
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("..").wait(250).play("...");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert();
         }
-        else _gb->log(" -> Not detected");
+        else {
+            _gb->arrow().log("Not detected");
+            _gb->globals.INIT_REPORT += this->device.id;
+            
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("..").wait(250).play("---");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert();
+        }
     }
-    else _gb->log(this->device.detected ? " -> Done" : " -> Not detected");
+    else _gb->arrow().log(this->device.detected ? "Done" : "Not detected");
     return *this;
 }
 
@@ -262,8 +271,9 @@ float GB_AT_SCI_DO::readsensor() {
     if (this->_gb->globals.MODE == "dummy") {
         this->_gb->log("Reading " + this->device.name, false);
         float value = random(5, 29) + random(0, 100) / 100.00;
-        this->_gb->log(" -> Dummy value: " + String(value));
+        this->_gb->arrow().log("Dummy value: " + String(value));
         _gb->getdevice("gdc")->send("gdc-db", "dox=" + String(value));
+        this->off();
         return value;
     }
 
@@ -271,7 +281,7 @@ float GB_AT_SCI_DO::readsensor() {
     this->device.detected = this->_test_connection();
     if (!this->device.detected) {
         this->_gb->log("Reading " + this->device.name, false);
-        this->_gb->log(" -> Device not detected");
+        this->_gb->arrow().log("Device not detected");
         _gb->getdevice("gdc")->send("gdc-db", "dox=" + String(-1));
         return -1;
     }
@@ -301,20 +311,36 @@ float GB_AT_SCI_DO::readsensor() {
         // Read sensors until readings are stable
         while (stability_counter < min_stable_reading_count && ATTEMPT_COUNT++ < MAX_ATTEMPTS) {
             
-            // Get updated sensor value
-            sensor_value = this->_read();
-
-            // Check if the readings are stable
-            float difference = abs(sensor_value - previous_reading);
-            if (difference <= stability_delta) {
-                stability_counter++;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("green"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
+            bool dummy = _gb->env() == "development";
+            // if (digitalRead(A6) == HIGH) {
+            //     _gb->arrow().color("yellow").log("Override", false);
+            //     dummy = true;
+            // }
+            
+            if (dummy) {
+                _gb->arrow().log("Dummy data");
+                sensor_value = 8.88;
+                return sensor_value;
             }
             else {
-                stability_counter = 0;
-                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("yellow"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
+                    
+                // Get updated sensor value
+                sensor_value = this->_read();
+
+                // Check if the readings are stable
+                float difference = abs(sensor_value - previous_reading);
+                if (difference <= stability_delta) {
+                    stability_counter++;
+                    if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("green"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
+                    if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".");
+                }
+                else {
+                    stability_counter = 0;
+                    if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("yellow"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
+                    if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-");
+                }
+                previous_reading = sensor_value;
             }
-            previous_reading = sensor_value;
         }
     }
 
@@ -340,11 +366,11 @@ float GB_AT_SCI_DO::readsensor() {
     
     else this->_gb->log("Reading " + this->device.name + " -> Sensor read mode not provided", false);
     
-    this->_gb->log(" -> " + String(sensor_value) + (abs(sensor_value - 48) <= 1 ? " -> The sensor might not be connected." : "") + " (" + String((millis() - timer) / 1000) + " seconds)");
+    this->_gb->arrow().log("" + String(sensor_value) + (abs(sensor_value - 48) <= 1 ? " -> The sensor might not be connected." : "") + " (" + String((millis() - timer) / 1000) + " seconds)");
 
     this->deactivate();
     this->off();
-    // this->_gb->log(" -> " + String(sensor_value));
+    // this->_gb->arrow().log("" + String(sensor_value));
     _gb->getdevice("gdc")->send("gdc-db", "dox=" + String(sensor_value));
 
     return sensor_value;
@@ -433,7 +459,7 @@ String GB_AT_SCI_DO::_device_info() {
 
     String data = "ID: " + String(_acquired_data.i2c_data[1]) + " v" + String(_acquired_data.i2c_data[0]);
 
-    // _gb->log(" -> ", false);
+    // _gb->arrow().log("", false);
     // _gb->log("ID: ", false);
     // _gb->log(String(_acquired_data.i2c_data[1]), false);
     // _gb->log(" v", false);

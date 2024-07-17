@@ -184,10 +184,10 @@ class GB_NB1500 : public GB_MCU {
         String send_at_command(String);
         String getsn();
 
-        int CELL_SIGNAL_LOWER_BOUND = 5;
-        int REBOOTCOUNTER = 0;
+        uint8_t CELL_SIGNAL_LOWER_BOUND = 5;
+        uint8_t REBOOTCOUNTER = 0;
         int RSSI = 0;
-        int CELL_FAILURE_COUNT_LIMIT = 3;
+        uint8_t CELL_FAILURE_COUNT_LIMIT = 3;
 
     private:
         GB *_gb;
@@ -371,7 +371,7 @@ String GB_NB1500::send_at_command(String command) {
         res.remove(res.length() - 3, res.length());
     }
 
-    // _gb->log(" -> " + res);
+    // _gb->arrow().log("" + res);
 
     return res;
 }
@@ -483,7 +483,7 @@ GB_NB1500& GB_NB1500::startbreathtimer() {
     // ISR_Timer.setInterval(_gb->globals.BREATHE_INTERVAL, breathe);
     // ITimer.enableTimer();
     
-    _gb->log(" -> Started");
+    _gb->arrow().log("Started");
     
     return *this;
 }
@@ -495,7 +495,7 @@ GB_NB1500& GB_NB1500::stopbreathtimer() {
     
     // ITimer.disableTimer();
 
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     
     return *this;
 }
@@ -533,13 +533,12 @@ int GB_NB1500::getrssi() {
         
         // Reacquire the signal strength
         int counter = 0;
-        while ((rssi == 0 || rssi == 99) && counter++ < 5) {
+        while ((rssi == 0 || rssi == 99) && counter++ < 8) {
             cesq = this->_sara_at_command("AT+CSQ");
             rssi = cesq.substring(0, cesq.indexOf(",")).toInt();
             this->watchdog("reset");
             delay(2000);
         }
-
     }
 
     this->RSSI = rssi;
@@ -572,18 +571,19 @@ bool GB_NB1500::getfplmn() {
 
         // Check if the list is not empty. Clear the list if it is not empty
         if(fplmnresponse != "\"FFFFFFFFFFFFFFFFFFFFFFFF\"") {
-            _gb->log(" -> " + fplmnresponse + " -> List not empty. Try clearing the list.", false);
-            _gb->log(" -> Done");
+            _gb->arrow().log("" + fplmnresponse, false).arrow().log("List not empty.", false);
+            _gb->arrow().log("Done");
             return false;
         }
         else {
-            _gb->log(" -> " + fplmnresponse + " -> List is empty.");
+            _gb->arrow().log("" + fplmnresponse, false).arrow().log("List is empty.");
             return true;
         }
         this->watchdog("disable");
     }
     else {
-        _gb->log("FPLMN list -> Skipped reading from the SIM.");
+        _gb->log("FPLMN list", false).arrow().log("Skipped reading from the SIM.");
+        return false;
     }
 }
 
@@ -594,13 +594,13 @@ bool GB_NB1500::clearfplmn() {
     
     if (!clearresponse.endsWith("+CRSM: 144,0,\"\"")) {
         _gb->getdevice("rgb")->on("red");
-        _gb->log(" -> Failed");
+        _gb->arrow().log("Failed");
         return false;
     }
     
     // If clearing the list succeeded
     else {
-        _gb->log(" -> Done. Restarting the device.");
+        _gb->arrow().log("Done. Restarting the device.");
         _gb->getdevice("rgb")->on("red");
         delay(3000);
         _gb->getmcu()->reset("mcu");
@@ -625,7 +625,7 @@ String GB_NB1500::gettime() {
 }
 
 String GB_NB1500::getfirmwareinfo() {
-    if (!MODEM_INITIALIZED) return "MODEM not initialized";
+    if (!MODEM_INITIALIZED) return "MODEM uninitialized";
     this->watchdog("enable", 8000);
     String response = ""; int count = 0; 
     // while (response == "" && count++ < 5) {
@@ -636,23 +636,21 @@ String GB_NB1500::getfirmwareinfo() {
 }
 
 String GB_NB1500:: getimei() {
-    if (!MODEM_INITIALIZED) return "MODEM not initialized";
+    if (!MODEM_INITIALIZED) return "MODEM uninitialized";
     this->watchdog("enable", 4000);
     if (this->_modem_fw.indexOf("05.06") >= 0 || this->_modem_fw.indexOf("A.02.00") >= 0) {
         this->watchdog("disable");
         return "Skipped. Outdated MODEM firmware.";
     }
     
-    String imei = ""; int count = 0; 
-    // while (imei == "" && count++ < 5) {
+    String imei = "";
     imei = this->_sara_at_command("AT+CGSN"); delay(100);
-    // }
     this->watchdog("disable");
     return imei;
 }
 
 String GB_NB1500::geticcid() {
-    if (!MODEM_INITIALIZED) return "MODEM not initialized";
+    if (!MODEM_INITIALIZED) return "MODEM uninitialized";
     this->watchdog("enable", 4000);
 
     if (this->_modem_fw.indexOf("05.06") >= 0 || this->_modem_fw.indexOf("A.02.00") >= 0) {
@@ -662,11 +660,26 @@ String GB_NB1500::geticcid() {
 
     String simcheckresponse = this->_sara_at_command("AT+CCID");
     
-    if (simcheckresponse.startsWith("ERROR")) {
+    if (simcheckresponse.length() == 0) {
         SIM_DETECTED = 0;
         this->watchdog("disable");
+
+        // Reboot MODEM
+        bool success = MODEM.reset(); if (success) delay(8000);
+        
+        // Get ICCID
+        simcheckresponse = this->_sara_at_command("AT+CCID");
+
+        return "Error reading ICCID: " + simcheckresponse;
+    }
+    
+    else if (simcheckresponse.startsWith("ERROR")) {
+        SIM_DETECTED = 0;
+        this->watchdog("disable");
+
         return "SIM not detected";
     }
+    
     else if (simcheckresponse.startsWith("+CME ERROR: SIM failure")) {
         SIM_DETECTED = 0;
         this->watchdog("disable");
@@ -693,7 +706,7 @@ GB_NB1500& GB_NB1500::pin(String pin) {
 GB_NB1500& GB_NB1500::apn(String apn) { 
     apn.trim();
     _gb->globals.APN = apn;
-    if (_gb->globals.APN.length() > 0) _gb->log("Setting APN -> " + _gb->globals.APN);
+    if (_gb->globals.APN.length() > 0) _gb->log("Setting APN", false).arrow().log(_gb->globals.APN);
     return *this; 
 }
 
@@ -814,19 +827,19 @@ bool GB_NB1500::connect(bool diagnostics) {
                 int start = 0;
                 start = millis();
                 bool nbstatus = this->_register_network();
-                _gb->log(" -> Registration: " + String(nbstatus ? "Succeded" : "Failed"), false);
-                _gb->log(" -> Delay: " + String((millis() - start) / 1000) + " seconds ", false);
+                _gb->arrow().log("Registration: " + String(nbstatus ? "Succeded" : "Failed"), false);
+                _gb->arrow().log("Delay: " + String((millis() - start) / 1000) + " seconds ", false);
 
                 //! Attach GPRS
                 bool gprsstatus = false;
                 if (nbstatus) {
                     start = millis();
                     gprsstatus = this->_attach_gprs();
-                    _gb->log(" -> GPRS: " + String(gprsstatus ? "Attached" : "Detached"), false);
-                    _gb->log(" -> Delay: " + String((millis() - start) / 1000) + " seconds ", false);
+                    _gb->arrow().log("GPRS: " + String(gprsstatus ? "Attached" : "Detached"), false);
+                    _gb->arrow().log("Delay: " + String((millis() - start) / 1000) + " seconds ", false);
                 }
                 else {
-                    _gb->log(" -> GPRS: Skipped", false);
+                    _gb->arrow().log("GPRS: Skipped", false);
                 }
                 
                 //! Get connection status
@@ -864,19 +877,19 @@ bool GB_NB1500::connect(bool diagnostics) {
                 bool nbstatus = this->_register_network();
                 int start = 0;
                 start = millis();
-                _gb->log(" -> Registration: " + String(nbstatus ? "Succeded" : "Failed"), false);
-                _gb->log(" -> Delay: " + String((millis() - start) / 1000) + " seconds ", false);
+                _gb->arrow().log("Registration: " + String(nbstatus ? "Succeded" : "Failed"), false);
+                _gb->arrow().log("Delay: " + String((millis() - start) / 1000) + " seconds ", false);
 
                 //! Attach GPRS
                 bool gprsstatus = false;
                 if (nbstatus) {
                     start = millis();
                     gprsstatus = this->_attach_gprs();
-                    _gb->log(" -> GPRS: " + String(gprsstatus ? "Attached" : "Detached"), false);
-                    _gb->log(" -> Delay: " + String((millis() - start) / 1000) + " seconds ", false);
+                    _gb->arrow().log("GPRS: " + String(gprsstatus ? "Attached" : "Detached"), false);
+                    _gb->arrow().log("Delay: " + String((millis() - start) / 1000) + " seconds ", false);
                 }
                 else {
-                    _gb->log(" -> GPRS: Skipped", false);
+                    _gb->arrow().log("GPRS: Skipped", false);
                 }
 
                 //! Get connection status
@@ -904,7 +917,7 @@ bool GB_NB1500::connect(bool diagnostics) {
             // Slow blink green 3 times
             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->blink("green", 3, 300, 200);
 
-            _gb->log(" -> Done ");
+            _gb->arrow().log("Done ");
             
             // Get cellular info
             String cops = this->getoperator();
@@ -913,7 +926,7 @@ bool GB_NB1500::connect(bool diagnostics) {
             int ratint = cops.substring(cops.lastIndexOf(",") + 1, cops.length()).toInt();
             String rat = String(ratint == 7 ? "LTE CAT-M1" : ratint == 8 ? "EC-GSM-IoT" : ratint == 9 ? "E-UTRAN" : "Other");
             cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
-            _gb->log("Operator: " + cops + " -> Mode: " + mode + " -> RAT: " + rat);
+            _gb->log("Operator: " + cops, false).arrow().log("Mode: " + mode, false).arrow().log("RAT: " + rat);
 
             if (cops == "ERROR" || cops == "NO CARRIER") {
                 this->_cellular_connected = false;
@@ -927,7 +940,7 @@ bool GB_NB1500::connect(bool diagnostics) {
             CONNECTED_TO_NETWORK = false;
             CONNECTED_TO_INTERNET = false;
 
-            _gb->log(" -> Failed");
+            _gb->arrow().log("Failed");
             
             // Buzz
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".-");
@@ -987,9 +1000,9 @@ bool GB_NB1500::disconnect(String type) {
             _gprs.detachGPRS();
             CONNECTED_TO_NETWORK = false;
             CONNECTED_TO_INTERNET = false;
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
         }
-        else _gb->log(" -> Skipping. MODEM not initialized");
+        else _gb->arrow().log("Skipping. MODEM not initialized");
 
         //! Shutdown MODEM
         _gb->log("Shutting down MODEM", false);
@@ -1000,12 +1013,12 @@ bool GB_NB1500::disconnect(String type) {
             CONNECTED_TO_INTERNET = false;
             CONNECTED_TO_MQTT_BROKER = false;
             CONNECTED_TO_API_SERVER = false;
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
         }
-        else _gb->log(" -> Skipping. MODEM not initialized");
+        else _gb->arrow().log("Skipping. MODEM not initialized");
 
         // Report MODEM's power state
-        _gb->log("Powering MODEM off " + String(MODEM.isPowerOn() ? " -> Failed" : " -> Succeeded"));
+        _gb->log("Powering MODEM off ", false).arrow().log(String(MODEM.isPowerOn() ? "Failed" : "Succeeded"));
 
         return _gprs.status() != GPRS_READY;
     }
@@ -1021,13 +1034,13 @@ bool GB_NB1500::reconnect() {
 bool GB_NB1500::reconnect(String type) {
     if(type == "cellular") {
 
-        _gb->log("Reconnecting cellular -> ", false);
+        _gb->log("Reconnecting cellular", false);
 
         // Reconnect to cellular network
         this->disconnect("cellular");
         this->connect();
         bool success = _gprs.status() == GPRS_READY;
-        _gb->log(success ? "Done": "Failed");
+        _gb->arrow().log(success ? "Done": "Failed");
         return success;
     }
     return false;
@@ -1109,7 +1122,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     //     for(int i = 0; i < 15; i++) {
     //         _gb->getdevice("ioe")->writepin(i, LOW);
     //     }
-    //     _gb->log(" -> Done"); delay(300);
+    //     _gb->arrow().log("Done"); delay(300);
     // }
 
     //! Conclude watchdog operations
@@ -1153,11 +1166,11 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
 
     if (this->_HAS_PRIMARY_PIPER) _gb->log("Primary piper milliseconds before hot: " + String(this->_primary_piper.secondsuntilhot()) + " seconds.");
     if (this->_HAS_SECONDARY_PIPER) _gb->log("Secondary piper milliseconds before hot: " + String(this->_secondary_piper.secondsuntilhot()) + " seconds.");
-    if (this->_primary_piper.secondsuntilhot() * 1000 < milliseconds) {
+    if (this->_HAS_PRIMARY_PIPER && this->_primary_piper.secondsuntilhot() * 1000 < milliseconds) {
         _gb->color("yellow").log("Overriding sleep duration to the primary piper duration.");
         milliseconds = this->_primary_piper.secondsuntilhot() * 1000;
     }
-    if (this->_secondary_piper.secondsuntilhot() * 1000 < milliseconds) {
+    if (this->_HAS_SECONDARY_PIPER && this->_secondary_piper.secondsuntilhot() * 1000 < milliseconds) {
         _gb->color("yellow").log("Overriding sleep duration to the secondary piper duration.");
         milliseconds = this->_secondary_piper.secondsuntilhot() * 1000;
     }
@@ -1367,7 +1380,7 @@ bool GB_NB1500::checklist(string categories) {
     //! Initialize MODEM
     _gb->log("Initializing MODEM", false);
     if (_nbModem.begin()) {
-        _gb->log(" -> Succeeded", false);
+        _gb->arrow().log("Succeeded", false);
 
         // Reset watchdog timer
         this->watchdog("reset");
@@ -1384,7 +1397,7 @@ bool GB_NB1500::checklist(string categories) {
         }
 
         /* 
-            Keep the following block for documentation
+          * Keep the following block for documentation
             There was an issue with MODEM firmware 5.06, where it would randomly freeze
             and cause NB1500 to freeze as well. 
             Numerous software-level solutions (see below) were tested, and none of them
@@ -1415,10 +1428,10 @@ bool GB_NB1500::checklist(string categories) {
             }
 
         MODEM_INITIALIZED = result;
-        _gb->log(result ? " -> Succeeded" : " -> Failed (" + String(esc.modem_init_failure) + ", " + String(this->CELL_FAILURE_COUNT_LIMIT) + ")", false);
+        _gb->arrow().log(result ? "Succeeded" : "Failed (Count: " + String(esc.modem_init_failure) + ")", false);
     }
     
-    _gb->log(MODEM.isPowerOn() ? " -> On" : " -> Off");
+    _gb->arrow().log(MODEM.isPowerOn() ? "On" : "Off");
 
     // Stop watchdog timer
     this->watchdog("disable");
@@ -1456,7 +1469,7 @@ bool GB_NB1500::checklist(string categories) {
     if (categories.contains("fw")) {
         String fwinfo = this->getfirmwareinfo();
         this->_modem_fw = fwinfo;
-        _gb->log("MODEM firmware -> " + fwinfo);
+        _gb->log("MODEM firmware", false).arrow().log(fwinfo);
     }
     
     /*
@@ -1466,7 +1479,7 @@ bool GB_NB1500::checklist(string categories) {
 
     if (categories.contains("imei")) {
         String imei = this->getimei();
-        _gb->log("Checking MODEM -> Succeeded -> IMEI: " + imei);
+        _gb->log("Checking MODEM", false).arrow().log("Succeeded", false).arrow().log("IMEI: " + imei);
     }
 
     /*
@@ -1476,7 +1489,7 @@ bool GB_NB1500::checklist(string categories) {
 
     if (categories.contains("iccid")) {
         String iccid = this->geticcid();
-        _gb->log("Checking SIM -> ICCID: " + iccid);
+        _gb->log("Checking SIM", false).arrow().log("ICCID: " + iccid);
     }
     else SIM_DETECTED = 1;
 
@@ -1544,7 +1557,7 @@ bool GB_NB1500::reset(String type) {
         // Start watchdog timer
         this->watchdog("enable", 8000);
 
-        _gb->log("Resetting MODEM -> ", false);
+        _gb->log("Resetting MODEM", false);
         bool response = false;
         delay(100);
 
@@ -1553,8 +1566,7 @@ bool GB_NB1500::reset(String type) {
               Increment counter that track number of times the MODEM had to be reset.
         */
         if (_gb->hasdevice("mem")) {
-            _gb->log("Updating MODEM reboot counter");
-            if (_gb->getdevice("mem")->get(10) == "") _gb->getdevice("mem")->write(10, "0");
+            if (_gb->getdevice("mem")->get(10) == "") _gb->getdevice("mem")->write(10, _gb->s2c("0"));
             _gb->getdevice("mem")->write(10, String(_gb->getdevice("mem")->get(10).toInt() + 1));
         }
 
@@ -1565,10 +1577,10 @@ bool GB_NB1500::reset(String type) {
         response = MODEM.reset();
         delay(100);
 
-        // // MODEM begin
-        // response = MODEM.begin(false);
-        // _gb->log(response ? "Done" : "Failed");
-        // delay(100);
+        // MODEM begin
+        response = MODEM.begin(false);
+        _gb->arrow().log(response ? "Done" : "Failed");
+        delay(100);
         
         // Disable watchdog timer
         this->watchdog("disable");

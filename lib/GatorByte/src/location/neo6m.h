@@ -69,9 +69,9 @@ class GB_NEO_6M : public GB_DEVICE {
         bool _update();
         void _delay(unsigned long);
 
-        long _last_fix_timestamp = 0;
-        long _last_update_timestamp = 0;
-        long _last_update_expiration_duration = 30 * 1000;
+        unsigned long _last_fix_timestamp = 0;
+        unsigned long _last_update_timestamp = 0;
+        unsigned long _last_update_expiration_duration = 30 * 1000;
         uint8_t MAX_ATTEMPTS = 20;
         String _manufacturer = "";
 
@@ -149,14 +149,14 @@ GB_NEO_6M& GB_NEO_6M::initialize() {
     for (unsigned long start = millis(); millis() - start < 6000;){ 
         while (_gb->serial.hardware->available() && !this->device.detected) {
             String c = _gb->serial.hardware->readStringUntil('\n');
-            
+
             this->device.detected = c.indexOf("u-blox") > -1 || 
                                     c.indexOf("$GP") > -1 || 
                                     c.indexOf(",,") > -1;
             
             if (this->device.detected) {
                 if (c.indexOf("u-blox") > -1) {
-                    _gb->log(" -> Manufacturer: u-Blox", false);
+                    _gb->arrow().log("Manufacturer: u-Blox", false);
                     this->_manufacturer = "u-Blox";
                     break;
                 }
@@ -166,8 +166,11 @@ GB_NEO_6M& GB_NEO_6M::initialize() {
         if (this->device.detected && this->_manufacturer.length() > 0) break;
     }
 
-    if (this->device.detected) _gb->log(" -> Done");
-    else _gb->log(" -> Not detected");
+    if (this->device.detected) _gb->arrow().log("Done", false).arrow().color("white").log((digitalRead(A6) == HIGH) ? "Override" : "Regular");
+    else {
+        _gb->arrow().log("Not detected");
+        _gb->globals.INIT_REPORT += this->device.id;
+    }
 
     this->off();
     return *this;
@@ -188,6 +191,7 @@ GB_NEO_6M& GB_NEO_6M::on(String type) {
         if (type == "power") digitalWrite(this->pins.enable, HIGH);
         if (type == "comm") digitalWrite(this->pins.comm, HIGH);
     }
+    return *this;
 }
 GB_NEO_6M& GB_NEO_6M::on() {
     this->on("comm");
@@ -237,15 +241,15 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
     _gb->log("Reading " + this->device.name, false);
 
     // Dummy data requested?
-    dummy = dummy || _gb->globals.MODE == "dummy";
+    dummy = dummy || _gb->globals.MODE == "dummy" || _gb->env() == "development";
 
-    if (digitalRead(A6) == HIGH) {
-        _gb->arrow().color("yellow").log("Dummy mode override detected");
-        dummy = true;
-    }
+    // if (digitalRead(A6) == HIGH) {
+    //     _gb->arrow().color("yellow").log("Override", false);
+    //     dummy = true;
+    // }
 
     if (dummy) {
-        _gb->arrow().log("Sending dummy data");
+        _gb->arrow().log("Dummy data");
         this->data = {true, false, false, 12.34, -56.78, 4, 2, "unknown", 0, 0, 0, 0, 5, 3};
         _gb->getdevice("gdc")->send("gdc-db", "gps=true,12.34, -56.78,99");
         return this->data;
@@ -253,34 +257,34 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
     else {
 
         // Return if the devices file on SD does not contain gps
-        if (_gb->hasdevice("sd") && _gb->globals.DEVICES_LIST.indexOf("gps") == -1) {
+        if (_gb->globals.DEVICES_LIST.indexOf("gps") == -1) {
             _gb->arrow().log("Not found in config.");
             return this->data; 
         };
 
         // Return if GPS not connected/not communicating
         if (!this->device.detected) {
-            _gb->arrow().log("Skipped. Not detected."); 
+            _gb->arrow().log("Not detected"); 
             return this->data;
         }
 
         // Update GPS data if '_last_update_expiration_duration' has passed since last update
         if (
-            _last_update_timestamp == 0 ||
-            millis() - _last_update_timestamp > _last_update_expiration_duration
+            _last_update_timestamp == 0 || millis() - _last_update_timestamp > _last_update_expiration_duration
         ) {
             _last_update_timestamp = millis();
+            _gb->arrow().log("Getting GPS fix");
             this->_update();
         }
         else {
-            _gb->log("Last GPS fix was less than 30 seconds ago. Returning stale coordinates.");
+            _gb->arrow().log("Last GPS fix was less than 30 seconds ago.");
         }
 
         // Indicate on the RGB led if or not GPS fix was achieved
-        if (_gb->hasdevice("rgb") && this->fix()) _gb->getdevice("rgb")->on("blue"); else _gb->getdevice("rgb")->on("red");
         
+        if (this->fix() && _gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue"); else _gb->getdevice("rgb")->on("red");
         // Indicate on the buzzer led if or not GPS fix was achieved
-        if (_gb->hasdevice("buzzer") && this->fix()) _gb->getdevice("buzzer")->play(".."); else _gb->getdevice("buzzer")->play("--");
+        if (this->fix() && _gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".."); else _gb->getdevice("buzzer")->play("--");
 
         // Send data to GDC
         _gb->getdevice("gdc")->send("gdc-db", "gps=" + String(this->data.has_fix) + "," + String(this->data.lat) + "," + String(this->data.lng) + "," + String(this->data.attempts));
@@ -342,9 +346,7 @@ void GB_NEO_6M::_delay(unsigned long ms) {
 bool GB_NEO_6M::_update() {
 
     if (!this->device.detected) return false;
-
     this->on();
-
 
     // Set the baud rate
     _gb->serial.hardware->begin(this->_baud);
@@ -352,7 +354,6 @@ bool GB_NEO_6M::_update() {
     // Start watchdog timer
     _gb->getmcu()->watchdog("enable");
     
-
     // Read the serial data
     this->_read_nmea();
     
@@ -364,35 +365,45 @@ bool GB_NEO_6M::_update() {
     bool ledstate = false;
     uint8_t lasttoggle = millis();
     while (
-            // Minimum 5 updates if the GPS has a lock, but the data is not the latest
-            (
-                counter < 5 &&
-                _neo.location.isValid() &&
-                !_neo.location.isUpdated()
-            ) ||
 
-            // If no lock yet and the counter hasn't expired
-            (
-                counter < this->MAX_ATTEMPTS &&
-                    (
-                        !_neo.location.isValid() ||
-                        !_neo.location.isUpdated()
-                    )
-            )
+        // Minimum 5 updates if the GPS has a lock, but the data is not the latest
+        (
+            counter < 5 &&
+            _neo.location.isValid() &&
+            !_neo.location.isUpdated()
+        ) ||
 
-    ) 
-    {
-        
-        // Reset watchdog timer
-        _gb->getmcu()->watchdog("reset");
-        
-        _gb->log("  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
-        
-        // // Log to SD card
-        // if (_gb->hasdevice("sd")) _gb->getdevice("sd")->debug("operations", "  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
+        // If no lock yet and the counter hasn't expired
+        (
+            counter < this->MAX_ATTEMPTS &&
+                (
+                    !_neo.location.isValid() ||
+                    !_neo.location.isUpdated()
+                )
+        )
+    ) {
 
-        // Read the serial data
-        this->_read_nmea();
+        bool dummy = _gb->env() == "development";
+        // if (digitalRead(A6) == HIGH) {
+        //     _gb->color("yellow").log("Override", false);
+        //     dummy = true;
+        // }
+
+        if (dummy) {
+            _gb->arrow().log("Dummy data");
+            this->data = {true, false, false, 12.34, -56.78, 4, 2, "unknown", 0, 0, 0, 0, 5, 3};
+            return true;
+        }
+        else {
+        
+            // Reset watchdog timer
+            _gb->getmcu()->watchdog("reset");
+            
+            _gb->log("  Attempt: " + String(counter + 1) + ", Valid: " + String(_neo.location.isValid() ? "Yes" : "No") + ", Updated: " + String(_neo.location.isUpdated() ? "Yes" : "No"));
+            
+            // Read the serial data
+            this->_read_nmea();
+        }
 
         // Toggle led
         if (lasttoggle == 0 || millis() - lasttoggle > 1000) {

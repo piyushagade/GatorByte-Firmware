@@ -24,7 +24,7 @@ class GB_HC_05 : public GB_DEVICE {
         GB_HC_05& initialize();
         bool initialized();
         GB_HC_05& configure(PINS);
-        GB_HC_05& setup(String name, String pass);
+        // GB_HC_05& setup(String name, String pass);
         GB_HC_05& persistent();
         GB_HC_05& on();
         GB_HC_05& off();
@@ -58,12 +58,12 @@ GB_HC_05::GB_HC_05(GB &gb) {
 // Initialize the module
 GB_HC_05& GB_HC_05::initialize() { 
     this->on();
-    _gb->log("Initializing Bluetooth module", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
     _gb->serial.hardware->begin(this->_baud);
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     
     // Test connection
     this->send_at_command("AT");
@@ -91,26 +91,26 @@ GB_HC_05& GB_HC_05::configure(PINS pins) {
     return *this;
 }
 
-GB_HC_05& GB_HC_05::setup(String name, String pass) {
-    _gb->log("\nTo configure Bluetooth name and pin, press and hold \"reset\" button on HC-05 before the countdown ends.");
-    for(int i = 3; i >= 0; i--) { delay(1000); _gb->log(String(i) + "  ", false); }
-    _gb->log("\n");
-    this->on();delay(500);
+// GB_HC_05& GB_HC_05::setup(String name, String pass) {
+//     _gb->log("\nTo configure Bluetooth name and pin, press and hold \"reset\" button on HC-05 before the countdown ends.");
+//     for(int i = 3; i >= 0; i--) { delay(1000); _gb->log(String(i) + "  ", false); }
+//     _gb->log("\n");
+//     this->on();delay(500);
 
-    // // Test connection
-    // this->send_at_command("AT");
-    // _gb->log(this->_read_at_command_response());
+//     // // Test connection
+//     // this->send_at_command("AT");
+//     // _gb->log(this->_read_at_command_response());
 
-    // Set device BL name
-    this->send_at_command("AT+NAME=" + String(name));
+//     // Set device BL name
+//     this->send_at_command("AT+NAME=" + String(name));
 
-    // Set device BL PIN
-    this->send_at_command("AT+PSWD=" + String(pass));
+//     // Set device BL PIN
+//     this->send_at_command("AT+PSWD=" + String(pass));
 
-    this->off();
-    delay(500);
-    return *this;
-}
+//     this->off();
+//     delay(500);
+//     return *this;
+// }
 
 /*
     Keeps device persistently on

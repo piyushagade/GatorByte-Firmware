@@ -63,7 +63,7 @@ GB_TCA9548A& GB_TCA9548A::configure(PINS pins) {
 GB_TCA9548A& GB_TCA9548A::initialize() { 
     _gb->init();
 
-    _gb->log("Initializing TCA9548A", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -73,7 +73,7 @@ GB_TCA9548A& GB_TCA9548A::initialize() {
     bool success = Wire.endTransmission() == 0;
     this->device.detected = success;
 
-    _gb->log(success ? " -> Done" : " -> Failed");
+    _gb->arrow().log(success ? "Done" : "Failed");
 
 
     // Initialize variables

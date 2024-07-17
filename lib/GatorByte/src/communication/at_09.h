@@ -90,7 +90,7 @@ GB_AT_09& GB_AT_09::initialize() {
     _gb->init();
 
     this->on();
-    _gb->log("Initializing AT-09 BL module ", false);
+    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -118,9 +118,12 @@ GB_AT_09& GB_AT_09::initialize() {
     if (this->device.detected) {
         
         if (_gb->globals.GDC_CONNECTED) {
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
             this->off("comm");
             return *this;
+        }
+        else {
+            _gb->arrow().color("green").log("Done", false).color();
         }
 
         String namedata = this->send_at_command("AT+NAME");
@@ -130,11 +133,11 @@ GB_AT_09& GB_AT_09::initialize() {
         String pin = pindata.substring(pindata.indexOf('=') + 1, pindata.length());
         
         if (name == "BT05") {
-            _gb->log(" -> Default name detected.", false);
+            _gb->arrow().log("Default name", false);
 
             if (_gb->globals.DEVICE_NAME.length() > 0) {
                 
-                _gb->log(" -> Changing to 'GB/" + _gb->globals.DEVICE_NAME + "'", false);
+                _gb->arrow().log("Changing to 'GB/" + _gb->globals.DEVICE_NAME + "'", false);
 
                 delay(100); bool namesuccess = this->send_at_command("AT+NAMEGB/" + _gb->globals.DEVICE_NAME) != "ERROR";
                 delay(500);
@@ -148,19 +151,20 @@ GB_AT_09& GB_AT_09::initialize() {
                 pin = pindata.substring(pindata.indexOf('=') + 1, pindata.length());
                 this->_pin = pin;
 
-                _gb->log(namesuccess && pinsuccess ? " -> Success" : " -> Failed", false);
+                _gb->arrow().log(namesuccess && pinsuccess ? "Success" : "Failed", false);
             }
         }
 
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..");
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
 
-        _gb->log(" -> Name: " + name, false);
+        _gb->arrow().log("Name: " + name, false);
         _gb->log(", PIN: " + pin);
     }
 
     else {
-        _gb->log(" -> Not detected");
+        _gb->arrow().log("Not detected");
+        _gb->globals.INIT_REPORT += this->device.id;
 
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..").wait(250).play("---");
         if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
@@ -189,13 +193,13 @@ GB_AT_09& GB_AT_09::setname(String name) {
     this->on();
     delay(100);
 
-    _gb->log("Updating BL module's name", false);
+    _gb->log("Updating name", false);
     
     // Set device BL name
     this->send_at_command("AT+NAME" + name);
     this->_name = name;
     
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     return *this;
 }
 
@@ -203,13 +207,13 @@ GB_AT_09& GB_AT_09::setpin(String pin) {
     this->on();
     delay(100);
 
-    _gb->log("Updating BL module's PIN", false);
+    _gb->log("Updating PIN", false);
     this->_pin = pin;
     
     // Set device BL name
     this->send_at_command("AT+PIN" + pin);
     
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
     return *this;
 }
 
@@ -223,7 +227,7 @@ String GB_AT_09::getpin() {
 
 //TODO:Can't change name and pin together
 GB_AT_09& GB_AT_09::setup(String name, String pin) {
-    _gb->log("Updating BL module's name and PIN", false);
+    _gb->log("Updating name and PIN", false);
     this->on();delay(500);
     
     // Set device BL name
@@ -234,7 +238,7 @@ GB_AT_09& GB_AT_09::setup(String name, String pin) {
     this->send_at_command("AT+PIN" + pin);delay(500);
     this->_pin = pin;
 
-    _gb->log(" -> Done");
+    _gb->arrow().log("Done");
 
     this->off("comm");
     return *this;

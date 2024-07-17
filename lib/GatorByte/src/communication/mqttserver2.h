@@ -65,9 +65,9 @@ GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback ptr)
     this->CLIENT_ID = client_id;
     this->_message_handler = ptr;
 
-    if(ip.length() == 0) _gb->log(" -> Failed. Invalid Broker IP");
-    else if(port <= 0) _gb->log(" -> Failed. Invalid Broker port");
-    else _gb->log(" -> Done");
+    if(ip.length() == 0) _gb->arrow().log("Failed. Invalid Broker IP");
+    else if(port <= 0) _gb->arrow().log("Failed. Invalid Broker port");
+    else _gb->arrow().log("Done");
 
     return *this;
 }
@@ -90,12 +90,12 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
     int counter = 0;
     while(!success && counter++ < 5) { success = _mqttclient.connect(_gb->s2c(this->CLIENT_ID), _gb->s2c(this->USER), _gb->s2c(this->PASS)); delay(1000); };
     if (success) {
-        _gb->log(" -> Done");
+        _gb->arrow().log("Done");
           
         // Start listener for incoming messages
         _mqttclient.onMessage(_message_handler);
     }
-    else _gb->log(" -> Failed");
+    else _gb->arrow().log("Failed");
     return *this;
 }
 
@@ -114,7 +114,7 @@ GB_MQTT& GB_MQTT::update() {
         }
 
         if (this->_mqttclient.connected()) {
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
 
             // Duplicate subscriptions list to tmp
             String tmp[sizeof(this->_subscription_list)/sizeof(this->_subscription_list[0])];
@@ -137,7 +137,7 @@ GB_MQTT& GB_MQTT::update() {
 
             this->_subscription_count = 0;
         }
-        else _gb->log(" -> Failed", true);
+        else _gb->arrow().log("Failed", true);
     }
     else this->_mqttclient.loop();
     
@@ -151,13 +151,13 @@ void GB_MQTT::publish(String topic, String data) {
     if(this->_mqttclient.connected()) {
         unsigned long start = millis();
         bool success = _mqttclient.publish(_gb->s2c(topic), _gb->s2c(data));
-        if (success) _gb->log(" -> Done");
-        else _gb->log(" -> Failed");
+        if (success) _gb->arrow().log("Done");
+        else _gb->arrow().log("Failed");
 
         int difference = millis() - start;
         _gb->log("Time taken: " + String(difference / 1000) + " seconds");
     }
-    else _gb->log(" -> Broker disconnected");
+    else _gb->arrow().log("Broker disconnected");
 }
 
 // Subscribe to a topic
@@ -167,12 +167,12 @@ void GB_MQTT::subscribe(String topic) {
     if(this->_mqttclient.connected()) {
         bool success = _mqttclient.subscribe(_gb->s2c(topic), 0);
         if (success) {
-            _gb->log(" -> Done");
+            _gb->arrow().log("Done");
             this->_subscription_list[this->_subscription_count++] = topic;
         }
-        else _gb->log(" -> Failed");
+        else _gb->arrow().log("Failed");
     }
-    else _gb->log(" -> Broker disconnected");
+    else _gb->arrow().log("Broker disconnected");
 }
 
 #endif

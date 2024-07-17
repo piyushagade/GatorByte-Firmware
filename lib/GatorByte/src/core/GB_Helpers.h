@@ -159,6 +159,8 @@ GB& GB::color(String color) {
 GB& GB::log(String message) { return this->log(String(message), true); }
 GB& GB::log(String message, bool newline) {
 
+    // return *this;
+
     /*
         When MODEMDEBUG is enabled, only show MODEM debug messages
     */
@@ -248,7 +250,7 @@ GB& GB::heading(String message) {
 
     this->log(message, true);
     String underline = "";
-    for (int i = 0; i < message.length(); i++) underline += "-";
+    for (uint8_t i = 0; i < message.length(); i++) underline += "-";
     this->log(underline, true);
 
     return *this;

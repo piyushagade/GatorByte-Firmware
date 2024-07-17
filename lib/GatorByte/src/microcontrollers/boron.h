@@ -106,7 +106,7 @@
             if(!_gb->CONNECT_TO_PARTICLE_CLOUD) return;
             _gb->log("Connecting to particle cloud.", false);
             Particle.connect(); 
-            _gb->log(" -> Done", true);
+            _gb->arrow().log("Done", true);
         }
         else if(type == "cellular") {
             if(_gb->globals.OFFLINE_MODE) return;

@@ -72,9 +72,9 @@ GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback_t pt
     this->CLIENT_ID = client_id;
     this->_message_handler = ptr;
 
-    if(ip.length() == 0) _gb->log(" -> Failed. Invalid Broker IP");
-    else if(port <= 0) _gb->log(" -> Failed. Invalid Broker port");
-    else _gb->log(" -> Done");
+    if(ip.length() == 0) _gb->arrow().log("Failed. Invalid Broker IP");
+    else if(port <= 0) _gb->arrow().log("Failed. Invalid Broker port");
+    else _gb->arrow().log("Done");
 
     return *this;
 }
@@ -101,9 +101,9 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
     int counter = 0;
     while(!success && counter++ < 5) { success = this->_mqttclient.connect(_gb->s2c(this->BROKER_IP), this->BROKER_PORT); delay(1000); }
     
-    if (success) _gb->log(" -> Done");
+    if (success) _gb->arrow().log("Done");
     else {
-        _gb->log(" -> Failed: ", false);
+        _gb->arrow().log("Failed: ", false);
         _gb->log(this->_mqttclient.connectError());
     }
     return *this;
@@ -145,8 +145,8 @@ void GB_MQTT::publish(String topic, String data) {
 
     // unsigned long start = millis();
     // bool success = _mqttclient.publish(_gb->s2c(topic), _gb->s2c(data));
-    // if (success) _gb->log(" -> Done");
-    // else _gb->log(" -> Failed");
+    // if (success) _gb->arrow().log("Done");
+    // else _gb->arrow().log("Failed");
 
     // int difference = millis() - start;
     // _gb->log("Time taken: " + String(difference / 1000) + " seconds");
@@ -159,9 +159,9 @@ void GB_MQTT::subscribe(String topic) {
 
     bool success = _mqttclient.subscribe(_gb->s2c(topic), 0);
     if (success) {
-        _gb->log(" -> Done");
+        _gb->arrow().log("Done");
     }
-    else _gb->log(" -> Failed");
+    else _gb->arrow().log("Failed");
 }
 
 // Get broker connection status
@@ -171,8 +171,8 @@ bool GB_MQTT::connected() {
 bool GB_MQTT::connected(bool log) {
     if(log) _gb->log("Broker connection: ", false);
     bool result = _mqttclient.connected();
-    if (result) if(log) _gb->log(" -> Done");
-    else if(log) _gb->log(" -> Failed");
+    if (result) if(log) _gb->arrow().log("Done");
+    else if(log) _gb->arrow().log("Failed");
     return result;
 }
 

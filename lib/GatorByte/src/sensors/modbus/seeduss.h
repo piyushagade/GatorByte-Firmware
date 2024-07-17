@@ -95,8 +95,13 @@ GB_USS& GB_USS::initialize() {
     digitalWrite(this->pins.control, LOW);
 
     // Read value
-    long distance = this->read();
-    _gb->log(" -> Distance: " + String(distance), false);
+    long distance = -1;
+    int8_t counter = 5;
+    while (counter-- > 0 && distance == -1) {
+        distance = this->read();
+        // _gb->log(String(distance));
+    }
+    _gb->arrow().log("Distance: " + String(distance), false);
 
     bool success = distance > 0;
     _gb->arrow().log(success ? "Done" : "Not detected");

@@ -40,7 +40,7 @@ GB_PWRMTR& GB_PWRMTR::initialize(int address) {
     _gb->includedevice(this->device.id, this->device.name);
     
     this->_address = address;
-    _gb->log(" -> Address set to " + String(this->_address));
+    _gb->arrow().log("Address set to " + String(this->_address));
     return *this;
 }
 

@@ -86,7 +86,7 @@ GB_MPU6050& GB_MPU6050::initialize() {
     this->on();
     // _acc.initialize(); 
     bool success = _acc.testConnection();
-    _gb->log(success ? " -> Done": " -> Failed");
+    _gb->arrow().log(success ? "Done": "Failed");
     this->off();
     return *this;    
 }

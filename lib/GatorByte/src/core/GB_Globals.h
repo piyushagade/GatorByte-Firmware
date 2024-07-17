@@ -40,8 +40,8 @@ bool CONNECTED_TO_API_SERVER = 0;
     These reset on microcontroller reset
 */
 struct ERROR_STATES_COUNTER {
-    int no_cell_signal = 0;
-    int low_cell_signal = 0;
-    int modem_init_failure = 0;
-    int invalid_rtc_timestamp = 0;
+    uint8_t no_cell_signal = 0;
+    uint8_t low_cell_signal = 0;
+    uint8_t modem_init_failure = 0;
+    uint8_t invalid_rtc_timestamp = 0;
 } esc;

@@ -10,7 +10,7 @@
             
             virtual bool testdevice() { return false; };
             virtual bool connected() { return false; };
-            virtual bool connect(String) { return false; };
+            virtual bool connect() { return false; };
             virtual bool stopclient() { return false; };
             virtual bool disconnect(String) { return false; };
             virtual bool reconnect(String) { return false; };
@@ -75,6 +75,9 @@
             virtual bool testdevice() { Serial.println("test from Base class"); return false; };
             virtual String status() { Serial.println("status from Base class"); return ""; };
 
+            //! MQTT functions
+            virtual GB_DEVICE& connect(String, String) { return *this; };
+
             //! IOE functions
             virtual int readpin(int) { return LOW; };
             virtual void writepin(int, int) { return; };
@@ -137,7 +140,6 @@
             virtual File openFile(String reason, String file_name) { File file; return file; }
             virtual String readLinesFromSD(String file_name, int lines_at_a_time, int starting_line) { return ""; }
             virtual String writeLinesToSD(String file_name, String data) { return ""; }
-            virtual GB_DEVICE& readconfig() { return *this; };
 
             virtual bool renamedir(String originalfolder, String newfolder) { return false;}
             virtual bool mkdir(String path) { return false;}
@@ -159,6 +161,7 @@
             virtual GB_DEVICE& updatecontrolbool(String, bool, callback_t_on_control) { return *this; };
             virtual GB_DEVICE& updatecontrolint(String, int, callback_t_on_control) { return *this; };
             virtual GB_DEVICE& updatecontrolfloat(String, double, callback_t_on_control) { return *this; };
+            virtual String readconfig() { return ""; };
             virtual String readconfig(String filename, String type) { return ""; };
             virtual String readconfig(String type) { return ""; };
             virtual void updateconfig(String filename, String type, String data) { return; };
@@ -166,6 +169,9 @@
             virtual GB_DEVICE& initialize() { return *this; };
 
             //! EEPROM module functions
+            virtual bool hasconfig() { return false; };
+            virtual String getconfig() { return ""; };
+            virtual GB_DEVICE& writeconfig(String) { return *this; };
             virtual String get(int) { return ""; };
             virtual GB_DEVICE& write(int, String) { return *this; };
             virtual GB_DEVICE& write(int, char*) { return *this; };
@@ -174,16 +180,17 @@
             virtual bool memtest() { return false; };
             
             //! GatorByte desktop client (GDC)
-            virtual GB_DEVICE& detect() {  Serial.println("GDC detect from Base class"); return *this; };
-            virtual GB_DEVICE& detect(bool) { Serial.println("GDC detect from Base class"); return *this; };
-            virtual GB_DEVICE& loop() { Serial.println("GDC loop from Base class"); return *this; };
+            virtual GB_DEVICE& detect() {  return *this; };
+            virtual GB_DEVICE& detect(bool) { return *this; };
+            virtual GB_DEVICE& loop() { return *this; };
             virtual bool send(String category, String data) { return false; }
             
             //! GatorByte Sentinel (SNTL)
-            virtual void tell(String command) { return; };
-            virtual void tell(String command, int attempts) { return; };
-            virtual GB_DEVICE& enable() { Serial.println("enable from Base class"); return *this; };
-            virtual GB_DEVICE& disable() { Serial.println("disable from Base class"); return *this; };
+            virtual uint16_t tell(int command) { return 0; };
+            virtual uint16_t tell(int command, int attempts) { return 0; };
+            virtual GB_DEVICE& enable() { return *this; };
+            virtual GB_DEVICE& disable() { return *this; };
+            virtual GB_DEVICE& blow() { return *this; };
             virtual uint16_t reboot() { return 0; }
 
         private:

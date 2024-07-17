@@ -29,6 +29,7 @@ class GB_SNTL : public GB_DEVICE {
         GB_SNTL& enablebeacon(uint8_t);
         GB_SNTL& disablebeacon();
         GB_SNTL& triggerbeacon();
+        GB_SNTL& blow();
 
         GB_SNTL& formatmemory();
         uint16_t readmemory(int);
@@ -36,7 +37,7 @@ class GB_SNTL : public GB_DEVICE {
         GB_SNTL& interval(String, int);
         uint16_t tell(int);
         uint16_t tell(int, int);
-        GB_SNTL& ack(bool);
+        GB_SNTL& setack(bool);
         uint16_t ask();
         GB_SNTL& configure();
         GB_SNTL& configure(PINS pins, int address);
@@ -120,7 +121,7 @@ GB_SNTL& GB_SNTL::initialize() {
     while (!success && counter-- >= 0) { delay(250); success = this->ping(); }
     this->device.detected = success;
 
-    _gb->log(success ? " -> Done" : " -> Not detected", false);
+    _gb->arrow().log(success ? "Done" : "Not detected", false);
 
     if (_gb->globals.GDC_CONNECTED) {
         _gb->log();
@@ -132,38 +133,42 @@ GB_SNTL& GB_SNTL::initialize() {
     if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer")->play(success ? "x.x.." : "xx");
     if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(success ? "green" : "red").wait(250).revert(); 
 
+    //! Turn off sentinence on initialize
+    if (success) {
+        this->disable();
+    }
+
     //! Get Sentinel firmware version, and fault counts
     if (success) {
 
         // Get F/W version
-        delay(500);
-        float firmwareversion = this->fwversion(); delay(100);
+        delay(0);
+        this->fwversion();
         _gb->log(success ? " (F/W v" + String(this->_fw_version) + "), " : ", ", false);
 
-        // Fetch fault counters
-        this->fetchfaultcounters();
+        // // Fetch fault counters
+        // this->fetchfaultcounters();
 
-        // int primaryfaultcounter; while (primaryfaultcounter > 45000) { primaryfaultcounter = this->tell(0x8, 1); delay(100); }
-        // int secondaryfaultcounter; while (secondaryfaultcounter > 45000) { secondaryfaultcounter = this->tell(0x9, 1); delay(100); }
+        // // int primaryfaultcounter; while (primaryfaultcounter > 45000) { primaryfaultcounter = this->tell(0x8, 1); delay(100); }
+        // // int secondaryfaultcounter; while (secondaryfaultcounter > 45000) { secondaryfaultcounter = this->tell(0x9, 1); delay(100); }
 
-        // _gb->globals.FAULTS_PRIMARY = primaryfaultcounter;
-        // _gb->globals.FAULTS_SECONDARY = secondaryfaultcounter;
+        // // _gb->globals.FAULTS_PRIMARY = primaryfaultcounter;
+        // // _gb->globals.FAULTS_SECONDARY = secondaryfaultcounter;
 
-        // _gb->log(" -> Fault counters: " + String(_gb->globals.FAULTS_PRIMARY) + ", " + String(_gb->globals.FAULTS_SECONDARY));
+        // // _gb->arrow().log("Fault counters: " + String(_gb->globals.FAULTS_PRIMARY) + ", " + String(_gb->globals.FAULTS_SECONDARY));
 
         // Get ACK status (for the location refer to Sentinel's F/W)
         uint8_t ackstatuslocation = 0x0E;
         this->_no_ack = this->readmemory(ackstatuslocation) == 0;
 
-        _gb->log("Sentinel ACK status: " + String(this->_no_ack ? " Disabled" : " Enabled"));
+        _gb->log("ACK: " + String(this->_no_ack ? " Disabled" : " Enabled"));
         
     }
 
     else {
-        _gb->log(" -> Failed");
+        _gb->arrow().log("Failed");
+        _gb->globals.INIT_REPORT += this->device.id;
     }
-
-    if (success) this->disable();
     // this->_enablelog();
     
     return *this;
@@ -239,7 +244,7 @@ uint16_t GB_SNTL::shutdown() {
     int code = 0x12;
     uint16_t response = this->tell(code);
     bool success = this->_parse_response(response);
-    _gb->log(success ? " -> Done (" + String(response) + ")" : " -> Failed (" + String(response) + ")");
+    _gb->arrow().log(success ? "Done (" + String(response) + ")" : "Failed (" + String(response) + ")");
     return success;
 }
 
@@ -279,7 +284,7 @@ uint16_t GB_SNTL::resetfaultcounters() {
     int code = 0x07;
     u_int16_t response = this->tell(code);
 
-    _gb->log(this->_parse_response(response) ? " -> Done" : " -> Failed");
+    _gb->arrow().log(this->_parse_response(response) ? "Done" : "Failed");
     return response;
 }
 
@@ -289,7 +294,7 @@ uint16_t GB_SNTL::resetfaultcounters() {
 GB_SNTL& GB_SNTL::fetchfaultcounters() { 
     if (this->debug) _gb->log("Fetching fault counters", false);
     if (!this->device.detected) { 
-        if (this->debug) _gb->log(" -> Not initialized"); 
+        if (this->debug) _gb->arrow().log("Not initialized"); 
         return *this; 
     }
 
@@ -300,7 +305,7 @@ GB_SNTL& GB_SNTL::fetchfaultcounters() {
     _gb->globals.FAULTS_PRIMARY = primaryfaultcounter;
     _gb->globals.FAULTS_SECONDARY = secondaryfaultcounter;
 
-    if (this->debug) _gb->log(" -> Fault counters: " + String(primaryfaultcounter) + ", " + String(secondaryfaultcounter));
+    if (this->debug) _gb->arrow().log("Fault counters: " + String(primaryfaultcounter) + ", " + String(secondaryfaultcounter));
 
     return *this;
 }
@@ -311,7 +316,7 @@ GB_SNTL& GB_SNTL::fetchfaultcounters() {
 GB_SNTL& GB_SNTL::timer(uint8_t timerid) { 
     if (timerid < 0 || timerid > 2) _gb->log("Invalid timer ID: " + String(timerid));
     if (this->debug) _gb->log("Selecting timer ID: " + String(timerid), false);
-    if (!this->device.detected) { if (this->debug) _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { if (this->debug) _gb->arrow().log("Not initialized"); return *this; }
     
     uint16_t response;
     bool success = false;
@@ -328,7 +333,7 @@ GB_SNTL& GB_SNTL::timer(uint8_t timerid) {
         success = response == 0 || response == 6;
     }
 
-    if (this->debug) _gb->log(success ? " -> Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : " -> Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
+    if (this->debug) _gb->arrow().log(success ? "Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : "Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
     if (success) {
         if (this->_comm_attempts >= 3) _gb->globals.LOGPREFIX = "\033[1;30;43m \033[0m";
         else _gb->globals.LOGPREFIX = "\033[1;30;46m \033[0m";
@@ -338,6 +343,14 @@ GB_SNTL& GB_SNTL::timer(uint8_t timerid) {
     return *this;
 }
 
+
+/*
+    Blow the fuse (enable master timer)
+*/
+GB_SNTL& GB_SNTL::blow() { 
+    this->tell(38);
+    return *this;
+}
 
 /*
     Enable sentinence
@@ -353,7 +366,7 @@ GB_SNTL& GB_SNTL::enable() {
 */
 GB_SNTL& GB_SNTL::enable(bool stubborn) { 
     if (this->debug) _gb->log("Enabling Sentinel monitor", false);
-    if (!this->device.detected) { if (this->debug) _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { if (this->debug) _gb->arrow().log("Not initialized"); return *this; }
     
     uint16_t response;
     bool success = false;
@@ -374,7 +387,7 @@ GB_SNTL& GB_SNTL::enable(bool stubborn) {
         }
     }
 
-    if (this->debug) _gb->log(success ? " -> Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : " -> Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
+    if (this->debug) _gb->arrow().log(success ? "Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : "Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
     if (success) {
         if (this->_comm_attempts >= 3) _gb->globals.LOGPREFIX = "\033[1;30;43m \033[0m";
         else _gb->globals.LOGPREFIX = "\033[1;30;46m \033[0m";
@@ -392,7 +405,7 @@ GB_SNTL& GB_SNTL::disable() {
 }
 GB_SNTL& GB_SNTL::disable(bool stubborn) { 
     if (this->debug) _gb->log("Disabling Sentinel monitor", false);
-    if (!this->device.detected) { if (this->debug) _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { if (this->debug) _gb->arrow().log("Not initialized"); return *this; }
     
     uint16_t response;
     bool success = false;
@@ -414,7 +427,7 @@ GB_SNTL& GB_SNTL::disable(bool stubborn) {
         }
     }
 
-    if (this->debug) _gb->log(success ? " -> Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : " -> Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
+    if (this->debug) _gb->arrow().log(success ? "Done (" + String(this->_comm_attempts) + ", " + String(response) + ")" : "Failed (" + String(this->_comm_attempts) + ", " + String(response) + ")");
     if (success) _gb->globals.LOGPREFIX = "\033[1;30;40m \033[0m";
     
     return *this;
@@ -482,7 +495,7 @@ GB_SNTL& GB_SNTL::interval(String type, int seconds) {
     // Make 5 attempts to send the request
     uint8_t resbase = this->tell(basecommand);
     uint8_t resmult = this->tell(multipliercommand);
-    if (this->debug) _gb->log(this->_parse_response(resbase) && this->_parse_response(resmult) ? " -> Done (" + String(this->_comm_attempts) + ", " + String(resbase) + ", " + String(resmult) + ")" : " -> Failed(" + String(this->_comm_attempts) + ", " + String(resbase) + ", " + String(resmult) + ")");
+    if (this->debug) _gb->arrow().log(this->_parse_response(resbase) && this->_parse_response(resmult) ? "Done (" + String(this->_comm_attempts) + ", " + String(resbase) + ", " + String(resmult) + ")" : "Failed(" + String(this->_comm_attempts) + ", " + String(resbase) + ", " + String(resmult) + ")");
 
     // Lock config
     this->_lockconfig();
@@ -500,7 +513,7 @@ GB_SNTL& GB_SNTL::formatmemory() {
     // Make 3 attempts to send the request
     uint16_t response = this->tell(0x15, 1);
     delay(8000);
-    _gb->log(response != -1 && response != 65535 ? " -> Done" : " -> Failed");
+    _gb->arrow().log(response != -1 && response != 65535 ? "Done" : "Failed");
 
     return *this;
 }
@@ -513,24 +526,24 @@ uint16_t GB_SNTL::readmemory(int location) {
     uint16_t baseindex = 70;
     uint16_t code = baseindex + location;
 
-    _gb->log("EEPROM read: " + String(location) + ", Code: " + String(code), false);
+    // _gb->log("EEPROM read: " + String(location), false);
 
     // Make 3 attempts to send the request
     uint16_t response = this->tell(code, 1);
-    _gb->log(" -> " + String(response));
+    // _gb->arrow().log("" + String(response));
 
     return response;
 }
 
 /*
-    One shot no acknowledge
+    One shot, no acknowledge
 */
-GB_SNTL& GB_SNTL::ack(bool state) { 
+GB_SNTL& GB_SNTL::setack(bool state) { 
     
     uint8_t code = state ? 0x13 : 0x14;
     this->tell(code, 2); 
     this->_no_ack = !state;
-    delay(500);
+    delay(100);
     return *this;
 }
 
@@ -625,11 +638,11 @@ GB_SNTL& GB_SNTL::kick() {
     
     // // _gb->log("Kicking Sentinel monitor", false);
     // if (!this->device.detected) { 
-    //     // _gb->log(" -> Not initialized"); 
+    //     // _gb->arrow().log("Not initialized"); 
     //     return *this; 
     // }
     // uint16_t response = this->tell(0x20, 5); 
-    // // _gb->log(response != -1 && response != 65535 ? " -> Done (" + String(response) + ")" : " -> Failed (" + String(response) + ")");
+    // // _gb->arrow().log(response != -1 && response != 65535 ? "Done (" + String(response) + ")" : "Failed (" + String(response) + ")");
     
     return *this;
 }
@@ -640,23 +653,23 @@ GB_SNTL& GB_SNTL::kick() {
 */
 GB_SNTL& GB_SNTL::enablebeacon(uint8_t mode) { 
     _gb->log("Enabling beacon", false);
-    if (!this->device.detected) { _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     
     // Enable beacon
-    uint16_t enresponse = this->tell(0x0F, 5); 
+    uint16_t enresponse = this->tell(0x0F, 8); 
 
     // Set mode
     bool validmode = 0 <= mode && mode <= 3;
     if (!validmode) {
-        _gb->log(" -> Invalid mode provided. Defaulting to mode 1.", false);
+        _gb->arrow().log("Invalid mode provided.", false);
         mode = 1;
     }
     else {
-        _gb->log(" -> Setting mode: " +  String(mode), false);
+        _gb->arrow().log("Setting mode: " +  String(mode), false);
     }
     mode += 100;
     uint16_t moderesponse = this->tell(mode, 5); 
-    _gb->log(this->_parse_response(enresponse) && this->_parse_response(moderesponse) ? " -> Done (" + String(enresponse) + ", " + String(moderesponse) + ")" : " -> Failed (" + String(enresponse) + ", " + String(moderesponse) + ")");
+    _gb->arrow().log(this->_parse_response(enresponse) && this->_parse_response(moderesponse) ? "Done (" + String(enresponse) + ", " + String(moderesponse) + ")" : "Failed (" + String(enresponse) + ", " + String(moderesponse) + ")");
 
     return *this;
 }
@@ -666,9 +679,9 @@ GB_SNTL& GB_SNTL::enablebeacon(uint8_t mode) {
 */
 GB_SNTL& GB_SNTL::disablebeacon() { 
     _gb->log("Disabling beacon", false);
-    if (!this->device.detected) { _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     uint16_t response = this->tell(0x10, 2); 
-    _gb->log(this->_parse_response(response) ? " -> Done (" + String(response) + ")" : " -> Failed (" + String(response) + ")");
+    _gb->arrow().log(this->_parse_response(response) ? "Done (" + String(response) + ")" : "Failed (" + String(response) + ")");
 
     return *this;
 }
@@ -679,9 +692,9 @@ GB_SNTL& GB_SNTL::disablebeacon() {
 */
 GB_SNTL& GB_SNTL::triggerbeacon() { 
     _gb->log("Triggering beacon", false);
-    if (!this->device.detected) { _gb->log(" -> Not initialized"); return *this; }
+    if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     uint16_t response = this->tell(0x11, 5); 
-    _gb->log(response != -1 && response != 65535 ? " -> Done (" + String(response) + ")" : " -> Failed (" + String(response) + ")");
+    _gb->arrow().log(response != -1 && response != 65535 ? "Done (" + String(response) + ")" : "Failed (" + String(response) + ")");
 
     return *this;
 }

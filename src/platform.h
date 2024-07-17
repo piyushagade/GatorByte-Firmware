@@ -26,9 +26,9 @@
 /*
     ! SASBJEP projects
 */
-#define GB_PLATFORM_IS_SASBJEP_BIT true
+#define GB_PLATFORM_IS_SASBJEP_BIT false
 
 /*
     ! TAMU projects
 */
-#define GB_PLATFORM_IS_TAMU_BUOY false
+#define GB_PLATFORM_IS_TAMU_BUOY true
