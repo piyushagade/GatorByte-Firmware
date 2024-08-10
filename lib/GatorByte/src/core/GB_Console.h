@@ -84,7 +84,7 @@ GB_CONSOLE& GB_CONSOLE::exit() {
 GB_CONSOLE& GB_CONSOLE::loop() {
 
     //! Set RGB color
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("yellow");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(6);
 
     // // Clear the serial buffer
     // while (_gb->serial.debug->available()) char c = _gb->serial.debug->read();
@@ -123,7 +123,7 @@ GB_CONSOLE& GB_CONSOLE::loop() {
 //             this->_gb->globals.MODE = "command";
     
 //             //! Set RGB color
-//             if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green");
+//             if (false && _gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2);
 
 //             // Clear the serial buffer
 //             while (_gb->serial.debug->available()) char c = _gb->serial.debug->read();

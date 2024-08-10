@@ -211,7 +211,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             this->device.detected = false;
 
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(250).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).on("red").wait(250).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(250).on("red").wait(250).revert();
         }
         else {
             _fram_present = true;
@@ -226,7 +226,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             this->_initialized = result;
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(250).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(3).wait(250).revert();
         }
     }
     else _gb->arrow().log("Disabled", true);

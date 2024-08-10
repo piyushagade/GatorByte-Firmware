@@ -183,8 +183,6 @@ bool GB_AT24::memtest() {
 
 // Test the device
 bool GB_AT24::testdevice() {
-    
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
     return this->device.detected;
 }
 String GB_AT24::status() { 
@@ -256,7 +254,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
         if (this->get(0) == "formatted") {
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
 
             _gb->log("Fetching SN", false);
             String savedsn = this->get(2);
@@ -298,7 +296,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
         }
         
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--").wait(250).play("---");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert();
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(250).revert();
     }
 
     this->off();
@@ -308,7 +306,7 @@ GB_AT24& GB_AT24::initialize(bool test) {
 // Format the contents in the EEPROM
 GB_AT24& GB_AT24::format() { 
     this->on();
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("yellow");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(6);
 
     // // Start watchdog timer
     // this->_gb->getmcu()->watchdog("enable");

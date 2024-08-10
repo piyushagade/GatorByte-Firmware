@@ -60,14 +60,16 @@ class GB_NEO_6M : public GB_DEVICE {
         String status();
 
     private:
-        GB *_gb;
         TinyGPSPlus _neo;
+        GB *_gb;
+        GB_NEO_6M& _initialize();
 
         int _baud = 9600;
         bool _persistent = false;
         void _read_nmea();
         bool _update();
         void _delay(unsigned long);
+        GPS_DATA _dummydata = {true, false, false, 12, -34, 4, 2, "unknown", 0, 0, 0, 0, 5, 3};
 
         unsigned long _last_fix_timestamp = 0;
         unsigned long _last_update_timestamp = 0;
@@ -92,8 +94,6 @@ GB_NEO_6M::GB_NEO_6M(GB &gb) {
 GB_NEO_6M& GB_NEO_6M::configure(PINS pins) {
     this->pins = pins;
 
-    pinMode(A6, INPUT);
-
     // Set pin modes of the device
     if(!this->pins.mux) pinMode(this->pins.enable, OUTPUT);
     
@@ -102,11 +102,17 @@ GB_NEO_6M& GB_NEO_6M::configure(PINS pins) {
 
 // Test the device
 bool GB_NEO_6M::testdevice() { 
-    
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     return this->device.detected;
 }
 String GB_NEO_6M::status() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+    
 
     // Update manufacturer info
     if (this->device.detected) {
@@ -134,6 +140,13 @@ String GB_NEO_6M::status() {
 
 // Initialize the module and communication
 GB_NEO_6M& GB_NEO_6M::initialize() {
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize(); 
+}
+GB_NEO_6M& GB_NEO_6M::_initialize() {
     _gb->init();
     
     this->on();
@@ -166,7 +179,7 @@ GB_NEO_6M& GB_NEO_6M::initialize() {
         if (this->device.detected && this->_manufacturer.length() > 0) break;
     }
 
-    if (this->device.detected) _gb->arrow().log("Done", false).arrow().color("white").log((digitalRead(A6) == HIGH) ? "Override" : "Regular");
+    if (this->device.detected) _gb->arrow().log("Done");
     else {
         _gb->arrow().log("Not detected");
         _gb->globals.INIT_REPORT += this->device.id;
@@ -238,20 +251,19 @@ GB_NEO_6M& GB_NEO_6M::persistent() {
 
 // Read dummy data
 GPS_DATA GB_NEO_6M::read(bool dummy) {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     _gb->log("Reading " + this->device.name, false);
 
     // Dummy data requested?
     dummy = dummy || _gb->globals.MODE == "dummy" || _gb->env() == "development";
 
-    // if (digitalRead(A6) == HIGH) {
-    //     _gb->arrow().color("yellow").log("Override", false);
-    //     dummy = true;
-    // }
-
     if (dummy) {
         _gb->arrow().log("Dummy data");
-        this->data = {true, false, false, 12.34, -56.78, 4, 2, "unknown", 0, 0, 0, 0, 5, 3};
-        _gb->getdevice("gdc")->send("gdc-db", "gps=true,12.34, -56.78,99");
+        this->data = this->_dummydata;
+        // _gb->getdevice("gdc")->send("gdc-db", "gps=true,12.34, -56.78,99");
         return this->data;
     }
     else {
@@ -273,21 +285,23 @@ GPS_DATA GB_NEO_6M::read(bool dummy) {
             _last_update_timestamp == 0 || millis() - _last_update_timestamp > _last_update_expiration_duration
         ) {
             _last_update_timestamp = millis();
-            _gb->arrow().log("Getting GPS fix");
+            _gb->arrow().log("Getting fix");
             this->_update();
         }
+
+        // Last GPS fix was less than 30 seconds ago.
         else {
-            _gb->arrow().log("Last GPS fix was less than 30 seconds ago.");
+            // Do nothing
         }
 
         // Indicate on the RGB led if or not GPS fix was achieved
         
-        if (this->fix() && _gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue"); else _gb->getdevice("rgb")->on("red");
+        if (this->fix() && _gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(3); else _gb->getdevice("rgb")->on(1);
         // Indicate on the buzzer led if or not GPS fix was achieved
         if (this->fix() && _gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".."); else _gb->getdevice("buzzer")->play("--");
 
         // Send data to GDC
-        _gb->getdevice("gdc")->send("gdc-db", "gps=" + String(this->data.has_fix) + "," + String(this->data.lat) + "," + String(this->data.lng) + "," + String(this->data.attempts));
+        // _gb->getdevice("gdc")->send("gdc-db", "gps=" + String(this->data.has_fix) + "," + String(this->data.lat) + "," + String(this->data.lng) + "," + String(this->data.attempts));
 
         // Return latest data
         return this->data;
@@ -384,14 +398,9 @@ bool GB_NEO_6M::_update() {
     ) {
 
         bool dummy = _gb->env() == "development";
-        // if (digitalRead(A6) == HIGH) {
-        //     _gb->color("yellow").log("Override", false);
-        //     dummy = true;
-        // }
-
         if (dummy) {
             _gb->arrow().log("Dummy data");
-            this->data = {true, false, false, 12.34, -56.78, 4, 2, "unknown", 0, 0, 0, 0, 5, 3};
+            this->data = this->_dummydata;
             return true;
         }
         else {
@@ -407,9 +416,10 @@ bool GB_NEO_6M::_update() {
 
         // Toggle led
         if (lasttoggle == 0 || millis() - lasttoggle > 1000) {
-            if (_gb->hasdevice("rgb") && ledstate) _gb->getdevice("rgb")->on("yellow");
+            if (_gb->hasdevice("rgb") && ledstate) _gb->getdevice("rgb")->on(6);
             else _gb->getdevice("rgb")->off();
             ledstate = !ledstate;
+            if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".");
         }
         
         // Increment the counter
@@ -439,23 +449,6 @@ bool GB_NEO_6M::_update() {
         this->data.id = 0;
         this->data.attempts = counter;
         this->data.speed = _neo.speed.mph();
-
-        // INFO:
-        // The following code causes the FLASH memory to overflow
-        
-        // // Calculate distance moved
-        // float distancemoved = _neo.distanceBetween(this->_prev_lat, this->_prev_lng, this->data.lat, this->data.lng);
-
-        // // Check if distance moved is greater than the threshold
-        // if (distancemoved > MOVEMENT_THRESHOLD) {
-        //     this->_prev_lat = this->data.lat;
-        //     this->_prev_lng = this->data.lng;
-        // }
-
-        // // Check if 5 minutes have passed without movement
-        // if (millis() - this->_last_fix_timestamp > MOVEMENT_CHECK_INTERVAL) {
-        //     Serial.println("No movement detected in 5 minutes.");
-        // }
     }
     else this->reset();
     

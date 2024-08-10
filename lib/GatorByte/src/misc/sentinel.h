@@ -29,7 +29,8 @@ class GB_SNTL : public GB_DEVICE {
         GB_SNTL& enablebeacon(uint8_t);
         GB_SNTL& disablebeacon();
         GB_SNTL& triggerbeacon();
-        GB_SNTL& blow();
+        GB_SNTL& setfuse();
+        GB_SNTL& blowfuse();
 
         GB_SNTL& formatmemory();
         uint16_t readmemory(int);
@@ -343,11 +344,22 @@ GB_SNTL& GB_SNTL::timer(uint8_t timerid) {
     return *this;
 }
 
+/*
+    Blow the fuse (enable master timer)
+*/
+GB_SNTL& GB_SNTL::setfuse() { 
+    
+    _gb->color("cyan").log("Set fuse").br();
+    this->tell(37);
+    return *this;
+}
 
 /*
     Blow the fuse (enable master timer)
 */
-GB_SNTL& GB_SNTL::blow() { 
+GB_SNTL& GB_SNTL::blowfuse() { 
+    
+    _gb->color("cyan").log("Blowing fuse").br();
     this->tell(38);
     return *this;
 }

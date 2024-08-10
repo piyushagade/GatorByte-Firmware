@@ -121,6 +121,7 @@ class GB_DS3231 : public GB_DEVICE {
         byte _ADDRESS = 0x68;
         RTC_DS3231 _rtc;
         GB *_gb;
+        GB_DS3231& _initialize(bool testdevice);
         bool _persistent = false;
         String _source = "rtc";
 };
@@ -136,11 +137,17 @@ GB_DS3231::GB_DS3231(GB &gb) {
 
 // Test the device
 bool GB_DS3231::testdevice() { 
-    
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(true);
+
     return this->device.detected;
 }
 String GB_DS3231::status() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(true);
+    
     return this->device.detected ? this->date() + "::" + this->time() + "::" + String(this->_source) : (String("not-detected") + String(":") + device.id);
 }
 
@@ -164,8 +171,15 @@ GB_DS3231& GB_DS3231::configure(PINS pins) {
 /* 
     Initialize the device 
 */
-GB_DS3231& GB_DS3231::initialize() { this->initialize(true); }
+GB_DS3231& GB_DS3231::initialize() { return this->initialize(true); }
 GB_DS3231& GB_DS3231::initialize(bool testdevice) { 
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize(testdevice);
+}
+GB_DS3231& GB_DS3231::_initialize(bool testdevice) { 
     _gb->init();
     
     this->on();
@@ -194,7 +208,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 _gb->arrow().log(this->date("MMMM DDth, YYYY") + " at " + this->time("hh:mm:ss") + ", source: " + this->getsource(), false);
                 
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("...");
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
                 _gb->arrow().log("Done", true);
                 this->settimezone(_gb->globals.TIMEZONE);
 
@@ -204,7 +218,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
             else {
                 this->device.detected = false;
                 _gb->globals.INIT_REPORT += this->device.id;
-                _gb->arrow().log("Not detected. Falling back to MODEM for time", false);
+                _gb->arrow().log("Not detected. Falling back to MODEM", false);
                 
                 if (_gb->globals.GDC_CONNECTED) {
                     this->off();
@@ -214,7 +228,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
                 _gb->arrow().log("Done", true);
 
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("---");
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert(); 
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(250).revert(); 
             }
         }
         else {
@@ -228,7 +242,7 @@ GB_DS3231& GB_DS3231::initialize(bool testdevice) {
             }
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("--.").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
         }
     #else
         if(this->valid()) {
@@ -271,7 +285,7 @@ GB_DS3231& GB_DS3231::settimezone(String timezone) {
 */
 GB_DS3231& GB_DS3231::sync() { this->sync(this->timezone); }
 GB_DS3231& GB_DS3231::sync(String timezone) {
-
+    
     // Create DateTime object
     DateTime dt = DateTime(__DATE__, __TIME__);
 
@@ -289,7 +303,7 @@ GB_DS3231& GB_DS3231::sync(String timezone) {
     Time format: 15:23:59
 */
 GB_DS3231& GB_DS3231::sync(char date[], char time[]) {
-
+    
     DateTime dt = DateTime(date, time);
     
     // Sync MODEM's clock (Skipped. MODEM resets to local time after every boot.)
@@ -336,8 +350,11 @@ GB_DS3231& GB_DS3231::sync(uint32_t timestamp) {
     The provided DateTime should be GMT
 */
 GB_DS3231& GB_DS3231::sync(DateTime dt) {
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
 
-    _gb->log("Syncing RTC to the provided time", false);
+    _gb->log("Syncing RTC", false);
     
     if (this->device.detected) {
         this->on();delay(50);
@@ -346,7 +363,7 @@ GB_DS3231& GB_DS3231::sync(DateTime dt) {
         _gb->arrow().log("Done");
         this->off();
     }
-    else _gb->arrow().color("red").log("Not detected. Skipping.").color();
+    else _gb->arrow().color("red").log("Not detected.").color();
 
     return *this;
 }
@@ -372,7 +389,7 @@ String GB_DS3231:: converttogmt(String localtimezone, String time) {
 
     // Parse the input time string
     int hours, minutes, seconds;
-    int date, month;
+    int date;
     sscanf(String(__TIME__).c_str(), "%d:%d:%d", &hours, &minutes, &seconds);
     hours -= offsetsign * offsethour;
     minutes -= offsetsign * offsetminutes;
@@ -401,7 +418,7 @@ String GB_DS3231:: converttogmt(String localtimezone, String time) {
 /* 
     Convert a timestamp to GMT timestamp
 */
-int GB_DS3231:: converttogmt(String localtimezone, int timestamp) {
+int GB_DS3231::converttogmt(String localtimezone, int timestamp) {
     int offsethour = 0, offsetminutes = 0, offsetsign = 1;
     localtimezone.trim();
     localtimezone.toUpperCase();
@@ -469,7 +486,7 @@ String GB_DS3231:: converttotz(String localtimezone, String targettimezone, Stri
 
     // Parse the input time string
     int hours, minutes, seconds;
-    int date, month;
+    int date;
     sscanf(String(__TIME__).c_str(), "%d:%d:%d", &hours, &minutes, &seconds);
     hours = hours - localtzsign * localtzhour + targettzsign * targettzhour;
     minutes = minutes - localtzsign * localtzminutes + targettzsign * targettzminutes;
@@ -560,6 +577,9 @@ DateTime GB_DS3231:: converttotz(String localtimezone, String targettimezone, Da
     Returns 'now' Datetime object
 */
 DateTime GB_DS3231::now() {
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
 
     DateTime dt;
 
@@ -569,7 +589,7 @@ DateTime GB_DS3231::now() {
                 
         this->_source = "rtc";
         this->on();
-        delay(50);
+        delay(100);
         dt = _rtc.now(); 
         this->off();
 
@@ -603,7 +623,8 @@ DateTime GB_DS3231::now() {
     Check if the device is running/communicating properly
 */
 bool GB_DS3231::valid() {
-    this->on(); delay(50);
+    
+    this->on(); delay(100);
     if (!this->_rtc.begin()) return false;
     DateTime dt = _rtc.now();
     return this->valid(dt);
@@ -624,15 +645,13 @@ bool GB_DS3231::valid(uint32_t timestamp) {
 */
 bool GB_DS3231::valid(DateTime dt) {
     
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+    
     bool error = false;
     uint32_t unixtime = dt.unixtime();
     uint16_t month = dt.month();
     uint16_t year = dt.year();
-
-    /*
-        1078769026
-        1709920787
-    */
 
     if (unixtime >= 2000000000) error = true;
     else if (unixtime <= 946684800) error = true; // Likely a hardware/connection/battery issue

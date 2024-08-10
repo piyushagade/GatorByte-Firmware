@@ -51,7 +51,7 @@ class GB_MQTT : public GB_DEVICE {
 
         GB_MQTT& configure(callback_t_on_message, callback_t_on_connect);
         GB_MQTT& configure(String, int, String, callback_t_on_message, callback_t_on_connect);
-        GB_MQTT& connect(String, String);
+        GB_MQTT& connect();
         GB_MQTT& disconnect();
         GB_MQTT& update();
         GB_MQTT& ack(String id);
@@ -107,7 +107,6 @@ GB_MQTT& GB_MQTT::configure(String ip, int port, String client_id, callback_t_on
 }
 
 GB_MQTT& GB_MQTT::disconnect() {
-    _gb->getmcu()->watchdog("enable", 8000);
 
     _gb->log("Disconnecting MQTT broker", false);
 
@@ -117,13 +116,16 @@ GB_MQTT& GB_MQTT::disconnect() {
         _gb->arrow().log("Done");
     }
     else _gb->arrow().log("Already disconnected");
-    _gb->getmcu()->watchdog("disable");
     return *this;
 }
 
-GB_MQTT& GB_MQTT::connect(String username, String password) {
+GB_MQTT& GB_MQTT::connect() {
     
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(8);
+
+    // Set instance variables
+    this->USER = _gb->globals.MQTTUSER;
+    this->PASS = _gb->globals.MQTTPASS;
 
     /*
         ! Disconnect MQTT client
@@ -135,9 +137,15 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
     */
     // this->disconnect();
 
-    _gb->log("Connecting to MQTT broker: " + String(this->BROKER_IP) + ", " + String(this->BROKER_PORT), false);
+    _gb->log("Connecting to MQTT broker: " + String(this->USER) + "@" + String(this->BROKER_IP) + ":" + String(this->BROKER_PORT), false);
 
-    if (this->_mqttclient.connected()) {
+    // MQTT loop (update '_state')
+    for (int i = 0; i < 6; i++) { this->_mqttclient.loop(); delay(1); }
+
+    // Get connection state
+    int8_t state = this->_mqttclient.state();
+
+    if (state == 0 && this->_mqttclient.connected()) {
         _gb->arrow().log("Already connected");
         
         // Blink green 2 times
@@ -145,6 +153,12 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         _gb->getdevice("buzzer")->play("..");
 
         return *this;
+    }
+
+    // If MQTT connection lost/error
+    else if (state < 0) {
+        if (state == -1) _gb->arrow().color("red").log("Not connected", false).color();
+        else _gb->arrow().color("red").log("Connection " + String(state == -2 ? "failed" : (state == -3 ? "lost" : (state == -4 ? "timeout" : "error"))), false).color();
     }
 
     #ifdef ESP32
@@ -170,10 +184,6 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
             return *this;
         }
     #endif
-
-    // Set instance variables
-    this->USER = username;
-    this->PASS = password;
 
     /*
         ! Close cellular socket
@@ -233,7 +243,7 @@ GB_MQTT& GB_MQTT::connect(String username, String password) {
         _gb->arrow().log("Done");
     }
     else {
-        _gb->getdevice("rgb")->on("red");
+        _gb->getdevice("rgb")->on(1);
         CONNECTED_TO_MQTT_BROKER = false;
         int errorcode = this->_mqttclient.state();
         String errormessage = errorcode == -2 ? "Couldn't connect to the broker" : "Unknown error";
@@ -277,13 +287,13 @@ GB_MQTT& GB_MQTT::update() {
         _gb->arrow().color("yellow").log("MQTT disconnected", false).arrow();
         
         //! Attempt reconnection with the broker
-        this->connect(this->USER, this->PASS);
+        this->connect();
         
         //! Resubscribe to topics if reconnected
         if(this->_mqttclient.connected()) {
             CONNECTED_TO_MQTT_BROKER = 1;
             this->_reconnection_attempt_count = 0;
-            _gb->color("green").log("Reconnected.", false);
+            // _gb->color("green").log("Reconnected.", false);
         }
         else {
             CONNECTED_TO_MQTT_BROKER = 0;
@@ -339,10 +349,10 @@ bool GB_MQTT::publish(String topic, String data) {
     #endif
 
     // MODEM.debug(Serial);
-
+    
     // MQTT update
     for (int i = 0; i < 5; i++) { _gb->bs(); this->update(); delay(1); }
-    
+
     bool success = false;
     int attempts = 0;
     int maxattempts = 3;

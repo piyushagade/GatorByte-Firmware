@@ -593,7 +593,7 @@ bool GB_NB1500::clearfplmn() {
     String clearresponse = this->_sara_at_command("AT+CRSM=214,28539,0,0,12,\"130184FFFFFFFFFFFFFFFFFF\"");
     
     if (!clearresponse.endsWith("+CRSM: 144,0,\"\"")) {
-        _gb->getdevice("rgb")->on("red");
+        _gb->getdevice("rgb")->on(1);
         _gb->arrow().log("Failed");
         return false;
     }
@@ -601,7 +601,7 @@ bool GB_NB1500::clearfplmn() {
     // If clearing the list succeeded
     else {
         _gb->arrow().log("Done. Restarting the device.");
-        _gb->getdevice("rgb")->on("red");
+        _gb->getdevice("rgb")->on(1);
         delay(3000);
         _gb->getmcu()->reset("mcu");
         
@@ -717,7 +717,7 @@ bool GB_NB1500::connected() {
 bool GB_NB1500::connect() { return this->connect(false); }
 bool GB_NB1500::connect(bool diagnostics) {
     
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(8);
 
     /*
         ! If the device is operating in offline mode
@@ -739,67 +739,8 @@ bool GB_NB1500::connect(bool diagnostics) {
         return true;
     }
     else {
-        _gb->color("yellow").log("Internet connection not detected. Attempting connection.");
+        _gb->color("yellow").log("Attempting connection.");
     }
-
-    // int counter;
-
-    // // Kickstart the MODEM; And skip beyond 3 seconds
-    // counter = 300; while (!MODEM.begin() && counter-- >= 0) delay(10);
-
-    // // Test MODEM Serial communication
-    // MODEM_INITIALIZED = this->send_at_command("AT").contains("OK");
-
-    // // Check if SIM is inserted
-    // this->send_at_command("AT+CMEE=0");
-    // this->send_at_command("AT+CFUN=0");
-    // bool SIMFLAG = this->send_at_command("AT+CPIN?").contains("READY");
-    // _gb->log("SIM " + String(!SIMFLAG ? "NOT " : "") + "found.");
-
-    // if (MODEM_INITIALIZED && SIMFLAG) {
-
-    //     // Check if device is registered on the network
-    //     bool NETREGFLAG = this->send_at_command("AT+CEREG?").contains(",1");
-    //     _gb->log("Network " + String(!NETREGFLAG ? "NOT " : "") + "registered.");
-
-    //     bool GPRSATTFLAG = this->send_at_command("AT+CGATT?").contains("1,1");
-    //     _gb->log(String(!GPRSATTFLAG ? "NOT connected" : "Connected") + " to Internet.");
-        
-    //     while (!NETREGFLAG || !GPRSATTFLAG) {
-
-    //         _gb->log("\nAttempting connection.");
-
-    //         if (!NETREGFLAG) {
-    //             this->send_at_command("AT+CMGF=1");
-    //             this->send_at_command("AT+UDCONF=1,1");
-    //             this->send_at_command("AT+CTZU=1");
-    //             this->send_at_command("AT+CGDCONT=1,\"IP\",\"\"");
-    //             this->send_at_command("AT+UAUTHREQ=1,0");
-    //             this->send_at_command("AT+CFUN=1");
-    //             this->send_at_command("AT+CEREG?");
-                
-    //             NETREGFLAG = this->send_at_command("AT+CEREG?").contains(",1");
-    //             _gb->log("Network " + String(!NETREGFLAG ? "NOT " : "") + "registered.");
-    //             CONNECTED_TO_NETWORK = NETREGFLAG;
-    //         }
-    //         else CONNECTED_TO_NETWORK = true;
-
-    //         if (!GPRSATTFLAG) {
-    //             this->send_at_command("AT+CGATT=1");
-    //             GPRSATTFLAG = this->send_at_command("AT+CGACT?").contains("1,1");
-    //             _gb->log(String(!GPRSATTFLAG ? "NOT connected" : "Connected") + " to Internet.");
-    //             CONNECTED_TO_INTERNET = GPRSATTFLAG;
-
-    //             this->send_at_command("AT+COPS?");
-
-    //             return true;
-    //         }
-    //         else {
-    //             CONNECTED_TO_INTERNET = true;
-    //             return true;
-    //         }
-    //     }
-    // }
 
     /*
         ! Go through pre-connection checklist
@@ -817,12 +758,12 @@ bool GB_NB1500::connect(bool diagnostics) {
     */
     if (this->_cellular_connected &&_gprs.status() == GPRS_READY) { 
 
-        _gb->br().color("green").log("Cellular connection detected.");
+        _gb->br().color("green").log("Connection detected.");
         
         // Check if signal is viable for good connection and connect
         if (SIGNAL_VIABLE) {
             int counter = 1; while (!this->_cellular_connected && counter-- > 0) {
-
+                
                 //! Register device on cellular network
                 int start = 0;
                 start = millis();
@@ -852,27 +793,28 @@ bool GB_NB1500::connect(bool diagnostics) {
 
         // If the signal is not viable
         else {
+    
             _gb->arrow().color("red").log("Insufficient signal", false).color();
             this->_cellular_connected = false;
         }
-
+        
         return this->_cellular_connected;
     }
 
     else {
 
-        _gb->br().color("yellow").log("Cellular connection not detected.");
+        _gb->br().color("yellow").log("Connection not detected.");
 
         /*
             ! Attempt connecting to the network
         */
         
-        _gb->log("Connecting to cellular network", false);
+        _gb->log("Connecting to network", false);
 
         // Check if signal is viable for good connection and connect
         if (SIGNAL_VIABLE) {
             int counter = 1; while (!this->_cellular_connected && counter-- > 0) {
-
+                
                 //! Register device on cellular network
                 bool nbstatus = this->_register_network();
                 int start = 0;
@@ -1069,6 +1011,10 @@ void GB_NB1500::set_secondary_piper(GB_PIPER piper) {
 }
 
 void GB_NB1500::sleep() { 
+    //! Conclude watchdog operations
+    this->watchdog("disable");
+    
+    if (_gb->globals.SLEEP_MODE == "skip") return;
 
     // Enter low power-mode
     this->_sleep(_gb->globals.SLEEP_MODE, _gb->globals.SLEEP_DURATION);
@@ -1117,7 +1063,7 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     
     // //! Turn off all the peripherals
     // // TODO Exclude BL, GPS?
-    // if (_gb->hasdevice("ioe")) {
+    // if (false && _gb->hasdevice("ioe")) {
     //     _gb->log("Turning off peripherals", false);
     //     for(int i = 0; i < 15; i++) {
     //         _gb->getdevice("ioe")->writepin(i, LOW);
@@ -1128,11 +1074,10 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     //! Conclude watchdog operations
     this->watchdog("disable");
 
+    if (level == "skip") return;
+
     // Call pre-sleep callback
     if (this->_HAS_SLEEP_CALLBACK) this->_sleep_callback();
-
-    //! RGB rainbow
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(5000).off();
     
     // Deduce sleep duration from the last timestamp when readings were taken
     _gb->br().log("Seconds since last reading: " + String(_gb->globals.SECONDS_SINCE_LAST_READING) + " seconds");
@@ -1150,8 +1095,8 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
         the sum of setup delay and loop delay. In this case, the device sleeps for 3 seconds.
     */
     if (milliseconds <= 0) {
-        _gb->br().log("Iteration delay is more than the sleep duration. Setting sleep duration to 3 seconds.");
-        milliseconds = 3000;
+        _gb->br().log("Iteration delay is more than the sleep duration. Setting sleep duration to 1 seconds.");
+        milliseconds = 1000;
     }
     
     /*
@@ -1179,7 +1124,6 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     _gb->log("Setup delay: " + String(_gb->globals.SETUPDELAY) + " seconds");
     _gb->log("Loop delay: " + String(_gb->globals.LOOPDELAY) + " seconds");
     _gb->log("Low-power mode", false).arrow().color("yellow").log(level);
-    delay(1000);
 
     this->_ASLEEP = true;
 
@@ -1240,6 +1184,9 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     */
     else if (level == "deep") {
 
+        //! RGB rainbow
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(5000).off();
+
         USBDevice.detach();
         LowPower.deepSleep(milliseconds);
         USBDevice.attach();
@@ -1258,6 +1205,9 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
     */
     else if (level == "shallow") {
 
+        //! RGB rainbow
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(5000).off();
+
         USBDevice.detach();
         LowPower.sleep(milliseconds);
         USBDevice.attach();
@@ -1272,6 +1222,10 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
             1. __WFI() not working
     */
     else if (level == "idle") {
+
+        //! RGB rainbow
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(3000).off();
+
         LowPower.idle(milliseconds);
     }
     
@@ -1279,7 +1233,11 @@ void GB_NB1500::_sleep(String level, int milliseconds) {
         'psm' mode puts the modem in Power Saving Mode using AT commands.
         This mode does not detach debug USB on 'sleep'.
     */
-    else if (level == "psm") {
+    else if (level == "delay") {
+
+        //! RGB rainbow
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->rainbow(1000).off();
+
         // this->_sara_at_command("AT+CSPSM");
         delay(milliseconds);
         on_wakeup();

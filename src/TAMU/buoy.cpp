@@ -214,12 +214,12 @@
         The file gets deleted if the upload is successful. 
     */
     void writetoqueue(CSVary csv) {
-        gb.log("Writing to queue file: ", false);
+        // gb.log("Writing to queue file: ", false);
         String currentdataqueuefile = sd.getavailablequeuefilename();
         if (currentdataqueuefile.length() > 0) {
             gb.log(currentdataqueuefile, false);
             sd.writequeuefile(currentdataqueuefile, csv.get());
-            gb.arrow().color().log("Done");
+            // gb.arrow().color().log("Done");
         }
     }
 
@@ -228,6 +228,8 @@
         Any files queued on the SD card will be sent one at a time.
     */
     void uploadqueuetoserver() {
+
+        // if (true) return;
 
         // Send outstanding data and current data
         if (sd.getqueuecount() > 0) {
@@ -242,7 +244,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
                 
             });
                 
@@ -252,8 +254,8 @@
                 
                 while (!sd.isqueueempty() && counter-- > 0) {
                     
-                    sntl.watch(10, [] {
-
+                    sntl.watch(30, [] {
+                        
                         String queuefilename = sd.getfirstqueuefilename();
                         gb.log("Sending queue file: " + queuefilename);
 
@@ -266,6 +268,7 @@
 
                         else {
                             gb.log("Queue file not deleted.");
+                            mqtt.disconnect();
                         }
                     });
                 }
@@ -292,17 +295,16 @@
             sntl.kick();
 
             //! Connect to MQTT servver
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
             
         });
             
         //! Publish first ten queued-data with MQTT
         if (CONNECTED_TO_MQTT_BROKER) {
-            gb.log("Sending current data", false);
 
             // Attempt publishing queue-data
             if (mqtt.publish("data/set", csv.get())) {
-                gb.arrow().color("green").log("Done");
+                // Do nothing
             }
         }
 
@@ -330,15 +332,12 @@
         tca.configure({A2}).initialize(); 
 
         //! Configure peripherals
-        rgb.configure({0, 1, 2}).initialize(0.2).on("magenta");
+        rgb.configure({0, 1, 2}).initialize(1).on("magenta");
         buzzer.configure({6}).initialize().play("...");
 
         //! Configure microcontroller
         mcu.i2c().debug(Serial, 9600).serial(Serial1, 9600).configure("", "");
 
-        //! Detect GDC
-        // gdc.detect(false);
-        
         //! Initialize Sentinel
         sntl.configure({true, 4}, 9).initialize().setack(true).enablebeacon(0);
 
@@ -350,7 +349,10 @@
         sntl.watch(120, []() {
 
             // Initialize SD first to read the config file
+            // while (1) 
             sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+
+            // while (true) delay(100);
             
             // Initialize EEPROM
             mem.configure({true, SR0}).initialize();
@@ -389,6 +391,12 @@
 
     void preloop () {
 
+        // Set sensor power modes
+        // rtd.persistent().on();
+        ph.persistent().on();
+        // dox.persistent().on();
+        // ec.persistent().on();
+
         /*
             This is a hack to eliminate the delay introduced by the DS3231 RTC.
         */
@@ -404,45 +412,67 @@
 
         /*
             ! Blow the fuse
-            TODO: This might cause the loop() to take too long to execute. Maybe do this only 
-                    if iteration == 0; 
-            This will enable the master sentinel timer.
+            This will enable the master sentinel timer (TIMER 3).
 
             When the fuse is set (in GDC), the GB device can have it's
             battery connected with the power relay turned off without
             the Sentinel turning on the power relay. This is acheived
             by disabling the master timer (TIMER 3).
         */
-        if (!gb.globals.GDC_CONNECTED) {
-            gb.color("cyan").log("Blowing fuse").br();
-            sntl.blow();
-        }
+        bool fusewasset = !sntl.tell(39, 5);
+        if (!gb.globals.GDC_CONNECTED && fusewasset) sntl.blowfuse();
 
+        /*
+            Stay in GPS read mode if the fuse was set. To get out 
+            of this mode, reboot the GatorByte
+        */
+        if (!gb.globals.GDC_CONNECTED && fusewasset) {
+
+            gb.color("cyan").log("Waiting in GPS read mode until reboot.");
+            while(true) {
+                gps.read();
+                gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 
+            }
+        }
+        
+        //! Connect to the network
+        if (!gb.globals.GDC_CONNECTED) sntl.watch(120, [] {
+            mcu.connect();
+        });
     }
 
     void loop () {
 
+        
         // GatorByte loop function
         gb.loop();
 
+
         // bl.listen([] (String command) {
-        //     Serial.println("Received command: " + command);
-        //     if (command.contains("ping")) bl.print("pong");
+        //     gb.log("Received command: " + command);
+        //     if (command.contains("ping")) gb.log("pong");
+        //     if (command.contains("fuse")) {
+        //         sntl.setfuse();
+        //         bl.print("ok");
+        //     }
         // });
 
         sntl.watch(1200, [] {
+
+            //! Turn GPS on
+            gps.on();
+
+            //! Get sensor readings
+            float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
 
             /*
                 ! Check the current state of the system and take actions accordingly
                 Get latest GPS coordinates
             */
-            GPS_DATA gpsdata = gps.read(gb.env() == "development");
+            GPS_DATA gpsdata = gps.read(true);
 
             String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
             gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 
-
-            //! Get sensor readings
-            float read_rtd_value = rtd.readsensor(), read_ph_value = ph.readsensor(), read_ec_value = ec.readsensor(), read_dox_value = dox.readsensor();
 
             // Initialize CSVary object
             CSVary csv;
@@ -453,7 +483,7 @@
             // Construct CSV object
             csv
                 .clear()
-                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,FLTP,LAT,LNG,BVOLT,BLEV")
+                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,LAT,LNG,BVOLT")
                 .set(gb.globals.DEVICE_SN)
                 .set(timestamp)
                 .set(date)
@@ -464,11 +494,10 @@
                 .set(read_ec_value)
                 .set(aht.temperature())
                 .set(aht.humidity())
-                .set(gb.globals.FAULTS_PRIMARY)
                 .set(gps_lat)
                 .set(gps_lng)
                 .set(mcu.fuel("voltage"))
-                .set(mcu.fuel("level"));
+            ;
 
             gb.br().log("Current data point: ");
             gb.log(csv.getheader());
@@ -479,16 +508,20 @@
                 The queue file will be read and data uploaded once the network is established.
                 The file gets deleted if the upload is successful. 
             */
-            if (sd.device.detected) writetoqueue(csv);
-            else uploadcurrentdatatoserver(csv);
+           
+            // if (sd.device.detected) writetoqueue(csv);
+            // else uploadcurrentdatatoserver(csv);
+
+            if (sd.device.detected) sd.writeCSV("/readings/readings.csv", csv);
+            uploadcurrentdatatoserver(csv);
         });
 
-        //! Upload data to server
-        if (sd.device.detected) uploadqueuetoserver();
+        // //! Upload data to server
+        // if (sd.device.detected) uploadqueuetoserver();
 
-        // Set sleep configuration
-        mcu.set_sleep_callback(on_sleep);
-        mcu.set_wakeup_callback(on_wakeup);
+        //// Set sleep configuration
+        // mcu.set_sleep_callback(on_sleep);
+        // mcu.set_wakeup_callback(on_wakeup);
 
         //! Sleep
         mcu.sleep();

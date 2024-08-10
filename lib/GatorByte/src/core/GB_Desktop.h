@@ -72,6 +72,13 @@ String GB_DESKTOP::status() {
 GB_DESKTOP& GB_DESKTOP::detect() { return this->detect(true); }
 GB_DESKTOP& GB_DESKTOP::detect(bool lock) { 
 
+    // Set the fuse if requested
+    if (digitalRead(A6) == HIGH) {
+        pinMode(A6, INPUT_PULLDOWN);
+        _gb->getdevice("sntl")->setfuse();
+        _gb->getdevice("buzzer")->play("---").wait(250).play("-.-.-");
+    }
+
     this->lock = lock;
 
     // Return if the GDC is already connected
@@ -104,7 +111,7 @@ GB_DESKTOP& GB_DESKTOP::detect(bool lock) {
                 }
             }
 
-            this->send("gdc-db", "power=awake");
+            // this->send("gdc-db", "power=awake");
 
             if (lock) this->enter();
             else this->loop();
@@ -119,7 +126,7 @@ GB_DESKTOP& GB_DESKTOP::detect(bool lock) {
 
 GB_DESKTOP& GB_DESKTOP::_busy(bool busy) {
         if (busy) {
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(100).revert();
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(",.");
         }
         else  {
@@ -144,7 +151,7 @@ GB_DESKTOP& GB_DESKTOP::enter() {
             last_led_act_ts = millis();
             led_state = !led_state;
             if (_gb->hasdevice("rgb")) {
-                if (led_state) _gb->getdevice("rgb")->on("cyan");
+                if (led_state) _gb->getdevice("rgb")->on(4);
                 else _gb->getdevice("rgb")->off();
             }
         }
@@ -187,7 +194,7 @@ GB_DESKTOP& GB_DESKTOP::loop() {
         }
         
         // Set LED color to cyan
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("cyan");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(4);
 
     #endif
     return *this;
@@ -615,6 +622,23 @@ void GB_DESKTOP::process(string command) {
                 // Send acknowledgment
                 this->send("gdc-cal", "ack");
             }
+            
+            // Power control
+            else if (command.contains(":pcon:")) {
+
+                // Strip prefix
+                command.replace(":pcon", "");
+
+                // Get sensor name
+                String sensor = command.substring(0, command.indexOf(":"));
+                String action = command.substring(command.indexOf(":") + 1, command.length());
+
+                if (action == "on") _gb->getdevice(sensor)->on();
+                else _gb->getdevice(sensor)->off();
+                
+                // // Send acknowledgment
+                // this->send("gdc-cal", "ack");
+            }
 
             else if (command.contains(":calibrate")) {
 
@@ -704,28 +728,28 @@ void GB_DESKTOP::process(string command) {
                 NBModem _nbModem;
 
                 // Device status
-                this->send("gdc-db", "power=awake");
+                // this->send("gdc-db", "power=awake");
 
                 // Check MODEM status
                 MODEM_INITIALIZED = _nbModem.begin();
-                this->send("gdc-db", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
+                // this->send("gdc-db", "modem=" + String(MODEM_INITIALIZED ? "active" : "not-responding"));
                 
                 // MODEM firmware
-                this->send("gdc-db", "modem-fw=" + _gb->getmcu()->getfirmwareinfo());
+                // this->send("gdc-db", "modem-fw=" + _gb->getmcu()->getfirmwareinfo());
                 
                 // MODEM IMEI
-                this->send("gdc-db", "modem-imei=" + _gb->getmcu()->getimei());
+                // this->send("gdc-db", "modem-imei=" + _gb->getmcu()->getimei());
                 
                 // SIM ICCID
-                this->send("gdc-db", "sim-iccid=" + _gb->getmcu()->geticcid());
+                // this->send("gdc-db", "sim-iccid=" + _gb->getmcu()->geticcid());
 
                 // Network strength
-                this->send("gdc-db", "rssi=" + String(_gb->getmcu()->getrssi()));
+                // this->send("gdc-db", "rssi=" + String(_gb->getmcu()->getrssi()));
 
                 // Operator
                 String cops = _gb->getmcu()->getoperator();
                 cops = cops.substring(cops.indexOf("\"") + 1, cops.lastIndexOf("\""));
-                this->send("gdc-db", "cops=" + String(cops));
+                // this->send("gdc-db", "cops=" + String(cops));
             }
             
             // Sensor readings
@@ -740,31 +764,31 @@ void GB_DESKTOP::process(string command) {
                     result += "ec:" + String(_gb->getdevice("ec")->readsensor());
 
                     // The following line is not needed because the individual functions above send this info on their own
-                    this->send("gdc-db", "fsr=" + result);
+                    // this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":rtd")) {
                     String result = "";
 
                     result += "rtd:" + String(_gb->getdevice("rtd")->readsensor());
-                    this->send("gdc-db", "fsr=" + result);
+                    // this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":ph")) {
                     String result = "";
 
                     result += "ph:" + String(_gb->getdevice("ph")->readsensor());
-                    this->send("gdc-db", "fsr=" + result);
+                    // this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":dox")) {
                     String result = "";
 
                     result += "dox:" + String(_gb->getdevice("dox")->readsensor());
-                    this->send("gdc-db", "fsr=" + result);
+                    // this->send("gdc-db", "fsr=" + result);
                 }
                 else if (command.contains(":ec")) {
                     String result = "";
 
                     result += "ec:" + String(_gb->getdevice("ec")->readsensor());
-                    this->send("gdc-db", "fsr=" + result);
+                    // this->send("gdc-db", "fsr=" + result);
                 }
             }
 
@@ -796,7 +820,6 @@ void GB_DESKTOP::process(string command) {
                     bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl")->testdevice() : false;            
                     uint8_t code = 39;
                     uint8_t status = _gb->getdevice("sntl")->tell(code, 5);
-                    _gb->log("Fuse getting: " + String(status));
                     this->send("gdc-cfg", "sf:get:" + String(status ? "true" : "false"));
                 }
 
@@ -806,7 +829,6 @@ void GB_DESKTOP::process(string command) {
                     command = command.substring(12, command.length());
                     bool success = _gb->hasdevice("sntl") ? _gb->getdevice("sntl")->testdevice() : false;            
                     uint8_t code = command == "set" ? 37 : 38;
-                    _gb->log("Fuse setting to: " + String(code));
                     if (success) success = _gb->getdevice("sntl")->tell(code, 5) == 0;
                     this->send("gdc-cfg", "sf:" + String(success ? "true" : "false"));
                 }
@@ -1287,7 +1309,7 @@ void GB_DESKTOP::process(string command) {
                 _gb->getmcu()->connect();
                 
                 //! Connect to MQTT servver
-                _gb->getdevice("mqtt")->connect("pi", "abe-gb-mqtt");
+                _gb->getdevice("mqtt")->connect();
                     
                 this->send("gdc-dgn", "conn=init");
             }

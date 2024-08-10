@@ -23,7 +23,6 @@ class GB_AT_09 : public GB_DEVICE {
         GB_AT_09& initialize();
         bool initialized();
         GB_AT_09& configure(PINS);
-        GB_AT_09& setup(String name, String pass);
         GB_AT_09& persistent();
         GB_AT_09& on();
         GB_AT_09& on(String);
@@ -53,6 +52,7 @@ class GB_AT_09 : public GB_DEVICE {
     private:
         void _purge_buffer();
         GB *_gb;
+        GB_AT_09& _initialize();
         String _name;
         String _pin;
         int _baud = 9600;
@@ -70,11 +70,17 @@ GB_AT_09::GB_AT_09(GB &gb) {
 
 // Test the device
 bool GB_AT_09::testdevice() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
     
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
     return this->device.detected;
 }
 String GB_AT_09::status() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+    
 
     if (this->device.detected) {
         String namedata = this->send_at_command("AT+NAME");
@@ -87,6 +93,14 @@ String GB_AT_09::status() {
 
 // Initialize the module
 GB_AT_09& GB_AT_09::initialize() { 
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize();
+}
+
+GB_AT_09& GB_AT_09::_initialize() { 
     _gb->init();
 
     this->on();
@@ -113,7 +127,6 @@ GB_AT_09& GB_AT_09::initialize() {
     // Serial.println("Role: " + this->send_at_command("AT+ROLE0")); delay(100);
     // Serial.println("Service: " + this->send_at_command("AT+UUID")); delay(100);
     // Serial.println("Characteristic: " + this->send_at_command("AT+CHAR")); delay(200);
-    
 
     if (this->device.detected) {
         
@@ -156,7 +169,7 @@ GB_AT_09& GB_AT_09::initialize() {
         }
 
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
 
         _gb->arrow().log("Name: " + name, false);
         _gb->log(", PIN: " + pin);
@@ -167,7 +180,7 @@ GB_AT_09& GB_AT_09::initialize() {
         _gb->globals.INIT_REPORT += this->device.id;
 
         if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-..").wait(250).play("-..").wait(250).play("---");
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
     }
 
     this->off("comm");
@@ -190,6 +203,10 @@ GB_AT_09& GB_AT_09::configure(PINS pins) {
 }
 
 GB_AT_09& GB_AT_09::setname(String name) {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     this->on();
     delay(100);
 
@@ -204,6 +221,10 @@ GB_AT_09& GB_AT_09::setname(String name) {
 }
 
 GB_AT_09& GB_AT_09::setpin(String pin) {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     this->on();
     delay(100);
 
@@ -218,30 +239,19 @@ GB_AT_09& GB_AT_09::setpin(String pin) {
 }
 
 String GB_AT_09::getname() {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     return this->_name;
 }
 
 String GB_AT_09::getpin() {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     return this->_pin;
-}
-
-//TODO:Can't change name and pin together
-GB_AT_09& GB_AT_09::setup(String name, String pin) {
-    _gb->log("Updating name and PIN", false);
-    this->on();delay(500);
-    
-    // Set device BL name
-    this->send_at_command("AT+NAME" + name);delay(500);
-    this->_name = name;
-
-    // Set device BL PIN
-    this->send_at_command("AT+PIN" + pin);delay(500);
-    this->_pin = pin;
-
-    _gb->arrow().log("Done");
-
-    this->off("comm");
-    return *this;
 }
 
 /*
@@ -294,9 +304,13 @@ GB_AT_09& GB_AT_09::off() {
 }
 
 GB_AT_09& GB_AT_09::listen(callback_t_func callback) {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     if (this->_gb->serial.hardware->available()) {
         String command = this->_gb->serial.hardware->readStringUntil('\n');
-        command.trim();
+        command.trim(); 
         if (command != "E" && command != "ERROR" && command != "EERROR") callback (command);
     }
     return *this;
@@ -312,6 +326,9 @@ void GB_AT_09::print(String message) {
 }
 
 void GB_AT_09::print(String message, bool new_line) {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
 
     // Power on the device if not already
     if(digitalRead(this->pins.enable) == LOW) this->on("power");
@@ -355,6 +372,7 @@ String GB_AT_09::read_at_command_response() {
 }
 
 String GB_AT_09::send_at_command(String command) {
+
     this->on(); delay(100);
     _gb->serial.hardware->begin(_at_baud_at09); delay(100);
     _gb->serial.hardware->println(command); delay(100);

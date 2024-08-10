@@ -244,7 +244,7 @@
             mcu.connect();
 
             //! Connect to MQTT broker
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
 
             gb.log("MQTT connection attempted");
             

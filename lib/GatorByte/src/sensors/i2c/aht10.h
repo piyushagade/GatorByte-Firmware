@@ -40,6 +40,7 @@ class GB_AHT10 : public GB_DEVICE {
 
         AHT10 _aht = AHT10(0x38);
         GB *_gb;
+        GB_AHT10& _initialize(bool testdevice);
         bool _persistent = false;
 };
 
@@ -86,16 +87,30 @@ GB_AHT10& GB_AHT10::persistent() {
 
 // Test the device
 bool GB_AHT10::testdevice() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(true);
     
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
     return this->device.detected;
 }
 String GB_AHT10::status() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(true);
+    
     return this->device.detected ? String(this->temperature()) + ":.:" + String(this->humidity()) : "not-detected" + String(":") + device.id;
 }
 
-GB_AHT10& GB_AHT10::initialize() { initialize(true); }
+GB_AHT10& GB_AHT10::initialize() { return initialize(true); }
 GB_AHT10& GB_AHT10::initialize(bool testdevice) { 
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize(testdevice);
+}
+
+GB_AHT10& GB_AHT10::_initialize(bool testdevice) {
     _gb->init();
     
     _gb->log("Initializing " + this->device.name, false);
@@ -122,7 +137,7 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
             delay(2000); _gb->arrow().log(String(this->temperature()) + " Celcius and " + String(this->humidity()) + " % R.H."); 
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("---").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert(); 
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert(); 
         }
         else {
             _gb->arrow().log("Not detected"); 
@@ -134,7 +149,7 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
             }
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("---").wait(250).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert(); 
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(250).revert(); 
         }
     }
     else {
@@ -146,6 +161,10 @@ GB_AHT10& GB_AHT10::initialize(bool testdevice) {
 }
 
 float GB_AHT10::temperature() {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+
     this->on();
 
     // Get the latest values
@@ -168,6 +187,10 @@ float GB_AHT10::temperature() {
 }
 
 float GB_AHT10::humidity() {
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+    
     this->on();
     
     // Get the latest values

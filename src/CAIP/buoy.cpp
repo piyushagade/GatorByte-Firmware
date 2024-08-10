@@ -143,7 +143,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
             });
 
             // mqtt.publish("log/message", "Iteration: " + String(gb.ITERATION));
@@ -182,7 +182,7 @@
             sntl.kick();
 
             //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
         });
 
         rgb.rainbow(5000);

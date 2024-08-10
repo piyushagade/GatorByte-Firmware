@@ -34,7 +34,7 @@ class GB_CONFIGURATOR : public GB_DEVICE {
 
 GB_CONFIGURATOR::GB_CONFIGURATOR(GB &gb) {
     _gb = &gb;
-    _led = &_gb->getdevice("rgb");
+    // _led = &_gb->getdevice("rgb");
     _gb->includelibrary(this->device.id, this->device.name);
     _gb->devices.configurator = this;
 }

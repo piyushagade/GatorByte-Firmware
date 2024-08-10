@@ -382,7 +382,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
                 
             });
 
@@ -504,7 +504,7 @@
             sntl.kick();
 
             //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
         
         });
         
@@ -606,7 +606,7 @@
             sntl.kick();
 
             //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
         
         });
 
@@ -720,7 +720,7 @@
                     sntl.kick();
 
                     //! Connect to MQTT servver
-                    mqtt.connect("pi", "abe-gb-mqtt");
+                    mqtt.connect();
                     
                 });
 
@@ -864,7 +864,7 @@
                     sntl.kick();
 
                     //! Connect to MQTT server
-                    mqtt.connect("pi", "abe-gb-mqtt");
+                    mqtt.connect();
                 
                 });
                 

@@ -118,7 +118,7 @@
         // mcu.connect();
 
         // // Connect to MQTT broker
-        // mqtt.connect("pi", "abe-gb-mqtt");
+        // mqtt.connect();
     }
 
     void nwdiagnostics () {
@@ -131,7 +131,7 @@
             sntl.kick();
 
             //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
         
         });
 
@@ -337,7 +337,7 @@
             mcu.connect();
 
             //! Connect to MQTT broker
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
 
             gb.log("MQTT connection attempted");
             

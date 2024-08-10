@@ -126,7 +126,7 @@ bool GB_TPBCK::listener() {
                 this->_rain_pulse_count++;
                 pulsedetected = true;
 
-                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("white");
+                if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(8);
                 if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("...");
                 if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
             }

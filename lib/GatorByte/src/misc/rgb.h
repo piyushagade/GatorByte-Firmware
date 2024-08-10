@@ -1,5 +1,6 @@
 #ifndef GB_RGB_h
 #define GB_RGB_h
+#include <vector>
 
 #ifndef GB_h
     #include "../GB.h"
@@ -24,7 +25,8 @@ class GB_RGB : public GB_DEVICE {
         GB_RGB& initialize(float);
         GB_RGB& configure(PINS);
         GB_RGB& revert();
-        GB_RGB& on(int r, int g, int b);
+        GB_RGB& on(uint8_t identifer);
+        GB_RGB& on(uint8_t r, uint8_t g, uint8_t b);
         GB_RGB& on(String color, float brightness);
         GB_RGB& on(String color);
         GB_RGB& off();
@@ -33,8 +35,26 @@ class GB_RGB : public GB_DEVICE {
         bool testdevice();
         String status();
 
-        GB_RGB& blink(String, int, int, int);
-        GB_RGB& rainbow(int milliseconds);
+        GB_RGB& blink(String, uint8_t, uint16_t, uint16_t);
+        GB_RGB& rainbow(uint32_t milliseconds);
+
+
+        struct colorinfo  {
+            int identifier;
+            const char* name;
+        };
+        const std::vector<colorinfo> colormap = {
+            {1, "red"},
+            {2, "green"},
+            {3, "blue"},
+
+            {4, "cyan"},
+            {5, "magenta"},
+            {6, "yellow"},
+            {7, "grass"},
+            {8, "white"},
+
+        };
 
     private:
         GB *_gb;
@@ -82,7 +102,23 @@ GB_RGB& GB_RGB::revert() {
     return *this;
 }
 
-GB_RGB& GB_RGB::on(int red, int green, int blue) {
+/*
+    Set color using the colors' identifiers
+*/
+GB_RGB& GB_RGB::on(uint8_t identifier) {
+    for (const auto& color : this->colormap) {
+        if (identifier == color.identifier) {
+            this->on(color.name);
+            break;
+        }
+    }
+    return *this;
+}
+
+/*
+    Set color using the individual RGB values (0-255)
+*/
+GB_RGB& GB_RGB::on(uint8_t red, uint8_t green, uint8_t blue) {
     analogWrite(this->pins.red, red);
     analogWrite(this->pins.green, green);
     analogWrite(this->pins.blue, blue);
@@ -103,15 +139,13 @@ GB_RGB& GB_RGB::initialize(float brightness) {
     if (brightness < 0) brightness = 0;
 
     // Cycle through primary colors
-    this->on("red", brightness); delay(300);
-    this->on("green", brightness); delay(300);
-    this->on("blue", brightness); delay(300);
+    this->on(1); delay(200);
+    this->on(2); delay(200);
+    this->on(3); delay(200);
 
     // Blink white 2 times
-    this->on("white", brightness); delay(200);
-    this->off(); delay(100);
-    this->on("white", brightness); delay(200);
-    this->off(); delay(200);
+    this->on(8); delay(200);
+    this->off();
 
     return *this;
 }
@@ -122,14 +156,14 @@ bool GB_RGB::testdevice() {
     _gb->log("Testing " + device.id + ": " + String(this->device.detected));
 
     // Cycle through primary colors
-    this->on("red", 255); delay(550);
-    this->on("green", 255); delay(550);
-    this->on("blue", 255); delay(550);
+    this->on(1); delay(550);
+    this->on(2); delay(550);
+    this->on(3); delay(550);
     this->off();
 
     // Revert
-    if (_gb->globals.GDC_CONNECTED) this->on("cyan", 255);
-    else this->on("magenta", 255);
+    if (_gb->globals.GDC_CONNECTED) this->on(4);
+    else this->on(5);
 
     return this->device.detected;
 }
@@ -185,20 +219,21 @@ GB_RGB& GB_RGB::off() {
     return *this;
 }
 
-GB_RGB& GB_RGB::blink(String color, int count, int on_duration, int off_duration) {
+GB_RGB& GB_RGB::blink(String color, uint8_t count, uint16_t on_duration, uint16_t off_duration) {
 
-    _gb->getdevice("rgb")->off(); delay(200);
-    for (int i = 0; i < count; i++) {
-        _gb->getdevice("rgb")->on(color); delay(on_duration);
-       if (i < count - 1) _gb->getdevice("rgb")->off(); delay(off_duration);
+    this->off(); delay(200);
+    for (uint8_t i = 0; i < count; i++) {
+        this->on(color); delay(on_duration);
+        if (i < count - 1) this->off(); 
+        delay(off_duration);
     }
-    _gb->getdevice("rgb")->off(); delay(100);
+    this->off(); delay(100);
     return *this;
 }
 
-GB_RGB& GB_RGB::rainbow(int milliseconds) {
+GB_RGB& GB_RGB::rainbow(uint32_t milliseconds) {
 
-    int now = millis();
+    uint32_t now = millis();
     while (true) {
         
         // milliseconds = 0 means infinite duration

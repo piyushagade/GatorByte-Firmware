@@ -305,7 +305,7 @@
 
             //! Connect to MQTT servver
             sntl.interval("sentinence", 30).enable();
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
             sntl.disable();
 
             gb.log("MQTT connection attempted");
@@ -406,7 +406,7 @@
             sntl.kick();
 
             //! Connect to MQTT server
-            mqtt.connect("pi", "abe-gb-mqtt");
+            mqtt.connect();
         
         });
 
@@ -480,7 +480,7 @@
 
         // // Connect to MQTT servver
         // sntl.interval("sentinence", 30).enable();
-        // mqtt.connect("pi", "abe-gb-mqtt");
+        // mqtt.connect();
         // sntl.disable();
 
         // mcu.startbreathtimer();
@@ -536,7 +536,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT server
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
             
             });
             return;

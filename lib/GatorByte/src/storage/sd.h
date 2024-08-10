@@ -398,11 +398,12 @@ GB_SD& GB_SD::initialize(String speed) {
             if (_gb->globals.GDC_CONNECTED) {
                 Serial.println("##CL-GB-SD-ABS##");
                 this->off();
+                _gb->arrow().log("No SD card");
                 return *this;
             }
 
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(100).on("red").wait(100).revert();
 
         }
         else if(!_sd.begin(this->pins.ss, this->_sck_speed)) {
@@ -413,11 +414,12 @@ GB_SD& GB_SD::initialize(String speed) {
             if (_gb->globals.GDC_CONNECTED) {
                 Serial.println("##CL-GB-SD-UINT##");
                 this->off();
+                _gb->arrow().log("Failed");
                 return *this;
             }
 
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(100).on("red").wait(100).revert();
         }
         else {
             // Open root folder
@@ -437,14 +439,20 @@ GB_SD& GB_SD::initialize(String speed) {
             this->sn = String(this->_cid.psn);
             
             if (_gb->globals.GDC_CONNECTED) {
-                if (this->device.detected) Serial.println("##CL-GB-SD-READY##");
-                else  Serial.println("##CL-GB-SD-RWF##");
+                if (this->device.detected) {
+                    Serial.println("##CL-GB-SD-READY##");
+                    _gb->arrow().log("Done");
+                }
+                else {
+                    Serial.println("##CL-GB-SD-RWF##");
+                    _gb->arrow().log("Failed");
+                }
                 this->off();
                 return *this;
             }
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(3).wait(100).revert();
         }
     }
     else {
@@ -675,7 +683,7 @@ void GB_SD::writeCSV(String filename, String data, String header) {
     // If error occured during the R/W test
     if (erroroccured) {
         _gb->arrow().log("Skipped due to error in R/W test");
-        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
+        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on(1);
     }
     else {
         _gb->arrow().log("File" + String(this->exists(filename) ? " " : " not ") + "found", false);
@@ -706,7 +714,7 @@ void GB_SD::writeCSV(String filename, String data, String header) {
         }
         else{
             _gb->arrow().log("Write failed (Couldn't open file)");
-            if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
+            if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on(1);
             // this->_gb->getmcu()->reset("mcu");
         }
     }
@@ -813,7 +821,7 @@ bool GB_SD::_write(String filename, String data) {
         return true;
     }
     else{
-        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on("red");
+        if (this->_gb->hasdevice("rgb")) this->_gb->getdevice("rgb")->on(1);
         return false;
     }
     this->off();
@@ -1406,7 +1414,7 @@ bool GB_SD::rwtest() {
     bool _erroroccurred = false;
 
     if(this->exists("test")) {
-        _gb->arrow().log("Test file wasn't deleted in previous run.", false);
+        _gb->arrow().log("Stale test file found.", false);
 
         // Delete the file
         this->rm("test");
@@ -1434,13 +1442,13 @@ bool GB_SD::rwtest() {
         }
         else {
             _gb->arrow().log("R/W code mismatch", false);
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red");
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1);
             _erroroccurred = true;
         }
     }
     else {
         _gb->arrow().log("Failed (code 1)", false);
-        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red");
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1);
         _erroroccurred = true;
     }
 
@@ -1456,6 +1464,10 @@ GB_SD& GB_SD::readcontrol() {
     return this->readcontrol(func);
 }
 GB_SD& GB_SD::readcontrol(callback_t_on_control callback) {
+
+    if (_gb->globals.GDC_CONNECTED) {
+        return *this;
+    }
     
     // Detect GDC without lock
     if (_gb->hasdevice("gdc")) _gb->getdevice("gdc")->detect(false);

@@ -308,7 +308,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
                 
             });
 

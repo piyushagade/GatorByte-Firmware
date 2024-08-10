@@ -66,6 +66,7 @@ class GB_AT_SCI_EC : public GB_DEVICE {
 
     private:
         GB *_gb;
+        GB_AT_SCI_EC& _initialize(bool testdevice);
         union sensor_mem_handler {
             byte i2c_data[4];
             long answ;
@@ -91,17 +92,30 @@ GB_AT_SCI_EC::GB_AT_SCI_EC(GB &gb) {
 
 // Test the device
 bool GB_AT_SCI_EC::testdevice() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
     
     this->device.detected = this->_test_connection();
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
     return this->device.detected;
 }
 String GB_AT_SCI_EC::status() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+    
     return this->device.detected ? this->_device_info() : "not-detected" + String(":") + device.id;
 }
 
-GB_AT_SCI_EC& GB_AT_SCI_EC::initialize () { this->initialize(false); } 
+GB_AT_SCI_EC& GB_AT_SCI_EC::initialize () { return this->initialize(false); } 
 GB_AT_SCI_EC& GB_AT_SCI_EC::initialize (bool testdevice) { 
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize(testdevice); 
+}
+GB_AT_SCI_EC& GB_AT_SCI_EC::_initialize (bool testdevice) { 
     _gb->init();
     
     _gb->log("Initializing " + this->device.name, false);
@@ -117,17 +131,18 @@ GB_AT_SCI_EC& GB_AT_SCI_EC::initialize (bool testdevice) {
             this->off();
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("..").wait(250).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("green").wait(250).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(2).wait(250).revert();
         }
         else {
             _gb->arrow().log("Not detected");
             _gb->globals.INIT_REPORT += this->device.id;
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("..").wait(250).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(250).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(250).revert();
         }
     }
     else _gb->arrow().log(this->device.detected ? "Done" : "Not detected");
+
     return *this;
 }
 
@@ -236,6 +251,9 @@ float GB_AT_SCI_EC::_read() {
 
 float GB_AT_SCI_EC::readsensor(String mode) {
     
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+    
     float sensor_value = -1;
     if (mode == "continuous") {
         int NUMBER_OF_READINGS = 30;
@@ -266,17 +284,22 @@ float GB_AT_SCI_EC::readsensor(String mode) {
 
 // Read the sensor
 float GB_AT_SCI_EC::readsensor() {
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
 
     // Loop mqtt
-    // if (this->_gb->hasdevice("mqtt")) this->_gb->getdevice("mqtt").update();
-    // this->_gb->breathe();
+    // if (false && _gb->hasdevice("mqtt")) _gb->getdevice("mqtt").update();
+    // _gb->breathe();
+
+    _gb->log("Reading " + this->device.name + " (" + _gb->globals.SENSOR_MODE + ")", false);
     
     // Return a dummy value if "dummy" mode is on
-    if (this->_gb->globals.MODE == "dummy") {
-        this->_gb->log("Reading " + this->device.name, false);
+    bool dummy = _gb->env() == "development";
+    if (dummy || _gb->globals.MODE == "dummy") {
         float value = random(5, 29) + random(0, 100) / 100.00;
-        this->_gb->arrow().log("Dummy value: " + String(value));
-        _gb->getdevice("gdc")->send("gdc-db", "ec=" + String(value));
+        _gb->arrow().log("Dummy value: " + String(value));
+        // _gb->getdevice("gdc")->send("gdc-db", "ec=" + String(value));
         this->off();
         return value;
     }
@@ -284,12 +307,12 @@ float GB_AT_SCI_EC::readsensor() {
     // Return if device not detected
     this->device.detected = this->_test_connection();
     if (!this->device.detected) {
-        this->_gb->log("Reading " + this->device.name, false);
-        this->_gb->arrow().log("Device not detected");
-        _gb->getdevice("gdc")->send("gdc-db", "ec=" + String(-1));
+        _gb->arrow().log("Device not detected");
+        // _gb->getdevice("gdc")->send("gdc-db", "ec=" + String(-1));
         return -1;
     }
     
+    // Turn on and activate
     this->on();
     this->activate();
 
@@ -308,58 +331,54 @@ float GB_AT_SCI_EC::readsensor() {
 
     // Get readings
     int timer = millis();
+    float min = 99, max = 0, avg = 0;
+
     if (sensor_mode == "stability") {
-        
-        this->_gb->log("Reading " + this->device.name + " until stable", false);
         
         // Read sensors until readings are stable
         while (stability_counter < min_stable_reading_count && ATTEMPT_COUNT++ < MAX_ATTEMPTS) {
-            
-            bool dummy = _gb->env() == "development";
-            // if (digitalRead(A6) == HIGH) {
-            //     _gb->arrow().color("yellow").log("Override", false);
-            //     dummy = true;
-            // }
-            
-            if (dummy) {
-                _gb->arrow().log("Dummy data");
-                sensor_value = 8.88;
-                return sensor_value;
+                    
+            // Get updated sensor value
+            sensor_value = this->_read();
+
+            // Calculate statistics
+            if (sensor_value < min) min = sensor_value;
+            if (max < sensor_value) max = sensor_value;
+            avg = (avg * (ATTEMPT_COUNT - 1) + sensor_value) / ATTEMPT_COUNT;
+
+            // Check if the readings are stable
+            float difference = abs(sensor_value - previous_reading);
+            if (difference <= stability_delta) {
+                stability_counter++;
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on(2); delay (250); _gb->getdevice("rgb")->on(5); }
+                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".");
             }
             else {
-                    
-                // Get updated sensor value
-                sensor_value = this->_read();
-
-                // Check if the readings are stable
-                float difference = abs(sensor_value - previous_reading);
-                if (difference <= stability_delta) {
-                    stability_counter++;
-                    if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("green"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
-                    if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play(".");
-                }
-                else {
-                    stability_counter = 0;
-                    if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on("yellow"); delay (250); _gb->getdevice("rgb")->on("magenta"); }
-                    if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-");
-                }
-                previous_reading = sensor_value;
+                stability_counter = 0;
+                if (_gb->hasdevice("rgb")) { _gb->getdevice("rgb")->on(6); delay (250); _gb->getdevice("rgb")->on(5); }
+                if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-");
             }
+            previous_reading = sensor_value;
         }
 
     }
     else if (sensor_mode == "iterations") {
             
-        this->_gb->log("Reading " + this->device.name + " " + String(NUMBER_OF_SENSOR_READS) + " times", false);
+        _gb->log("Reading " + this->device.name + " " + String(NUMBER_OF_SENSOR_READS) + " times", false);
 
         // Read sensor a fixed number of times
         for(int i = 0; i < NUMBER_OF_SENSOR_READS; i++, ATTEMPT_COUNT++) {
 
-            // GB breathe
-            this->_gb->breathe();
+            // // GB breathe
+            // _gb->breathe();
 
             // Get sensor value
             sensor_value = this->_read();
+            
+            // Calculate statistics
+            if (sensor_value < min) min = sensor_value;
+            if (max < sensor_value) max = sensor_value;
+            avg = (avg * (ATTEMPT_COUNT - 1) + sensor_value) / ATTEMPT_COUNT;
 
             // If max number of read attempts were made, exit
             if (ATTEMPT_COUNT >= MAX_ATTEMPTS) {
@@ -368,10 +387,19 @@ float GB_AT_SCI_EC::readsensor() {
         }
     }
 
-    else this->_gb->log("Reading " + this->device.name + " -> Sensor read mode not provided", false);
+    else if (sensor_mode == "single") {
+            
+        // Read sensor once
+        sensor_value = this->_read();
+        min = avg = max = sensor_value;
+    }
 
-    this->_gb->arrow().log("" + String(sensor_value) + (sensor_value == 0 ? " -> The sensor might not be connected." : "") + " (" + String((millis() - timer) / 1000) + " seconds)");
+    else _gb->arrow().color("red").log("Unknown mode.", false);
 
+    _gb->arrow().log("" + String(sensor_value) + (sensor_value == 0 ? " -> The sensor might not be connected." : "") + " (" + String((millis() - timer) / 1000) + " seconds)", false);
+    _gb->log(String(" -> ") + String(min) + " |--- " + String(avg) + " ---| " + String(max));
+
+    // Deactivate and turn off
     this->deactivate();
     this->off();
 
@@ -382,6 +410,10 @@ float GB_AT_SCI_EC::readsensor() {
 
 // Sensor calibration
 int GB_AT_SCI_EC::calibrate(String action, int value) {
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize(false);
+    
     _gb->log("Calibrating EC: " + action + ", " + value);
     if (action == "clear") return this->_calibrate("clr", 0);
     else if (action == "low") return this->_calibrate("low", value);
@@ -455,7 +487,6 @@ String GB_AT_SCI_EC::_device_info() {
     this->on();
 
     const byte device_type_register = 0x00;
-    const byte device_address_register = 0x03;
     this->_read_register(device_type_register, 0x02);
     if(_acquired_data.i2c_data[1] == 255) {
         _gb->log("Error reading device info.");
@@ -492,7 +523,7 @@ void GB_AT_SCI_EC::_led_control(String cmd) {
 
     this->_write_byte(this->registers.led, led_control);
     this->_read_register(this->registers.led, 0x01);
-    if (_acquired_data.i2c_data[0] != led_control) _gb->arrow().log("Error changing LED state to: " + cmd , false);
+    if (_acquired_data.i2c_data[0] != led_control) _gb->arrow().log("Error changing LED: " + cmd , false);
 }
 
 // Calibration procedure
@@ -501,14 +532,14 @@ int GB_AT_SCI_EC::_calibrate(String cmd, int value) {
     if (cmd.compareTo("?") == 0) {
         String status = "";
         this->_read_register(this->registers.calibration_confirmation, 0x01);
-        if (this->_acquired_data.i2c_data[0] == 0) status += "No calibration. ";
-        if (bitRead(this->_acquired_data.i2c_data[0], 0) == 1) status += "Dry calibration done. ";
-        if (bitRead(this->_acquired_data.i2c_data[0], 1) == 1) status += "Single-point calibration done. ";
-        if (bitRead(this->_acquired_data.i2c_data[0], 2) == 1) status += "Low-point calibration done. ";
-        if (bitRead(this->_acquired_data.i2c_data[0], 3) == 1) status += "High-point calibration done. ";
+        if (this->_acquired_data.i2c_data[0] == 0) status += "No";
+        if (bitRead(this->_acquired_data.i2c_data[0], 0) == 1) status += "Dry";
+        if (bitRead(this->_acquired_data.i2c_data[0], 1) == 1) status += "Single-point";
+        if (bitRead(this->_acquired_data.i2c_data[0], 2) == 1) status += "Low-point";
+        if (bitRead(this->_acquired_data.i2c_data[0], 3) == 1) status += "High-point";
         
         _gb->log(this->_acquired_data.i2c_data[0], false);
-        _gb->log(" " + status);
+        _gb->log(" " + status + " calibration done. ");
     }
 
     if (cmd.compareTo("clr") == 0) {

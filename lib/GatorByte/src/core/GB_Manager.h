@@ -1,5 +1,16 @@
 
 
+#ifndef CSVary_h
+    #include "CSVary.h"
+#endif
+
+#ifndef JSONary_h
+    #include "JSONary.h"
+#endif
+
+#include "Client.h"
+
+
 //! Base class for GB_MCU
 #ifndef GB_MCU_h
     #define GB_MCU_h
@@ -41,8 +52,8 @@
             virtual void watchdog(String, int) {};
             virtual GB_MCU& startbreathtimer() { return *this; };
             virtual GB_MCU& stopbreathtimer() { return *this; };
-            virtual bool testbattery() { Serial.println("test from Base class"); return false; };
-            virtual String batterystatus() { Serial.println("status from Base class"); return ""; };
+            virtual bool testbattery() { return false; };
+            virtual String batterystatus() { return ""; };
 
             // virtual String post(String, String) {};
 
@@ -67,16 +78,16 @@
             typedef void (*callback_t_on_control)(JSONary data);
 
             //! General functions
-            virtual GB_DEVICE& on() { Serial.println("on from Base class"); return *this; };
-            virtual GB_DEVICE& off() { Serial.println("off from Base class"); return *this; };
+            virtual GB_DEVICE& on() { return *this; };
+            virtual GB_DEVICE& off() { return *this; };
             virtual bool ison() { return false; };
             virtual GB_DEVICE& trigger(int) { return *this; };
             virtual bool initialized() { return false; };
-            virtual bool testdevice() { Serial.println("test from Base class"); return false; };
-            virtual String status() { Serial.println("status from Base class"); return ""; };
+            virtual bool testdevice() { return false; };
+            virtual String status() { return ""; };
 
             //! MQTT functions
-            virtual GB_DEVICE& connect(String, String) { return *this; };
+            virtual GB_DEVICE& connect() { return *this; };
 
             //! IOE functions
             virtual int readpin(int) { return LOW; };
@@ -98,7 +109,8 @@
             virtual float lastvalue() { return 0; };
 
             //! RGB functions
-            virtual GB_DEVICE& on(int, int, int) { return *this; };
+            virtual GB_DEVICE& on(uint8_t) { return *this; };
+            virtual GB_DEVICE& on(uint8_t, uint8_t, uint8_t) { return *this; };
             virtual GB_DEVICE& on(String) { return *this; };
             virtual GB_DEVICE& revert() { return *this; };
             virtual GB_DEVICE& blink(String, int, int, int) { return *this; };
@@ -190,7 +202,8 @@
             virtual uint16_t tell(int command, int attempts) { return 0; };
             virtual GB_DEVICE& enable() { return *this; };
             virtual GB_DEVICE& disable() { return *this; };
-            virtual GB_DEVICE& blow() { return *this; };
+            virtual GB_DEVICE& setfuse() { return *this; };
+            virtual GB_DEVICE& blowfuse() { return *this; };
             virtual uint16_t reboot() { return 0; }
 
         private:

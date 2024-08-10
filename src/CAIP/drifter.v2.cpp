@@ -279,7 +279,7 @@
                 sntl.kick();
 
                 //! Connect to MQTT servver
-                mqtt.connect("pi", "abe-gb-mqtt");
+                mqtt.connect();
                 
             });
                 
@@ -496,7 +496,7 @@
                     mcu.connect("cellular");
 
                     //! Connect to MQTT servver
-                    mqtt.connect("pi", "abe-gb-mqtt");
+                    mqtt.connect();
                         
                     // Send notification
                     mqtt.publish("fault/report", "sd/rw/failed");

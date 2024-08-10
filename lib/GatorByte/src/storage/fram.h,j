@@ -223,7 +223,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             }
 
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("---");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("red").wait(100).on("red").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(1).wait(100).on("red").wait(100).revert();
         }
         else {
             // Open root folder
@@ -242,7 +242,7 @@ GB_FRAM& GB_FRAM::initialize(String speed) {
             // }
             
             if (_gb->hasdevice("buzzer")) _gb->getdevice("buzzer")->play("-").wait(500).play("...");
-            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on("blue").wait(100).revert();
+            if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(3).wait(100).revert();
         }
     }
     else _gb->arrow().log("Disabled", true);

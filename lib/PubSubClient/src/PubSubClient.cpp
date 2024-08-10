@@ -260,7 +260,7 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
                 unsigned long t = millis();
                 if (t-lastInActivity >= ((int32_t) this->socketTimeout*1000UL)) {
                     _state = MQTT_CONNECTION_TIMEOUT;
-                    Serial.println("\n*********** - 2 \n");
+                    // Serial.println("\nError code " + String(_state));
                     _client->stop();
                     return false;
                 }
@@ -279,7 +279,7 @@ boolean PubSubClient::connect(const char *id, const char *user, const char *pass
                     _state = buffer[3];
                 }
             }
-            Serial.println("\n*********** - 3 \n");
+            // Serial.println("\nError code " + String(_state));
             _client->stop();
         } else {
             _state = MQTT_CONNECT_FAILED;
@@ -328,7 +328,7 @@ uint32_t PubSubClient::readPacket(uint8_t* lengthLength) {
         if (len == 5) {
             // Invalid remaining length encoding - kill the connection
             _state = MQTT_DISCONNECTED;
-                // Serial.println("\n*********** - 4 \n");
+            // Serial.println("\nError code " + String(_state));
             _client->stop();
             return 0;
         }
@@ -378,14 +378,14 @@ boolean PubSubClient::loop() {
         unsigned long t = millis();
         if ((t - lastInActivity > this->keepAlive*1000UL) || (t - lastOutActivity > this->keepAlive*1000UL)) {
             //! AG: Added false to the condition
-            if (pingOutstanding && false) {
+            if (pingOutstanding) {
                 this->_state = MQTT_CONNECTION_TIMEOUT;
                 _client->stop();
                 return false;
             } else {
                 this->buffer[0] = MQTTPINGREQ;
                 this->buffer[1] = 0;
-                _client->write(this->buffer,2);
+                _client->write(this->buffer, 2);
                 lastOutActivity = t;
                 lastInActivity = t;
                 pingOutstanding = true;
@@ -728,11 +728,10 @@ boolean PubSubClient::connected() {
         rc = (int) _client->connected();
         if (!rc) {
             if (this->_state == MQTT_CONNECTED) {
-                //! AG: This is executed right after the connection is lost
                 this->_state = MQTT_CONNECTION_LOST;
                 _client->flush();
-                // Serial.println("\n*********** - 1 \n");
                 _client->stop();
+                // Serial.println("\nError code " + String(_state));
             }
         } else {
             return this->_state == MQTT_CONNECTED;
