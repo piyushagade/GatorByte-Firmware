@@ -188,7 +188,7 @@ String GB_SNTL::status() {
     String fwinfo;
     if (this->device.detected) {
     
-        fwinfo = this->fwversion();
+        fwinfo = String(this->fwversion());
         Serial.println(fwinfo);
     
         int code = 0x16;
