@@ -8,8 +8,12 @@
 */
 
 //! Datary library
-#include "CSVary.h"
-#include "JSONary.h"
+#ifndef CSVary_h
+    #include "CSVary.h"
+#endif
+#ifndef JSONary_h
+    #include "JSONary.h"
+#endif
 
 //! Microcontrollers
 #if not defined (LOW_MEMORY_MODE) || defined (INCLUDE_NB1500)

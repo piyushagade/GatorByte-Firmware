@@ -41,6 +41,9 @@
 #ifndef JSONary_h
     #include "JSONary.h"
 #endif
+#ifndef PROBE_MEASUREMENT_STORE_H
+    #include <ProbeMeasurementStore.h>
+#endif
 
 struct DEVICE {
     String id;
@@ -165,7 +168,7 @@ class GB {
         // int LOOPDELAY = 0;
 
         DEVICES devices;
-
+        ProbeMeasurementStore pms;
         // Add devices
         GB& includelibrary(String device_id, String device_name);
         GB& includedevice(String device_id, String device_name);
