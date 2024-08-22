@@ -1,7 +1,7 @@
 /*
     ! UWRE's projects
 */
-#define GB_PLATFORM_IS_BUOY true
+#define GB_PLATFORM_IS_BUOY false
 #define GB_PLATFORM_IS_BUOY_TEST false
 #define GB_PLATFORM_IS_DIAG false
 
@@ -32,3 +32,8 @@
     ! TAMU projects
 */
 #define GB_PLATFORM_IS_TAMU_BUOY false
+
+/*
+    !  Scheduler
+*/
+#define GB_PLATFORM_IS_SCHEDULER true
