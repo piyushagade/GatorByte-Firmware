@@ -16,7 +16,8 @@
         ! Gatorbyte library
         Import the GatorByte library (GBL).
     */
-    #include "GB.h"
+    #include "GB.h" 
+    #include <Scheduler.h>
 
     /* 
         ! Gatorbyte core instancegb.. All the peripherals and sensors 
@@ -24,7 +25,6 @@
         first parameter.
     */
     GB gb = GB();
-
     /* 
         ! Peripherals and sensors (devices) instances
         Include the instances for the devices that your GatorByte physically 
@@ -162,52 +162,7 @@
         gb.log("The device is now awake.");
         // gdc.send("highlight-yellow", "Device awake");
     }
-    
-    /* 
-        ! Fetch latest control variable from the server
-        The control variables can be updated using the web dashboard
-            a. 'simplify: true' simplifies the response and returns a string.
-            b. 'simplify: false' returns a json object.
-
-    */
-    // void get_control_variable () {
-        
-    //     sntl.watch(120, [] {
-
-    //         // //! Disconnect from the network
-    //         // mcu.disconnect("cellular");
-
-    //         //! Connect to network
-    //         mcu.connect("cellular");
-    //     });
-
-    //     sntl.watch(30, [] {
-    //         JSONary data;
-    //         data
-
-    //             // The 'key' is the variable value requested
-    //             .set("key", "RECOVERY_MODE")
-
-    //             // 'reset' set the value to the provided value if the value is true.
-    //             .set("reset", "false")
-
-    //             // 'simplify: true' simplifies the response and returns a string.
-    //             .set("simplify", "true")
-
-    //             // Device SN is required
-    //             .set("device-sn", gb.globals.DEVICE_SN);
-
-    //         if(http.post("v3/gatorbyte/control/get/bykey", data.get()) ) {
-    //             String response = http.httpresponse();
-    //             gb.controls.set("RECOVERY_MODE", response);
-    //             sd.updatecontrolbool("RECOVERY_MODE", response);
-    //         }
-
-    //         // //! Disconnect from the network
-    //         // mcu.disconnect("cellular");
-    //     });
-    // }
-    
+     
     /*
         ! Prepare a queue file (with current iteration's data)
         The queue file will be read and data uploaded once the network is established.
@@ -310,6 +265,7 @@
 
     }
     
+    void upload_loop();
     /* 
         ! Peripherals configurations and initializations
         Here, objects for the peripherals/components used are initialized and configured. This is where
@@ -385,7 +341,7 @@
             ph.configure({true, SR7, true, 1}).initialize(true);
 
         });
-
+        Scheduler.startLoop(upload_loop);
         gb.log("Setup complete");
     }
 
@@ -447,16 +403,6 @@
         // GatorByte loop function
         gb.loop();
 
-
-        // bl.listen([] (String command) {
-        //     gb.log("Received command: " + command);
-        //     if (command.contains("ping")) gb.log("pong");
-        //     if (command.contains("fuse")) {
-        //         sntl.setfuse();
-        //         bl.print("ok");
-        //     }
-        // });
-
         sntl.watch(1200, [] {
 
             //! Turn GPS on
@@ -479,41 +425,11 @@
             String timestamp = rtc.timestamp();
             String date = rtc.date("MM/DD/YY");
             String time = rtc.time("hh:mm");
+            ProbeMeasurement measurement = ProbeMeasurement(gb.globals.DEVICE_SN,timestamp,date,time,read_rtd_value,
+            read_ph_value, read_dox_value, read_ec_value,aht.temperature(), aht.humidity(),gps_lat, gps_lng, mcu.fuel("voltage"));
+            gb.pms.addMeasurement(measurement);
 
-            // Construct CSV object
-            csv
-                .clear()
-                .setheader("DEVICESN,TIMESTAMP,DATE,TIME,RTD,PH,DO,EC,TEMP,RH,LAT,LNG,BVOLT")
-                .set(gb.globals.DEVICE_SN)
-                .set(timestamp)
-                .set(date)
-                .set(time)
-                .set(read_rtd_value)
-                .set(read_ph_value)
-                .set(read_dox_value)
-                .set(read_ec_value)
-                .set(aht.temperature())
-                .set(aht.humidity())
-                .set(gps_lat)
-                .set(gps_lng)
-                .set(mcu.fuel("voltage"))
-            ;
-
-            gb.br().log("Current data point: ");
-            gb.log(csv.getheader());
-            gb.log(csv.getrows());
-
-            /*
-                ! Prepare a queue file (with current iteration's data)
-                The queue file will be read and data uploaded once the network is established.
-                The file gets deleted if the upload is successful. 
-            */
-           
-            // if (sd.device.detected) writetoqueue(csv);
-            // else uploadcurrentdatatoserver(csv);
-
-            if (sd.device.detected) sd.writeCSV("/readings/readings.csv", csv);
-            uploadcurrentdatatoserver(csv);
+            if (sd.device.detected) sd.writeCSV("/readings/readings.csv", measurement.toCSVary());            
         });
 
         // //! Upload data to server
@@ -524,7 +440,15 @@
         // mcu.set_wakeup_callback(on_wakeup);
 
         //! Sleep
-        mcu.sleep();
+        yield();
     }
 
+    void upload_loop(){
+         sntl.watch(1200, [] {
+            ProbeMeasurement pm = gb.pms.getOldest();
+            uploadcurrentdatatoserver(pm.toCSVary());
+         });
+        yield();
+        mcu.sleep();
+    }
 #endif
