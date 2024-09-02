@@ -347,10 +347,12 @@
         sntl.watch(120, []() {
 
             // Initialize SD first to read the config file
-            // while (1) 
-            sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
-
-            // while (true) delay(100);
+            // while (1) {
+                sd.configure({true, SR15, 7, SR4}).state("SKIP_CHIP_DETECT", true).initialize("quarter");
+                
+            //     gps.configure({true, SR2, SR10}).initialize();
+            //     bl.configure({true, SR3, SR11}).initialize().on().persistent();
+            // }
             
             // Initialize EEPROM
             mem.configure({true, SR0}).initialize();
@@ -466,7 +468,7 @@
                 ! Check the current state of the system and take actions accordingly
                 Get latest GPS coordinates
             */
-            GPS_DATA gpsdata = gps.read(true);
+            GPS_DATA gpsdata = gps.read();
 
             String gps_lat = String(gpsdata.lat, 5), gps_lng = String(gpsdata.lng, 5);
             gps.fix() ? rgb.on("blue").wait(2000).revert() : rgb.on("red").wait(2000).revert(); 

@@ -162,6 +162,7 @@ GB_NEO_6M& GB_NEO_6M::_initialize() {
     for (unsigned long start = millis(); millis() - start < 6000;){ 
         while (_gb->serial.hardware->available() && !this->device.detected) {
             String c = _gb->serial.hardware->readStringUntil('\n');
+            // _gb->log(c, false);
 
             this->device.detected = c.indexOf("u-blox") > -1 || 
                                     c.indexOf("$GP") > -1 || 

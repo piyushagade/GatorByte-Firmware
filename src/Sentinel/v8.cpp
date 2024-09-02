@@ -1,7 +1,7 @@
 #include "platform.h"
 
 #if GB_PLATFORM_IS_SENTINEL_V8
-    /*
+/*
     The secondary uC listens for "breaths" from primary uC.
     The breaths can either be implemented as:
         1. A change in the state of pin A1 on the primary.
@@ -114,6 +114,8 @@ struct LOCATIONS
     uint16_t enabled_t3 = 0x1B;
     uint16_t sentinence_base_t3 = 0x1C;
     uint16_t sentinence_multiplier_t3 = 0x1D;
+
+    uint16_t last_ping_timestamp = 0x1E;
 } location;
 
 // Utility functions
@@ -122,8 +124,8 @@ struct LOCATIONS
 
 // Sentinel firmware meta data
 #define FIRMWARE_MAJOR_VERSION 2
-#define FIRMWARE_MINOR_VERSION 12
-#define FIRMWARE_MONTH 7
+#define FIRMWARE_MINOR_VERSION 13
+#define FIRMWARE_MONTH 9
 #define FIRMWARE_DATE 24
 
 // Define addresses and pins
@@ -162,6 +164,7 @@ uint8_t BEACON_MODE = 1;
 
 // Default timer is Timer 0
 uint8_t SELECTED_TIMERID = 0;
+uint32_t LAST_PING_TIMESTAMP = 0;
 
 // Timer interval storage (Units: seconds)
 uint8_t INTERVAL_BASE[4] = { 15, 15, 15, 144 };
@@ -189,6 +192,7 @@ void sendresponseforced(uint16_t);
 void setsentinence(uint8_t);
 void reboot(uint8_t);
 void shutdown();
+bool fuse(uint8_t);
 void i2cstate(uint8_t);
 void i2clistener(uint8_t);
 void memfetch();
@@ -685,6 +689,8 @@ void memformat()
   memwrite(location.enabled_t1, TIMER_ENABLED[1]);
   memwrite(location.enabled_t2, TIMER_ENABLED[2]);
   memwrite(location.enabled_t3, TIMER_ENABLED[3]);
+
+  memwrite(location.last_ping_timestamp, 0);
 }
 
 /*
@@ -740,6 +746,8 @@ void memfetch()
     TIMER_ENABLED[1] = memread(location.enabled_t1);
     TIMER_ENABLED[2] = memread(location.enabled_t2);
     TIMER_ENABLED[3] = memread(location.enabled_t3);
+
+    LAST_PING_TIMESTAMP = memread(location.last_ping_timestamp);
 }
 
 /*
@@ -783,6 +791,42 @@ ISR(TIMER1_COMPA_vect)
     blinkmode(0x01, 3);
 }
 
+bool fuse(uint8_t state) {
+
+  /*
+    Get fuse status
+    If TIMER3 is enabled -> Blown Fuse 
+    If TIMER3 is disabled -> Fuse is set 
+  */
+
+  // Set the fuse
+  if (state == 0x01) {
+    TIMER_ENABLED[3] = false;
+
+    start_timestamp[3] = millis() / 1000;
+
+    // Write to EEPROM
+    memwrite(location.enabled_t3, TIMER_ENABLED[3]);
+    memwrite(location.timer3_start_timestamp, start_timestamp[3]);
+  }
+
+  // Blow the fuse
+  else if (state == 0x02) {
+    sendresponse(SUCCESS);
+    TIMER_ENABLED[3] = true;
+
+    // Write to EEPROM
+    memwrite(location.enabled_t3, TIMER_ENABLED[3]);
+    memwrite(location.timer3_start_timestamp, start_timestamp[3]);
+  }
+
+  else {
+    // Do nothing, just return the state
+  }
+
+  return TIMER_ENABLED[3];
+}
+
 /*
     Read incoming I2C commands
 */
@@ -814,6 +858,47 @@ void i2clistener(uint8_t byteCount)
         if (x == 0)
         {
             sendresponseforced(PINGRESPONSE);
+
+            // If two pings were sent within  15 minutes from each other
+            if (LAST_PING_TIMESTAMP > 0 && (millis() / 1000) - LAST_PING_TIMESTAMP < 10) {
+
+                // Disable all timers, including blowing the fuse
+                for (uint8_t TIMER_ID = 0; TIMER_ID < 4; TIMER_ID++) {
+                  TIMER_ENABLED[TIMER_ID] = false;
+
+                  memwrite(location.enabled_t0 + (TIMER_ID * 3), TIMER_ENABLED[TIMER_ID]);
+                  memwrite(location.timer0_start_timestamp + TIMER_ID, start_timestamp[TIMER_ID]);
+                  delay(5);
+                }
+
+                // Turn off the primary
+                trigger(0x02);
+
+                // But don not turn off the I2C
+                i2cstate(0x01);
+            }
+
+            // If two pings were sent within  15 minutes from each other
+            else if (LAST_PING_TIMESTAMP > 0 && (millis() / 1000) - LAST_PING_TIMESTAMP < 30) {
+
+              // If the fuse is blown
+              if (fuse(0x00)) {
+                
+                // Set the fuse
+                fuse(0x01);
+              }
+              else {
+                
+                // Blow the fuse
+                fuse(0x02);
+              }
+
+              // Reset the timestamp
+              memwrite(location.last_ping_timestamp, 0);
+            }
+
+            LAST_PING_TIMESTAMP = millis() / 1000;
+            memwrite(location.last_ping_timestamp, LAST_PING_TIMESTAMP);
         };
 
         // Unlock configuration
@@ -853,7 +938,7 @@ void i2clistener(uint8_t byteCount)
             // Lock Sentinel configuration
             CONFIG_UNLOCKED = false;
 
-            // Reboot the secondary
+            // Reboot the primary
             reboot(0x02);
 
             delay(500);
@@ -1071,31 +1156,19 @@ void i2clistener(uint8_t byteCount)
         */
         else if (x == 37) 
         {
-            sendresponse(SUCCESS);
-            TIMER_ENABLED[3] = false;
-
-            start_timestamp[3] = millis() / 1000;
-
-            // Write to EEPROM
-            memwrite(location.enabled_t3, TIMER_ENABLED[3]);
-            memwrite(location.timer3_start_timestamp, start_timestamp[3]);
+          fuse(0x01);
         }
 
         // Blow/reset fuse
         else if (x == 38) 
         {
-          sendresponse(SUCCESS);
-          TIMER_ENABLED[3] = true;
-
-          // Write to EEPROM
-          memwrite(location.enabled_t3, TIMER_ENABLED[3]);
-          memwrite(location.timer3_start_timestamp, start_timestamp[3]);
+          fuse(0x02);
         }
 
-        // Timer 3 status
+        // Fuse/Timer 3 status
         else if (x == 39) 
         {
-            sendresponseforced(TIMER_ENABLED[3]);
+          sendresponseforced(fuse(0x00));
         }
         
         // Interval base interval control (10 options)

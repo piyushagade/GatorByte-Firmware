@@ -63,6 +63,7 @@ class GB_SNTL : public GB_DEVICE {
         
     private:
         GB *_gb;
+        GB_SNTL& _initialize();
         int _address = 0x9;
         bool _logresponse = false;
         bool _initialized = false;
@@ -100,9 +101,15 @@ GB_SNTL& GB_SNTL::configure(PINS pins, int address) {
     Initialize device
 */
 GB_SNTL& GB_SNTL::initialize() { 
+    if (_gb->globals.GDC_CONNECTED) {
+        this->off();
+        return *this;
+    }
+    return this->_initialize();  
+}
+
+GB_SNTL& GB_SNTL::_initialize() { 
     _gb->init();
-    
-    _gb->log("Initializing " + this->device.name, false);
     
     // Add the device to included devices list
     _gb->includedevice(this->device.id, this->device.name);
@@ -122,6 +129,7 @@ GB_SNTL& GB_SNTL::initialize() {
     while (!success && counter-- >= 0) { delay(250); success = this->ping(); }
     this->device.detected = success;
 
+    _gb->log("Initializing " + this->device.name, false);
     _gb->arrow().log(success ? "Done" : "Not detected", false);
 
     if (_gb->globals.GDC_CONNECTED) {
@@ -130,9 +138,12 @@ GB_SNTL& GB_SNTL::initialize() {
         if (success) this->disable();
         return *this;
     }
+
+    bool fuse = !this->tell(39);
+    _gb->arrow().log("Fuse: ", false).log(fuse ? "Set" : "Blown");
     
-    if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer")->play(success ? "x.x.." : "xx");
-    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(success ? "green" : "red").wait(250).revert(); 
+    if (_gb->hasdevice("buzzer"))_gb->getdevice("buzzer")->play(success ? (fuse ? "-.-.-.." : "x.x..") : "xx");
+    if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(success ? (fuse ? "green" : "blue" ): "red").wait(250).revert(); 
 
     //! Turn off sentinence on initialize
     if (success) {
@@ -145,7 +156,7 @@ GB_SNTL& GB_SNTL::initialize() {
         // Get F/W version
         delay(0);
         this->fwversion();
-        _gb->log(success ? " (F/W v" + String(this->_fw_version) + "), " : ", ", false);
+        _gb->log(success ? "F/W v" + String(this->_fw_version) + ", " : ", ", false);
 
         // // Fetch fault counters
         // this->fetchfaultcounters();
@@ -175,16 +186,21 @@ GB_SNTL& GB_SNTL::initialize() {
     return *this;
 }
 
+
 // Test the device
 bool GB_SNTL::testdevice() { 
     this->device.detected = this->ping(); delay(100);
     
-    _gb->log("Testing " + device.id + ": " + String(this->device.detected));
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
 
     return this->device.detected;
 }
 String GB_SNTL::status() {
     
+    // If device wasn't initialized/detected
+    if (!this->device.detected) this->_initialize();
+
     String fwinfo;
     if (this->device.detected) {
     
@@ -454,7 +470,7 @@ GB_SNTL& GB_SNTL::interval(String type, int seconds) {
     int baseindex, multiplierindex;
     int bases[] = { 1, 5, 15, 15, 30, 150, 90 };
     int multipliers[20];
-    for (int i = 0; i < 20; i++) multipliers[i] = i + 1;
+    for (uint8_t i = 0; i < 20; i++) multipliers[i] = i + 1;
     
     if (seconds > bases[sizeof (bases) / sizeof (bases[0]) - 1] * multipliers[sizeof (multipliers) / sizeof (multipliers[0]) - 1]) {
         _gb->log("Interval should be smaller than " + String(bases[sizeof (bases) / sizeof (bases[0]) - 1] * multipliers[sizeof (multipliers) / sizeof (multipliers[0]) - 1]) + " seconds", true);
@@ -551,7 +567,10 @@ uint16_t GB_SNTL::readmemory(int location) {
     One shot, no acknowledge
 */
 GB_SNTL& GB_SNTL::setack(bool state) { 
-    
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
+
     uint8_t code = state ? 0x13 : 0x14;
     this->tell(code, 2); 
     this->_no_ack = !state;
@@ -614,6 +633,10 @@ uint16_t GB_SNTL::ask() {
     Enable the Eye of Sauron
 */
 GB_SNTL& GB_SNTL::sauron(bool enable) { 
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
+    
     return enable ? this->timer(3).enable().timer(0) : this->timer(3).disable().timer(0);
 }
 
@@ -625,6 +648,13 @@ GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function) {
     return this->watch(duration_sec, function, true);
 }
 GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function, bool stubborn) { 
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) {
+        function();
+        return *this;
+    }
+    
     delay(100); 
     
     // Set sentinence interval and enable sentinel
@@ -643,6 +673,9 @@ GB_SNTL& GB_SNTL::watch(int duration_sec, callback_t_func function, bool stubbor
 }
 
 GB_SNTL& GB_SNTL::kick() { 
+
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
     
     // Set the sentinel's timer to 0, and reset the sentinel
     this->disable();
@@ -659,11 +692,14 @@ GB_SNTL& GB_SNTL::kick() {
     return *this;
 }
 
-
 /*
     Enable beacon
 */
 GB_SNTL& GB_SNTL::enablebeacon(uint8_t mode) { 
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
+
     _gb->log("Enabling beacon", false);
     if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     
@@ -690,6 +726,10 @@ GB_SNTL& GB_SNTL::enablebeacon(uint8_t mode) {
     Disable beacon
 */
 GB_SNTL& GB_SNTL::disablebeacon() { 
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
+
     _gb->log("Disabling beacon", false);
     if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     uint16_t response = this->tell(0x10, 2); 
@@ -703,6 +743,10 @@ GB_SNTL& GB_SNTL::disablebeacon() {
     Trigger beacon
 */
 GB_SNTL& GB_SNTL::triggerbeacon() { 
+    
+    // If device wasn't initialized/detected
+    if (!this->device.detected) return *this;
+
     _gb->log("Triggering beacon", false);
     if (!this->device.detected) { _gb->arrow().log("Not initialized"); return *this; }
     uint16_t response = this->tell(0x11, 5); 

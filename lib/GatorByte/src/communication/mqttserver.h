@@ -120,6 +120,18 @@ GB_MQTT& GB_MQTT::disconnect() {
 }
 
 GB_MQTT& GB_MQTT::connect() {
+
+    /*
+        ! If the device is operating in offline mode
+    */
+    if(_gb->globals.OFFLINE_MODE) {
+        MODEM_INITIALIZED = false;
+        CONNECTED_TO_NETWORK = false;
+        CONNECTED_TO_INTERNET = false;
+        
+        if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->revert();
+        return *this;
+    }
     
     if (_gb->hasdevice("rgb")) _gb->getdevice("rgb")->on(8);
 
